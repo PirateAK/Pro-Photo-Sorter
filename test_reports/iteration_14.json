@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 14 - frontend-only testing of the defensive ErrorBoundary. Static verification of ErrorBoundary.jsx and index.js passed. Live app loads cleanly with 0 console/page errors and full toolbar regression passes. Actively PROVED the ErrorBoundary works by temporarily mounting a throwing probe child (gated behind ?__ebprobe=1), confirming the error card, both testids, error message, component stack, and working retry-reset; the harness was then fully reverted and the app re-verified clean.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "OPTIONAL (defense-in-depth, not a defect): ErrorBoundary only catches errors thrown during render/lifecycle. Errors thrown inside async callbacks, promise rejections, and event handlers (e.g. showDirectoryPicker / FileSystemAccess handlers used when clicking a sub-folder) will NOT trigger the boundary. Since the reported black-screen happened right after clicking a sub-folder inside a source folder, consider adding window.addEventListener('error') + 'unhandledrejection' global handlers that surface the same error card, plus try/catch around the folder-tree click and thumbnail/EXIF loading paths.",
+    "OPTIONAL: consider adding a 'Copy details' button on the error card so packaged-.exe users can easily send the stack back."
+  ],
+  "critical_code_review_comments": [
+    "ErrorBoundary is correctly placed OUTSIDE QueryClientProvider so provider-init failures are also caught - good.",
+    "ErrorBoundary uses inline styles rather than Tailwind classes - intentional and correct, since it must render even if the CSS bundle/theme fails to load.",
+    "componentDidCatch calls setState({info}) after getDerivedStateFromError already set the error - safe, no loop observed.",
+    "Contrast on the error card is good (#f2ebe5 on #1a1715, accent #c68a53); text is fully legible - verified via screenshot.",
+    "Pre-existing lint noise (not from this change): 8x no-empty empty catch blocks in App.js/BatchRenameModal/IconOverlay/thumbCache, 2 react/no-unescaped-entities (one in ErrorBoundary.jsx line 42), and several unused eslint-disable directives. These silent empty catches are the most likely place a real failure gets swallowed - worth auditing."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A - skipped per request", "frontend": "100%" },
+  "seed_data_creation": "None. A temporary throwing probe component (/app/frontend/src/components/__EbProbe.jsx) and a modified index.js were used to trigger the boundary, then both were fully reverted (verified byte-identical to backup, probe file deleted, live app re-tested clean).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "test_credentials": "None required - no auth in this app.",
+  "context_for_next_testing_agent": "ErrorBoundary is verified working. Reusable technique to re-verify: create a component that throws on state change, mount it inside <ErrorBoundary> in index.js behind a URL param, click it, then assert [data-testid=error-boundary]. Note CRA's dev error overlay renders in an iframe on top of the card - remove iframes via page.evaluate before screenshotting, but locator counts work regardless. Also note: exif-date/exif-loc/exif-cam chips are only clickable-to-edit when an image is selected, which is impossible headless (needs a real folder pick via File System Access API), so chip edit-mode cannot be e2e tested in this environment - only presence.",
+  "verified_features": [
+    "App loads at public URL, app-root renders, 0 console errors, 0 page errors",
+    "error-boundary NOT present on normal load (correct - only on caught error)",
+    "All toolbar testids present: open-editor, compare-1/2/3, auto-rate-btn, open-rename, open-contact, open-category-manager, toggle-batch, open-settings, show-help, pick-source-btn, pick-dest-btn, btn-skip/store/delete/undo",
+    "EXIF label + all 3 ExifChips (exif-date, exif-loc, exif-cam) render",
+    "Category manager modal opens and closes on Escape",
+    "Help modal opens and closes on Escape; Settings open/close cycle OK; Batch toggle shows/hides batch-select-controls",
+    "ErrorBoundary catch verified: card rendered, app-root unmounted, error message 'EB_PROBE_SYNTHETIC_ERROR' shown, component stack shown, error-boundary-retry and error-boundary-reload both present, Try again cleared error state and remounted children"
+  ],
+  "rca_of_the_issue": "The original black screen was an unmounted React tree exposing the dark Electron BrowserWindow backgroundColor. The ErrorBoundary fix correctly converts that failure mode into a legible, actionable error card - confirmed empirically. Residual risk: the boundary does not catch async/event-handler exceptions, which is the most probable class of error for the folder-click path that triggered the original report; global error listeners would close that gap."
+}
