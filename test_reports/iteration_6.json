@@ -1,0 +1,26 @@
+{
+  "summary": "Iteration 6 regression check after adding '\"homepage\": \"./\"' to /app/frontend/package.json. Runtime Playwright test on https://photo-sorter-30.preview.emergentagent.com: app-root renders, 0 console errors, 0 page errors, 0 HTTP >=400 responses (no static asset 404s), earth-toned 3-panel layout (source panel, image-viewer, destination panel, filmstrip) renders, all toolbar controls visible (open-editor, compare-mode + compare-1/2/3, auto-rate-btn, open-rename, open-contact, open-category-manager, toggle-batch, open-settings, show-help), Settings modal opens and the Cancel bugfix still holds (template value '{folder}/{labels}{ext}' unchanged after edit + Cancel + reopen), Category Manager opens, add-category works and closes via Done. Additionally ran a real production build (`yarn build`, exit 0): CRA reported 'built assuming it is hosted at ./' and build/index.html now emits relative asset paths (src=\"./static/js/main.*.js\", href=\"./static/css/main.*.css\") with 0 absolute url(/static...) references in the emitted CSS - the Electron file:// black-screen root cause is fixed. Dev preview is unaffected (homepage is ignored by the dev server), so NO regression.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Electron offline note (not a web regression): public/index.html hardcodes absolute remote resources - https://fonts.googleapis.com Inter stylesheet and <script src=\"https://assets.emergent.sh/scripts/emergent-main.js\">. Under file:// in a packaged .exe without internet these requests fail; the app still renders (font falls back to system sans) but the user will see network errors in the Electron devtools console. For a truly offline .exe, self-host the Inter font and strip the emergent-main.js tag from the Electron build.",
+    "public/ has no favicon.ico / manifest.json, so the build output only contains index.html + static/. Harmless, but Electron will log a favicon 404."
+  ],
+  "critical_code_review_comments": [
+    "package.json 'homepage': './' is the correct minimal fix for CRA + Electron file:// loading; it only rewrites index.html/CSS asset URLs and does not affect the dev server or REACT_APP_BACKEND_URL usage.",
+    "If the app ever adds react-router with BrowserRouter, relative homepage + file:// will break routing - use HashRouter/MemoryRouter in the Electron build.",
+    "Open items from iteration 5 remain unaddressed (rating-key remap after Batch Rename, EXIF parsed only for first 8 images in BatchRenameModal, non-crash-safe runRename tmp-file flow, eager getFile() promises in ContactSheetModal, App.js 1119 lines)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "not tested (frontend-only request)", "frontend": "100%"},
+  "seed_data_creation": "Added a transient localStorage category 'TEST_Cat' in the Playwright browser session only (ephemeral, no server-side data).",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 6 verified only the homepage:'./' config change - no functional code changed. A production build artifact now exists at /app/frontend/build (safe to delete/regenerate). File System Access directory-picker flows (open source/dest folder, rename, contact sheet, auto-rate, compare panes) are still un-automatable and remain verified by source inspection only. The iteration-5 logic issues (rating key remap, 8-image EXIF cap, rename crash-safety, ContactSheet eager promises) were NOT re-tested and are believed still open.",
+  "rca_of_the_issue": "Electron black screen was caused by CRA emitting absolute '/static/...' asset URLs which resolve to the filesystem root under file://. Setting 'homepage': './' makes webpack emit relative './static/...' paths; verified in the regenerated build/index.html. No effect on the dev preview because CRA's dev server serves from '/' and ignores homepage."
+}
