@@ -1,16 +1,32 @@
-import React, { useState, useEffect, useCallback, createElement } from "react";
+import React, { useState, useEffect, useCallback, useMemo, createElement } from "react";
 import { ChevronRight, ChevronDown, Folder, FolderOpen, HardDrive } from "lucide-react";
 import { listChildren } from "../lib/fsapi";
 
 function TreeNode(props) {
-  const { node, depth, onSelectFolder, selectedPath, path } = props;
+  const {
+    node, depth, onSelectFolder, selectedPath, path,
+    justStored,      // { [folderPath]: count }
+    refreshCounter,  // int; increments to trigger re-list of matching branches
+  } = props;
   const [open, setOpen] = useState(depth === 0);
   const [children, setChildren] = useState(null);
   const [loading, setLoading] = useState(false);
   const isSelected = selectedPath === path;
 
-  const load = useCallback(async () => {
-    if (children !== null || loading) return;
+  // Own badge count for this exact folder
+  const badgeCount = justStored?.[path] || 0;
+
+  // Does this node OR any of its descendants have a store in it?
+  const branchHasStore = useMemo(() => {
+    if (!justStored) return false;
+    for (const p of Object.keys(justStored)) {
+      if (p === path || p.startsWith(path + "/")) return true;
+    }
+    return false;
+  }, [justStored, path]);
+
+  const load = useCallback(async (force) => {
+    if (!force && (children !== null || loading)) return;
     setLoading(true);
     try {
       const { dirs } = await listChildren(node.handle);
@@ -23,8 +39,28 @@ function TreeNode(props) {
   }, [node.handle, children, loading]);
 
   useEffect(() => {
-    if (open) load();
-  }, [open, load]);
+    if (open) load(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  // Auto-expand when a store lands in this branch
+  useEffect(() => {
+    if (branchHasStore) setOpen(true);
+  }, [branchHasStore]);
+
+  // Force re-list children whenever refreshCounter changes AND this branch matches
+  useEffect(() => {
+    if (!refreshCounter) return;
+    if (!branchHasStore) return;
+    if (open) {
+      load(true);
+    } else {
+      // Branch is currently closed. Invalidate cached children so the pending
+      // auto-expand triggers a fresh listChildren call.
+      setChildren(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshCounter]);
 
   const toggle = (e) => {
     e.stopPropagation();
@@ -52,7 +88,16 @@ function TreeNode(props) {
           {open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
         </button>
         <IconLeft size={14} className={iconLeftCls} />
-        <span className="truncate">{node.name}</span>
+        <span className="truncate flex-1">{node.name}</span>
+        {badgeCount > 0 && (
+          <span
+            className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-success-earth text-[color:var(--text-inverse)]"
+            data-testid={`tree-badge-${path}`}
+            title={`${badgeCount} new file${badgeCount !== 1 ? "s" : ""} this session`}
+          >
+            +{badgeCount}
+          </span>
+        )}
       </div>
       {open ? (
         <div>
@@ -63,7 +108,6 @@ function TreeNode(props) {
           ) : null}
           {children
             ? children.map((c) =>
-                // Use createElement so Babel's JSX traversal doesn't recurse into a self-reference.
                 createElement(TreeNode, {
                   key: c.name + path,
                   node: c,
@@ -71,12 +115,14 @@ function TreeNode(props) {
                   onSelectFolder,
                   selectedPath,
                   path: `${path}/${c.name}`,
+                  justStored,
+                  refreshCounter,
                 })
               )
             : null}
-          {children && children.length === 0 && !loading && depth > 0 ? (
+          {children && children.length === 0 && !loading ? (
             <div className="text-xs text-dim italic" style={{ paddingLeft: 24 + depth * 12 }}>
-              (no subfolders)
+              {depth === 0 ? "(no subfolders — photos appear in the filmstrip below)" : "(no subfolders)"}
             </div>
           ) : null}
         </div>

@@ -106,6 +106,10 @@ export default function App() {
   const [batchMode, setBatchMode] = useState(false);
   const [batchSelected, setBatchSelected] = useState(new Set());
 
+  // Destination "just stored" tracking — shows +N badges + auto-expands the tree
+  const [justStored, setJustStored] = useState({}); // { pathString: count }
+  const [destRefreshCounter, setDestRefreshCounter] = useState(0);
+
   // Category manager modal
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
@@ -139,6 +143,8 @@ export default function App() {
       const h = await pickDirectory();
       setSourceRoot(h);
       setSourceRootName(h.name);
+      // Auto-select root so the filmstrip immediately populates
+      onSelectSourceFolder({ name: h.name, handle: h }, h.name);
       toast.success(`Loaded source: ${h.name}`);
     } catch (e) {
       if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
@@ -149,6 +155,10 @@ export default function App() {
       const h = await pickDirectory();
       setDestRoot(h);
       setDestRootName(h.name);
+      // Auto-select root so store goes here without a second click
+      setDestSelected({ handle: h, path: h.name });
+      // Reset any stale "+N" badges from a previous destination
+      setJustStored({});
       toast.success(`Loaded destination: ${h.name}`);
     } catch (e) {
       if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
@@ -327,10 +337,14 @@ export default function App() {
         stars,
       });
       const anchor = destSelected?.handle || destRoot;
+      const anchorPath = destSelected?.path || destRootName;
       try {
         const targetDir = await getOrCreateSubdir(anchor, folderParts);
         const writtenName = await copyFileTo(img.handle, targetDir, fileName);
         stored++;
+        // Record which destination folder just received a file (for badge + auto-expand)
+        const targetPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
+        setJustStored((cur) => ({ ...cur, [targetPath]: (cur[targetPath] || 0) + 1 }));
         undoEntries.push({
           type: "store",
           sourceName: img.name,
@@ -353,6 +367,7 @@ export default function App() {
     }
     if (stored > 0) {
       setHistory((h) => [{ type: "store-batch", entries: undoEntries }, ...h].slice(0, 30));
+      setDestRefreshCounter((c) => c + 1); // triggers tree to re-read affected branches
       const verb = settings.moveMode ? "Moved" : "Stored";
       toast.success(`${verb} ${stored} photo${stored > 1 ? "s" : ""}`, {
         description: destSelected?.path || destRootName,
@@ -933,6 +948,8 @@ export default function App() {
             onSelectFolder={onSelectDestFolder}
             selectedPath={destSelected?.path || ""}
             testIdPrefix="dest"
+            justStored={justStored}
+            refreshCounter={destRefreshCounter}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center p-6 text-center text-dim text-xs">

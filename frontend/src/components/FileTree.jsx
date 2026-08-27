@@ -1,7 +1,7 @@
 import React from "react";
 import TreeNode from "./TreeNode";
 
-export default function FileTree({ rootHandle, rootName, onSelectFolder, selectedPath, testIdPrefix }) {
+export default function FileTree({ rootHandle, rootName, onSelectFolder, selectedPath, testIdPrefix, justStored, refreshCounter }) {
   if (!rootHandle) return null;
   return (
     <div className="flex-1 overflow-auto py-2 pl-1 pr-1" data-testid={`${testIdPrefix}-tree`}>
@@ -11,6 +11,8 @@ export default function FileTree({ rootHandle, rootName, onSelectFolder, selecte
         onSelectFolder={onSelectFolder}
         selectedPath={selectedPath}
         path={rootName}
+        justStored={justStored}
+        refreshCounter={refreshCounter}
       />
     </div>
   );

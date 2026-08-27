@@ -1,0 +1,27 @@
+{
+  "summary": "Iteration 7 (frontend only). Verified app loads at public URL with 0 console/page errors, main 3-panel layout renders, all toolbar controls present, source/destination panels show 'Not connected' with clickable Open buttons (pick-source-btn/pick-dest-btn). Regressions re-verified: Settings modal opens, Cancel discards changes (template + Copy/Move mode revert correctly), Shortcuts (help-modal) opens and closes with Escape, Category manager opens/closes cleanly, compare-1 works (compare-2/3 correctly disabled with no images). Static source review confirmed all 7 requested iteration-7 code changes in App.js, TreeNode.jsx, FileTree.jsx. The real pick->auto-select->store->badge flow could not be exercised because the File System Access API directory picker cannot be automated (as noted by the dev agent).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {"flow": "Destination tree force-refresh after store", "issue": "POSSIBLE RACE (static analysis only, not runtime-reproducible): in TreeNode the refreshCounter effect only calls load(true) when `open && branchHasStore` is true in that render. Because justStored and destRefreshCounter are updated in the same React 18 batch, a branch that was collapsed but had previously loaded children may run the refreshCounter effect while `open` is still false; the subsequent auto-expand only triggers load(false), which returns early since children !== null. Result: newly-created subfolders may not appear for a collapsed-then-expanded ancestor. Suggest keying the force reload on [refreshCounter, open] or clearing children (setChildren(null)) when refreshCounter changes and branchHasStore.", "affected_selectors": ["[data-testid^='tree-node-']", "[data-testid^='tree-badge-']"]}
+    ],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Consider fixing the TreeNode refreshCounter/open ordering race described above (force reload should also fire when the branch opens after a store).",
+    "Optional: reset justStored (and badges) when the user picks a new destination root in pickDest to avoid unbounded accumulation of stale path keys."
+  ],
+  "critical_code_review_comments": [
+    "App.js pickSource calls onSelectSourceFolder (declared later via useCallback) — works today since the call happens after mount, but it relies on TDZ timing; consider declaring onSelectSourceFolder above pickSource for clarity.",
+    "App.js is 1159 lines — exceeds the 700-line guideline; consider extracting the toolbar/modals into modules."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100% of automatable checks passed"},
+  "seed_data_creation": "none",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Correct toolbar testids are: open-editor, compare-1/2/3, auto-rate-btn, open-rename, open-contact, open-category-manager, toggle-batch, open-settings, show-help (NOT edit-toggle/rename-btn/sheet-btn/categories-btn/batch-btn). Settings modal testids: settings-modal, template-input, mode-copy/mode-move, settings-cancel/save/close. Help modal: help-modal/help-close. compare-2/3, open-rename, open-contact are disabled until images are loaded. Directory picker (File System Access API) cannot be automated, so tree/badge/store flows remain static-verification only.",
+  "rca_of_the_issue": "No runtime defect reproduced. The only flagged item is a potential state-batching ordering issue in TreeNode's refreshCounter effect (see integration_issues)."
+}
