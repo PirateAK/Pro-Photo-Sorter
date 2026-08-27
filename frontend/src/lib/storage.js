@@ -30,6 +30,9 @@ const DEFAULT_STATE = {
   ],
   settings: DEFAULT_SETTINGS,
   ratings: {}, // { [imagePath]: 1-5 }
+  looks: [
+    // { id, name, brightness, contrast, saturation, sharpness }
+  ],
 };
 
 export function loadState() {
@@ -53,6 +56,7 @@ export function loadState() {
       ...parsed,
       settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
       ratings: parsed.ratings || {},
+      looks: parsed.looks || [],
     };
   } catch {
     return DEFAULT_STATE;

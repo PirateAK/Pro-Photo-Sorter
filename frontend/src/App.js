@@ -31,7 +31,7 @@ import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
-import { Settings as Cog, MoveRight, Copy as CopyIcon, Star as StarIcon, Scissors } from "lucide-react";
+import { Settings as Cog, MoveRight, Copy as CopyIcon, Star as StarIcon, Scissors, Wand2 } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -42,6 +42,7 @@ import {
 } from "@/lib/fsapi";
 import { loadState, saveState, uid } from "@/lib/storage";
 import { renderTemplate } from "@/lib/template";
+import { autoAnalyzeFile } from "@/lib/autoTone";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -58,6 +59,8 @@ function usePersistedState() {
     setSettings: (settings) => persist((s) => ({ ...s, settings })),
     setRatings: (updater) =>
       persist((s) => ({ ...s, ratings: typeof updater === "function" ? updater(s.ratings) : updater })),
+    setLooks: (looks) =>
+      persist((s) => ({ ...s, looks: typeof looks === "function" ? looks(s.looks || []) : looks })),
   };
 }
 
@@ -71,8 +74,8 @@ function baseName(name) {
 }
 
 export default function App() {
-  const { state, setCategories, setSettings, setRatings } = usePersistedState();
-  const { categories, settings, ratings } = state;
+  const { state, setCategories, setSettings, setRatings, setLooks } = usePersistedState();
+  const { categories, settings, ratings, looks = [] } = state;
   const [activeCatId, setActiveCatId] = useState(categories[0]?.id || null);
 
   // Source
@@ -401,6 +404,65 @@ export default function App() {
     });
   };
 
+  // Batch auto-enhance: iterate over batch-selected images, analyze histogram,
+  // apply auto-tone, and save as new JPG next to each source.
+  const batchAutoEnhance = async () => {
+    if (!batchMode || batchSelected.size === 0) return;
+    if (!currentSourceFolder) {
+      toast.error("No source folder open");
+      return;
+    }
+    const targets = images.filter((i) => batchSelected.has(i.name));
+    let done = 0;
+    let failed = 0;
+    const t = toast.loading(`Auto-enhancing 0 / ${targets.length}…`);
+    for (const img of targets) {
+      try {
+        const file = await img.handle.getFile();
+        const { result, img: loadedImg } = await autoAnalyzeFile(file);
+
+        // Render to a canvas with the suggested filter
+        const out = document.createElement("canvas");
+        out.width = loadedImg.width;
+        out.height = loadedImg.height;
+        const ctx = out.getContext("2d");
+        ctx.imageSmoothingQuality = "high";
+        const parts = [];
+        if (result.brightness !== 0) parts.push(`brightness(${1 + result.brightness / 100})`);
+        if (result.contrast !== 0) parts.push(`contrast(${1 + result.contrast / 100})`);
+        if (result.saturation !== 0) parts.push(`saturate(${1 + result.saturation / 100})`);
+        ctx.filter = parts.length ? parts.join(" ") : "none";
+        ctx.drawImage(loadedImg, 0, 0);
+        ctx.filter = "none";
+
+        const blob = await new Promise((res) => out.toBlob(res, "image/jpeg", 0.92));
+        if (!blob) throw new Error("encode failed");
+
+        const dot = img.name.lastIndexOf(".");
+        const stem = dot > 0 ? img.name.slice(0, dot) : img.name;
+        const outName = `${stem}_auto.jpg`;
+        const newHandle = await currentSourceFolder.getFileHandle(outName, { create: true });
+        const w = await newHandle.createWritable();
+        await w.write(blob);
+        await w.close();
+        done++;
+      } catch (e) {
+        failed++;
+      }
+      toast.loading(`Auto-enhancing ${done + failed} / ${targets.length}…`, { id: t });
+    }
+    toast.dismiss(t);
+    if (done > 0) toast.success(`Auto-enhanced ${done} photo${done > 1 ? "s" : ""}`, { description: failed ? `${failed} failed` : "Saved with _auto suffix" });
+    if (done === 0 && failed > 0) toast.error(`All ${failed} failed`);
+
+    // Refresh filmstrip
+    try {
+      const imgs = await listImagesInDir(currentSourceFolder);
+      setImages(imgs);
+    } catch {}
+    setBatchSelected(new Set());
+  };
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
@@ -586,6 +648,16 @@ export default function App() {
                 <span className="ml-1 font-mono">({batchSelected.size})</span>
               )}
             </button>
+            {batchMode && batchSelected.size > 0 && (
+              <button
+                onClick={batchAutoEnhance}
+                className="px-2.5 py-1 rounded bg-primary-earth/20 border border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)] text-xs flex items-center gap-1"
+                data-testid="batch-auto-enhance"
+                title="Auto-tone every selected photo and save as _auto.jpg"
+              >
+                <Wand2 size={12} /> Auto ({batchSelected.size})
+              </button>
+            )}
             <button
               onClick={() => setShowSettings(true)}
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
@@ -860,6 +932,8 @@ export default function App() {
         imageName={currentImage?.name || ""}
         sourceDirHandle={currentSourceFolder}
         destDirHandle={destSelected?.handle || destRoot}
+        looks={looks}
+        onLooksChange={setLooks}
       />
 
       {showHelp && (

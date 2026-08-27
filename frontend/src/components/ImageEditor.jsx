@@ -2,29 +2,43 @@ import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   X, ZoomIn, ZoomOut, RotateCcw, Save, Crop, Sun, Moon, Zap,
   Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
+  Wand2, Palette, Trash2, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
+import { autoAnalyze } from "../lib/autoTone";
+
+const ASPECT_RATIOS = [
+  { label: "Free", value: null },
+  { label: "1:1", value: 1 },
+  { label: "4:3", value: 4 / 3 },
+  { label: "3:2", value: 3 / 2 },
+  { label: "16:9", value: 16 / 9 },
+];
 
 /**
  * ImageEditor - modal editor with zoom, pan, crop, rotate/straighten,
  * brightness/contrast/saturation/sharpen, before/after peek, save-as-new.
  */
-export default function ImageEditor({ open, onClose, imageFileHandle, imageName, destDirHandle, sourceDirHandle }) {
+export default function ImageEditor({ open, onClose, imageFileHandle, imageName, destDirHandle, sourceDirHandle, looks = [], onLooksChange }) {
   const [imgEl, setImgEl] = useState(null);
-  const [zoom, setZoom] = useState(1); // 0.1 .. 8
+  const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [brightness, setBrightness] = useState(0); // -80..80
-  const [contrast, setContrast] = useState(0); // -50..50
-  const [saturation, setSaturation] = useState(0); // -100..100
-  const [sharpness, setSharpness] = useState(0); // 0..100
-  const [rotation, setRotation] = useState(0); // 0,90,180,270
-  const [angle, setAngle] = useState(0); // -15..15 straighten
+  const [brightness, setBrightness] = useState(0);
+  const [contrast, setContrast] = useState(0);
+  const [saturation, setSaturation] = useState(0);
+  const [sharpness, setSharpness] = useState(0);
+  const [rotation, setRotation] = useState(0);
+  const [angle, setAngle] = useState(0);
   const [cropMode, setCropMode] = useState(false);
-  const [crop, setCrop] = useState(null); // in image-space {x,y,w,h}
+  const [crop, setCrop] = useState(null);
+  const [aspectRatio, setAspectRatio] = useState(null); // null = free
+  const [angleGrid, setAngleGrid] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saveTarget, setSaveTarget] = useState("source"); // 'source' or 'destination'
+  const [saveTarget, setSaveTarget] = useState("source");
   const [peeking, setPeeking] = useState(false);
+  const [showSaveLook, setShowSaveLook] = useState(false);
+  const [lookName, setLookName] = useState("");
 
   const canvasRef = useRef(null);
   const stageRef = useRef(null);
@@ -66,9 +80,81 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     setRotation(0);
     setAngle(0);
     setCrop(null);
+    setAspectRatio(null);
     setCropMode(false);
     workBmpRef.current = null;
     lastSharpVal.current = -1;
+  };
+
+  // Auto-tone the current image
+  const applyAuto = () => {
+    if (!imgEl) return;
+    const { brightness: b, contrast: c, saturation: s } = autoAnalyze(imgEl);
+    setBrightness(b);
+    setContrast(c);
+    setSaturation(s);
+    toast.success("Auto-tone applied", {
+      description: `Brightness ${b > 0 ? "+" : ""}${b} · Contrast ${c > 0 ? "+" : ""}${c} · Saturation ${s > 0 ? "+" : ""}${s}`,
+    });
+  };
+
+  const applyLook = (look) => {
+    setBrightness(look.brightness || 0);
+    setContrast(look.contrast || 0);
+    setSaturation(look.saturation || 0);
+    setSharpness(look.sharpness || 0);
+    toast(`Applied look: ${look.name}`);
+  };
+
+  const saveCurrentAsLook = () => {
+    const name = lookName.trim();
+    if (!name) {
+      toast.error("Enter a name for the look");
+      return;
+    }
+    const look = {
+      id: `look-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
+      name,
+      brightness,
+      contrast,
+      saturation,
+      sharpness,
+    };
+    onLooksChange?.([...(looks || []), look]);
+    toast.success(`Saved look "${name}"`);
+    setLookName("");
+    setShowSaveLook(false);
+  };
+
+  const deleteLook = (id) => {
+    onLooksChange?.((looks || []).filter((l) => l.id !== id));
+  };
+
+  // Helper: create a max-size centered crop with the given ratio
+  const cropToAspect = useCallback((ratio) => {
+    if (!imgEl) return;
+    if (!ratio) return; // Free — just keep current crop
+    const iw = imgEl.width, ih = imgEl.height;
+    let w, h;
+    if (iw / ih > ratio) {
+      // image wider than ratio → limited by height
+      h = ih;
+      w = h * ratio;
+    } else {
+      w = iw;
+      h = w / ratio;
+    }
+    const x = (iw - w) / 2;
+    const y = (ih - h) / 2;
+    setCrop({ x, y, w, h });
+  }, [imgEl]);
+
+  const selectAspect = (ratio) => {
+    setAspectRatio(ratio);
+    if (ratio && rotation === 0 && angle === 0) {
+      cropToAspect(ratio);
+      setCropMode(true);
+    }
   };
 
   // Fit-to-window
@@ -220,10 +306,43 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
           ctx.stroke();
         }
       }
+
+      // Horizon grid overlay when straightening
+      if (angleGrid && !peeking) {
+        ctx.save();
+        ctx.strokeStyle = "rgba(198, 138, 83, 0.6)";
+        ctx.lineWidth = 1;
+        // Vertical lines every 10% width
+        for (let i = 1; i < 10; i++) {
+          ctx.beginPath();
+          ctx.moveTo((cw * i) / 10, 0);
+          ctx.lineTo((cw * i) / 10, ch);
+          ctx.stroke();
+        }
+        // Horizontal lines every 10% height
+        for (let i = 1; i < 10; i++) {
+          ctx.beginPath();
+          ctx.moveTo(0, (ch * i) / 10);
+          ctx.lineTo(cw, (ch * i) / 10);
+          ctx.stroke();
+        }
+        // Center strong lines
+        ctx.strokeStyle = "rgba(242, 235, 229, 0.9)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(cw / 2, 0);
+        ctx.lineTo(cw / 2, ch);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(0, ch / 2);
+        ctx.lineTo(cw, ch / 2);
+        ctx.stroke();
+        ctx.restore();
+      }
     })();
 
     return () => { cancelled = true; };
-  }, [imgEl, zoom, pan, brightness, contrast, saturation, sharpness, rotation, angle, crop, buildSharpBitmap, buildFilterString, peeking]);
+  }, [imgEl, zoom, pan, brightness, contrast, saturation, sharpness, rotation, angle, crop, buildSharpBitmap, buildFilterString, peeking, angleGrid]);
 
   // Wheel to zoom
   const onWheel = (e) => {
@@ -275,10 +394,26 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
       const p = canvasToImage(cx, cy);
       const s = cropDrag.current.start;
       const iw = imgEl.width, ih = imgEl.height;
-      const x = Math.max(0, Math.min(iw, Math.min(s.x, p.x)));
-      const y = Math.max(0, Math.min(ih, Math.min(s.y, p.y)));
-      const w = Math.max(1, Math.min(iw - x, Math.abs(p.x - s.x)));
-      const h = Math.max(1, Math.min(ih - y, Math.abs(p.y - s.y)));
+      let x = Math.max(0, Math.min(iw, Math.min(s.x, p.x)));
+      let y = Math.max(0, Math.min(ih, Math.min(s.y, p.y)));
+      let w = Math.max(1, Math.min(iw - x, Math.abs(p.x - s.x)));
+      let h = Math.max(1, Math.min(ih - y, Math.abs(p.y - s.y)));
+      // Constrain to aspect ratio if locked
+      if (aspectRatio) {
+        // choose the dominant dimension and derive the other
+        const drawFromCornerX = p.x >= s.x;
+        const drawFromCornerY = p.y >= s.y;
+        if (w / h > aspectRatio) {
+          w = h * aspectRatio;
+        } else {
+          h = w / aspectRatio;
+        }
+        // Clamp to bounds while keeping ratio
+        if (drawFromCornerX && s.x + w > iw) { w = iw - s.x; h = w / aspectRatio; }
+        if (drawFromCornerY && s.y + h > ih) { h = ih - s.y; w = h * aspectRatio; }
+        x = drawFromCornerX ? s.x : Math.max(0, s.x - w);
+        y = drawFromCornerY ? s.y : Math.max(0, s.y - h);
+      }
       setCrop({ x, y, w, h });
     }
   };
@@ -547,6 +682,11 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
               step="0.1"
               value={angle}
               onChange={(e) => setAngle(parseFloat(e.target.value))}
+              onPointerDown={() => setAngleGrid(true)}
+              onPointerUp={() => setAngleGrid(false)}
+              onPointerCancel={() => setAngleGrid(false)}
+              onFocus={() => setAngleGrid(true)}
+              onBlur={() => setAngleGrid(false)}
               className="w-full accent-[color:var(--primary)]"
               data-testid="angle-slider"
             />
@@ -557,6 +697,15 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
               </button>
               <span>+15°</span>
             </div>
+            <button
+              onClick={() => setAngleGrid((g) => !g)}
+              className={`mt-2 w-full px-2 py-1 rounded text-[10px] border ${
+                angleGrid ? "bg-primary-earth/20 border-primary-earth text-primary-earth" : "bg-app border-app hover:bg-surface-hover text-dim"
+              }`}
+              data-testid="toggle-angle-grid"
+            >
+              {angleGrid ? "Grid ON" : "Show alignment grid"}
+            </button>
             {rotation !== 0 && (
               <p className="text-[10px] text-dim mt-1 font-mono">rotation: {rotation}°</p>
             )}
@@ -591,9 +740,107 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
             <p className="text-[10px] text-dim mt-0.5">Convolution — higher = sharper</p>
           </div>
 
+          {/* Auto-tone */}
+          <div>
+            <button
+              onClick={applyAuto}
+              disabled={!imgEl}
+              className="w-full px-2 py-1.5 rounded bg-primary-earth/15 border border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)] text-xs flex items-center justify-center gap-1 disabled:opacity-50"
+              data-testid="auto-tone"
+              title="Analyze histogram and set brightness/contrast/saturation"
+            >
+              <Wand2 size={12} /> Auto-Enhance
+            </button>
+          </div>
+
+          {/* Looks (presets) */}
+          <div>
+            <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-2 flex items-center gap-1">
+              <Palette size={11} /> Looks
+            </div>
+            {showSaveLook ? (
+              <div className="flex gap-1 mb-2">
+                <input
+                  autoFocus
+                  value={lookName}
+                  onChange={(e) => setLookName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") saveCurrentAsLook();
+                    if (e.key === "Escape") { setShowSaveLook(false); setLookName(""); }
+                  }}
+                  placeholder="Name this look…"
+                  className="flex-1 bg-app border border-app rounded px-2 py-1 text-xs focus-ring"
+                  data-testid="look-name-input"
+                />
+                <button
+                  onClick={saveCurrentAsLook}
+                  className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs"
+                  data-testid="look-save-confirm"
+                >
+                  Save
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowSaveLook(true)}
+                className="w-full mb-2 px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app text-[11px] flex items-center justify-center gap-1"
+                data-testid="save-look-btn"
+              >
+                <Plus size={11} /> Save current as look…
+              </button>
+            )}
+            {(!looks || looks.length === 0) ? (
+              <p className="text-[10px] text-dim italic">No saved looks yet.</p>
+            ) : (
+              <div className="space-y-1 max-h-32 overflow-auto">
+                {looks.map((l) => (
+                  <div
+                    key={l.id}
+                    className="group flex items-center gap-1 pane rounded px-2 py-1"
+                    data-testid={`look-${l.id}`}
+                  >
+                    <button
+                      onClick={() => applyLook(l)}
+                      className="flex-1 text-left text-xs truncate hover:text-primary-earth"
+                      data-testid={`apply-look-${l.id}`}
+                      title={`B ${l.brightness ?? 0} · C ${l.contrast ?? 0} · S ${l.saturation ?? 0} · Sh ${l.sharpness ?? 0}`}
+                    >
+                      {l.name}
+                    </button>
+                    <span className="text-[9px] text-dim font-mono">
+                      {(l.brightness ?? 0) !== 0 ? `B${l.brightness > 0 ? "+" : ""}${l.brightness}` : ""}
+                    </span>
+                    <button
+                      onClick={() => deleteLook(l.id)}
+                      className="opacity-0 group-hover:opacity-100 w-5 h-5 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-danger-earth"
+                      data-testid={`delete-look-${l.id}`}
+                    >
+                      <Trash2 size={10} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Crop */}
           <div>
             <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-2">Crop</div>
+            <div className="flex gap-1 mb-2 flex-wrap">
+              {ASPECT_RATIOS.map((a) => (
+                <button
+                  key={a.label}
+                  onClick={() => selectAspect(a.value)}
+                  disabled={!canCrop}
+                  className={`px-2 py-1 rounded text-[10px] border ${
+                    aspectRatio === a.value ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent" : "bg-app border-app hover:bg-surface-hover"
+                  } disabled:opacity-40 disabled:cursor-not-allowed`}
+                  data-testid={`aspect-${a.label.replace(":", "x")}`}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
             <button
               onClick={() => { setCropMode(!cropMode); if (cropMode) setCrop(null); }}
               disabled={!canCrop}
