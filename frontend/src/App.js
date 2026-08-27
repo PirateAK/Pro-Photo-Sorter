@@ -137,6 +137,47 @@ export default function App() {
   const [history, setHistory] = useState([]);
 
   const imageAreaRef = useRef(null);
+  const filmstripRef = useRef(null);
+  const [filmstripCanScroll, setFilmstripCanScroll] = useState({ left: false, right: false });
+
+  // Track whether the filmstrip has content off-screen (so we know when to show arrows)
+  useEffect(() => {
+    const el = filmstripRef.current;
+    if (!el) return;
+    const update = () => {
+      setFilmstripCanScroll({
+        left: el.scrollLeft > 2,
+        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+      });
+    };
+    update();
+    el.addEventListener("scroll", update, { passive: true });
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+    return () => {
+      el.removeEventListener("scroll", update);
+      ro.disconnect();
+    };
+  }, [images.length, settings.minStarFilter, currentSourcePath]);
+
+  const scrollFilmstrip = (dir) => {
+    const el = filmstripRef.current;
+    if (!el) return;
+    el.scrollBy({ left: dir * Math.max(200, el.clientWidth * 0.7), behavior: "smooth" });
+  };
+
+  // Auto-scroll active thumbnail into view
+  useEffect(() => {
+    const el = filmstripRef.current;
+    if (!el || !currentImage) return;
+    const target = el.querySelector(`[data-testid="thumb-${CSS.escape(currentImage.name)}"]`);
+    if (!target) return;
+    const tRect = target.getBoundingClientRect();
+    const eRect = el.getBoundingClientRect();
+    if (tRect.left < eRect.left + 20 || tRect.right > eRect.right - 20) {
+      target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    }
+  }, [selectedIdx, currentImage]);
 
   const pickSource = async () => {
     try {
@@ -955,7 +996,36 @@ export default function App() {
       </div>
 
       {/* BOTTOM — Filmstrip */}
-      <div className="region-strip filmstrip flex items-center gap-3 px-6 overflow-x-auto" data-testid="filmstrip">
+      <div className="region-strip relative">
+        {/* Left scroll button */}
+        {filmstripCanScroll.left && (
+          <button
+            onClick={() => scrollFilmstrip(-1)}
+            className="absolute left-1 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-primary-earth hover:text-[color:var(--text-inverse)] backdrop-blur border border-app flex items-center justify-center shadow-lg transition-colors"
+            data-testid="filmstrip-scroll-left"
+            title="Scroll left"
+            aria-label="Scroll filmstrip left"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        )}
+        {/* Right scroll button */}
+        {filmstripCanScroll.right && (
+          <button
+            onClick={() => scrollFilmstrip(1)}
+            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-primary-earth hover:text-[color:var(--text-inverse)] backdrop-blur border border-app flex items-center justify-center shadow-lg transition-colors"
+            data-testid="filmstrip-scroll-right"
+            title="Scroll right"
+            aria-label="Scroll filmstrip right"
+          >
+            <ChevronRight size={18} />
+          </button>
+        )}
+        <div
+          ref={filmstripRef}
+          className="filmstrip flex items-center gap-3 px-6 overflow-x-auto h-full scroll-smooth"
+          data-testid="filmstrip"
+        >
         {(settings.minStarFilter || 0) > 0 && images.length > 0 && (
           <div
             className="shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-primary-earth/20 border border-primary-earth text-primary-earth text-[11px] font-medium"
@@ -1021,6 +1091,7 @@ export default function App() {
             });
           })()
         )}
+        </div>
       </div>
 
       {/* Modals */}
