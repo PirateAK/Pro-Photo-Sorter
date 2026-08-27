@@ -13,7 +13,7 @@ const BUILTIN_ICONS = [
   "Car", "Plane", "Ship", "Bike", "Rocket", "Train",
   "Coffee", "Utensils", "CakeSlice", "Wine", "Beer",
   "Music", "Guitar", "Piano", "Mic2",
-  "Zap", "Sparkles", "Flame", "Waves", "Wind", "Snowflake",
+  "Zap", "Sparkles", "Flame", "Waves", "Wind",
   "MapPin", "Compass", "Globe", "Sunrise", "Sunset",
   "Circle", "Square", "Triangle", "Hexagon", "Diamond",
 ];

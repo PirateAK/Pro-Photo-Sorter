@@ -29,7 +29,8 @@ import IconPalette from "@/components/IconPalette";
 import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
-import { Settings as Cog, MoveRight, Copy as CopyIcon } from "lucide-react";
+import ImageEditor from "@/components/ImageEditor";
+import { Settings as Cog, MoveRight, Copy as CopyIcon, Star as StarIcon, Scissors } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -101,6 +102,20 @@ export default function App() {
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
+
+  // Current image star rating
+  const currentImagePath = currentImage ? `${currentSourcePath}/${currentImage.name}` : null;
+  const currentStars = currentImagePath ? (ratings[currentImagePath] || 0) : 0;
+  const setCurrentStars = (val) => {
+    if (!currentImagePath) return;
+    setRatings((r) => {
+      const next = { ...r };
+      if (!val) delete next[currentImagePath];
+      else next[currentImagePath] = val;
+      return next;
+    });
+  };
 
   // Undo history
   const [history, setHistory] = useState([]);
@@ -391,6 +406,8 @@ export default function App() {
       // Ignore when typing in an input
       const tag = document.activeElement?.tagName?.toLowerCase();
       if (tag === "input" || tag === "textarea" || tag === "select") return;
+      // Don't hijack while editor is open — editor has its own controls
+      if (showEditor) return;
       const isMod = e.metaKey || e.ctrlKey;
       if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
       else if (e.key === "ArrowRight") { e.preventDefault(); goNext(); }
@@ -399,12 +416,14 @@ export default function App() {
       else if (e.key === "s" || e.key === "S") { e.preventDefault(); storeCurrent(); }
       else if (isMod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); undo(); }
       else if (e.key === "b" || e.key === "B") { e.preventDefault(); toggleBatch(); }
+      else if (e.key === "e" || e.key === "E") { e.preventDefault(); if (currentImage) setShowEditor(true); }
       else if (e.key === "?" ) { e.preventDefault(); setShowHelp((v) => !v); }
+      else if (e.key >= "0" && e.key <= "5") { e.preventDefault(); setCurrentStars(parseInt(e.key, 10)); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line
-  }, [images, selectedIdx, currentImage, appliedByImage, destRoot, destSelected, batchMode, batchSelected, history]);
+  }, [images, selectedIdx, currentImage, appliedByImage, destRoot, destSelected, batchMode, batchSelected, history, showEditor, currentImagePath]);
 
   // Derived date & location strings from EXIF
   const exifDate = useMemo(() => {
@@ -434,11 +453,18 @@ export default function App() {
 
   // Preview path for the current image (destination string preview)
   const previewPath = useMemo(() => {
-    if (!currentImage || appliedIcons.length === 0) return null;
-    const { folderParts, fileName } = buildDestPath(appliedIcons, currentImage.name);
-    const parts = [destSelected?.path || destRootName || "…", ...folderParts, fileName].filter(Boolean);
-    return parts.join(" / ");
-  }, [appliedIcons, currentImage, destSelected, destRootName]);
+    if (!currentImage) return null;
+    const stars = currentImage ? (ratings[`${currentSourcePath}/${currentImage.name}`] || 0) : 0;
+    const rendered = renderTemplate(settings.filenameTemplate, {
+      icons: appliedIcons,
+      originalName: currentImage.name,
+      exifDate: exif?.DateTimeOriginal || exif?.CreateDate || null,
+      stars,
+    });
+    if (appliedIcons.length === 0) return null;
+    const root = destSelected?.path || destRootName || "…";
+    return `${root} / ${rendered.pathPreview}`;
+  }, [appliedIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif]);
 
   // ------------------------------------------------------------------------
   // Render
@@ -517,6 +543,22 @@ export default function App() {
               <span className="font-mono">{exif?.Model || "—"}</span>
             </div>
             <div className="flex-1" />
+            {/* Move/Copy mode indicator */}
+            <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium ${
+              settings.moveMode ? "bg-danger-earth/20 text-[color:var(--danger)] border border-[color:var(--danger)]/40" : "bg-app border border-app text-dim"
+            }`} data-testid="mode-indicator">
+              {settings.moveMode ? <MoveRight size={11} /> : <CopyIcon size={11} />}
+              {settings.moveMode ? "MOVE" : "COPY"}
+            </div>
+            <button
+              onClick={() => setShowEditor(true)}
+              disabled={!currentImage}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="open-editor"
+              title="Edit image (E)"
+            >
+              <Scissors size={12} /> Edit
+            </button>
             <button
               onClick={() => setShowCatMgr(true)}
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
@@ -536,6 +578,14 @@ export default function App() {
               {batchMode && batchSelected.size > 0 && (
                 <span className="ml-1 font-mono">({batchSelected.size})</span>
               )}
+            </button>
+            <button
+              onClick={() => setShowSettings(true)}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+              data-testid="open-settings"
+              title="Settings"
+            >
+              <Cog size={12} /> Settings
             </button>
             <button
               onClick={() => setShowHelp((v) => !v)}
@@ -649,6 +699,11 @@ export default function App() {
                 <span className="text-dim">·</span>
                 <span className="text-dim">{selectedIdx + 1} / {images.length}</span>
               </div>
+              {/* Star rating overlay (top-right) */}
+              <div className="absolute top-3 right-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-2 z-30" data-testid="rating-overlay">
+                <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Rate</span>
+                <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
+              </div>
             </>
           ) : (
             <div className="text-center text-dim">
@@ -705,23 +760,48 @@ export default function App() {
             {currentSourceFolder ? "No images in this folder." : "Select a folder on the left."}
           </div>
         ) : (
-          images.map((img, i) => (
-            <Thumbnail
-              key={img.name}
-              file={img}
-              cacheKey={`${currentSourcePath}/${img.name}`}
-              active={i === selectedIdx}
-              batchSelected={batchMode && batchSelected.has(img.name)}
-              onClick={() => {
-                if (batchMode) toggleBatchSel(img.name);
-                else setSelectedIdx(i);
-              }}
-              onDoubleClick={() => {
-                setSelectedIdx(i);
-                setBatchMode(false);
-              }}
-            />
-          ))
+          (() => {
+            const visible = images.map((img, i) => ({ img, i }))
+              .filter(({ img }) => {
+                const s = ratings[`${currentSourcePath}/${img.name}`] || 0;
+                return s >= (settings.minStarFilter || 0);
+              });
+            if (visible.length === 0) {
+              return (
+                <div className="text-dim text-xs italic">
+                  No images match the star filter (≥{settings.minStarFilter}). Adjust in Settings.
+                </div>
+              );
+            }
+            return visible.map(({ img, i }) => {
+              const s = ratings[`${currentSourcePath}/${img.name}`] || 0;
+              return (
+                <div key={img.name} className="relative shrink-0">
+                  <Thumbnail
+                    file={img}
+                    cacheKey={`${currentSourcePath}/${img.name}`}
+                    active={i === selectedIdx}
+                    batchSelected={batchMode && batchSelected.has(img.name)}
+                    onClick={() => {
+                      if (batchMode) toggleBatchSel(img.name);
+                      else setSelectedIdx(i);
+                    }}
+                    onDoubleClick={() => {
+                      setSelectedIdx(i);
+                      setBatchMode(false);
+                    }}
+                  />
+                  {s > 0 && (
+                    <div className="absolute top-1 left-1 flex gap-0.5 px-1 py-0.5 rounded bg-black/70 backdrop-blur" data-testid={`thumb-stars-${img.name}`}>
+                      {Array.from({ length: s }).map((_, k) => (
+                        <StarIcon key={k} size={8} className="text-primary-earth" fill="currentColor" />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            });
+          })()
         )}
       </div>
 
@@ -731,6 +811,31 @@ export default function App() {
         onClose={() => setShowCatMgr(false)}
         categories={categories}
         onChange={setCategories}
+      />
+
+      <SettingsModal
+        open={showSettings}
+        onClose={() => setShowSettings(false)}
+        settings={settings}
+        onChange={setSettings}
+      />
+
+      <ImageEditor
+        open={showEditor}
+        onClose={async (newFileName) => {
+          setShowEditor(false);
+          // If a new file was saved to the source folder, refresh listing
+          if (newFileName && currentSourceFolder) {
+            try {
+              const imgs = await listImagesInDir(currentSourceFolder);
+              setImages(imgs);
+            } catch {}
+          }
+        }}
+        imageFileHandle={currentImage?.handle || null}
+        imageName={currentImage?.name || ""}
+        sourceDirHandle={currentSourceFolder}
+        destDirHandle={destSelected?.handle || destRoot}
       />
 
       {showHelp && (
@@ -747,6 +852,9 @@ export default function App() {
                 ["Space", "Skip (remove from list)"],
                 ["Delete", "Delete file from disk"],
                 ["S", "Store to destination"],
+                ["E", "Open image editor"],
+                ["1 – 5", "Set star rating"],
+                ["0", "Clear star rating"],
                 ["Ctrl / ⌘ + Z", "Undo last action"],
                 ["B", "Toggle batch mode"],
                 ["?", "Show / hide this panel"],
@@ -761,7 +869,7 @@ export default function App() {
               <Info size={12} className="mt-0.5 shrink-0 text-primary-earth" />
               <span>
                 Drag icons from the palette onto the photo to build the destination path.
-                First icon = folder, remaining icons = filename parts.
+                First icon = folder, remaining icons = filename parts (customize in Settings).
               </span>
             </div>
           </div>

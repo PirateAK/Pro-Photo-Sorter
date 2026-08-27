@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
@@ -6,6 +6,11 @@ import { toast } from "sonner";
 
 export default function SettingsModal({ open, onClose, settings, onChange }) {
   const [local, setLocal] = useState(settings);
+
+  // Re-sync local state whenever the modal is (re)opened.
+  useEffect(() => {
+    if (open) setLocal(settings);
+  }, [open, settings]);
 
   if (!open) return null;
 

@@ -34,11 +34,11 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - Earth-tone dark theme (warm browns, ochre primary #C68A53, sage/terracotta accents)
 - Author credit "Built for photographers · Pro Photo Sorter" in right panel footer
 
-## What's Been Implemented (2026-01-27)
+## What's Been Implemented (2026-01-27, iteration 2)
 - ✅ Full 5-region CSS-grid layout with filmstrip sprocket-hole styling
 - ✅ Recursive file trees (source + destination) with expand/collapse
 - ✅ FSA API integration: pick directory, list children, list images, copy, delete, mkdir -p
-- ✅ Filmstrip with in-memory thumbnail cache
+- ✅ Filmstrip with in-memory + IndexedDB thumbnail cache
 - ✅ Center image viewer with prev/next nav and filename badge
 - ✅ EXIF chips (date, GPS, camera model)
 - ✅ Category Manager modal — add/remove categories & items, built-in icon grid, custom image picker with 64×64 auto-crop
@@ -50,9 +50,25 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ Undo (skip + store, delete not undoable)
 - ✅ Batch mode with visual selection
 - ✅ Keyboard shortcuts + help modal
-- ✅ localStorage persistence (synchronous save)
+- ✅ localStorage persistence (synchronous save, v2 schema)
 - ✅ Fallback screen for non-Chromium browsers
 - ✅ Electron packaging guide
+
+### Iteration 2 additions
+- ✅ **Move-instead-of-Copy** toggle (Settings → Store Mode). Move mode deletes source after successful write and removes from filmstrip
+- ✅ **Custom filename templates** with tokens: `{folder} {labels} {label1} {label2} {allLabels} {date} {stars} {original} {ext}`; 5 presets + live preview
+- ✅ **Persistent thumbnail cache** via IndexedDB (`pps-thumbs` DB), with in-memory fast layer + "Clear cache" button
+- ✅ **1–5 star ratings** per image, overlay widget on the viewer, star badges on filmstrip thumbs, minimum-star filter, keyboard shortcuts 1–5 to rate, 0 to clear
+- ✅ **Image Editor** modal (opens via Edit button or `E` key):
+  - Zoom with mouse wheel + slider (10%–800%)
+  - Pan by dragging image
+  - Fit-to-window and 100% shortcuts
+  - Draw crop rectangle in image-space with rule-of-thirds overlay
+  - Brightness slider (−80 to +80, darkens or lightens)
+  - Sharpen slider (0–100, 3×3 convolution kernel)
+  - "Save as new" — writes JPG with `_edit_YYYYMMDD_HHMMSS` suffix, non-destructive
+  - Target selector: save into source folder or destination folder
+
 
 ## Backlog / Future Enhancements
 - P1: Direct MOVE (currently only copies — user can delete original manually or use Delete)
