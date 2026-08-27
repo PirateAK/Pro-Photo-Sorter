@@ -1,0 +1,28 @@
+{
+  "summary": "Frontend-only verification of iteration-10 bugfixes for Pro Photo Sorter (3 bugs from iteration_9.json). Static code verification + Playwright UI runs on https://photo-sorter-30.preview.emergentagent.com. All three fixes confirmed working: (1) DEFAULT_SETTINGS.filenameTemplate is '{folders}/{tags}{ext}' and a fresh user (localStorage cleared) sees it in template-input; (2) loadState() migration rewrites legacy '{folder}/{labels}{ext}' -> '{folders}/{tags}{ext}' (verified by seeding legacy persisted state and reloading); (3) SettingsModal live preview renders nested path '2024/weddings/ceremony_outdoor.jpg' with 'Folders:'/'Tags:' labels (no 'Icons:'); CategoryManager footer now reads 'Drag icons onto the Folders row (nested subfolders joined by /) or the Filename row (joined by _).' with no 'first_icon/label2_label3.jpg'. Extra regression: all 12 toolbar/palette testids present, preset switching updates preview live (star-culling -> '4stars/2024/weddings/...'), Save persists across reload, Cancel discards, Escape closes Settings/Categories/Help. 0 console errors on all runs.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SettingsModal", "issue": "template-input placeholder is still the legacy '{folder}/{labels}{ext}' — cosmetic leftover, misleads users who clear the field", "selector": "[data-testid='template-input']", "priority": "LOW"},
+      {"component": "SettingsModal", "issue": "Helper copy still says 'Controls the destination path built from applied icons.' — wording predates Folders/Tags terminology", "selector": "[data-testid='settings-modal']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Optional (LOW): update SettingsModal template-input placeholder to '{folders}/{tags}{ext}'",
+    "Optional (LOW): remove dead code in SettingsModal.jsx lines 32-38 (previewIcons / _legacyPreviewIcons with eslint-disable) and refresh 'applied icons' wording to Folders/Tags"
+  ],
+  "critical_code_review_comments": [
+    "storage.js migration only handles the exact legacy string '{folder}/{labels}{ext}'; users who manually typed other legacy-token templates (e.g. '{folder}/{allLabels}{ext}') are not migrated — acceptable since template.js still supports legacy token aliases ({folder}, {labels}, {allLabels}) at render time, verified in lib/template.js.",
+    "SettingsModal.jsx retains an unused previewIcons array aliased to _legacyPreviewIcons purely to silence eslint — dead code should be deleted rather than suppressed."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100% (all 9 requested checks + 8 extra regression checks passed)"},
+  "seed_data_creation": "Temporarily seeded localStorage key 'pps.state.v2' with a legacy filenameTemplate to exercise the migration path; removed at end of run.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "File System Access API folder picker remains unautomatable, so open-rename / open-contact (Sheet) buttons stay disabled without a loaded photo and could not be exercised beyond presence + disabled-state checks. Escape-close was verified for Settings, Category Manager and Help only. To simulate a fresh user run localStorage.removeItem('pps.state.v2') then reload. Seeding a state with categories:[] empties the palette rows — restore/remove the key afterwards.",
+  "rca_of_the_issue": "All three iteration_9 defects were data/copy-level: a stale default constant, a preview call using the legacy { icons } context shape, and stale helper text. Fixes are correct and additionally covered by a loadState() migration so already-persisted users are upgraded on next parse."
+}

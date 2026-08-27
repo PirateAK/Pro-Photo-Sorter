@@ -29,13 +29,9 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
     onClose();
   };
 
-  const previewIcons = [
-    { label: "beach" },
-    { label: "sunset" },
-    { label: "family" },
-  ];
   const preview = renderTemplate(local.filenameTemplate, {
-    icons: previewIcons,
+    folders: [{ label: "2024" }, { label: "weddings" }],
+    tags: [{ label: "ceremony" }, { label: "outdoor" }],
     originalName: "IMG_2043.JPG",
     exifDate: new Date("2024-08-14T18:22:00"),
     stars: 4,
@@ -96,7 +92,7 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
           <section>
             <h3 className="font-heading font-semibold text-sm mb-2">Filename Template</h3>
             <p className="text-xs text-dim mb-3">
-              Controls the destination path built from applied icons.
+              Controls the destination path built from your Folders and Filename rows.
             </p>
 
             <div className="flex flex-wrap gap-1 mb-3">
@@ -121,7 +117,7 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
               value={local.filenameTemplate}
               onChange={(e) => setLocal({ ...local, filenameTemplate: e.target.value })}
               className="w-full bg-app border border-app rounded px-3 py-2 text-sm font-mono focus-ring"
-              placeholder="{folder}/{labels}{ext}"
+              placeholder="{folders}/{tags}{ext}"
               data-testid="template-input"
             />
 
@@ -130,7 +126,8 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
                 Live preview
               </div>
               <div className="text-xs text-dim mb-1">
-                Icons: <span className="font-mono text-app">beach → sunset → family</span> ·
+                Folders: <span className="font-mono text-app">2024 / weddings</span> ·
+                Tags: <span className="font-mono text-app">ceremony_outdoor</span> ·
                 Original: <span className="font-mono text-app">IMG_2043.JPG</span> ·
                 Date: <span className="font-mono text-app">2024-08-14</span> ·
                 Stars: <span className="font-mono text-app">4</span>

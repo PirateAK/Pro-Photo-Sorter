@@ -97,10 +97,20 @@ export default function App() {
   const [destRootName, setDestRootName] = useState("");
   const [destSelected, setDestSelected] = useState(null); // { handle, path }
 
-  // Applied icons on current image (per image, keyed by name in current folder)
+  // Applied icons on current image — two rows: folders + tags
+  // Stored as: appliedByImage[name] = { folders: [icons], tags: [icons] }
+  // (Legacy migration from array format handled in getOverlay.)
   const [appliedByImage, setAppliedByImage] = useState({});
   const currentImage = images[selectedIdx] || null;
-  const appliedIcons = currentImage ? appliedByImage[currentImage.name] || [] : [];
+  const currentOverlay = currentImage
+    ? (() => {
+        const v = appliedByImage[currentImage.name];
+        if (!v) return { folders: [], tags: [] };
+        if (Array.isArray(v)) return { folders: v.length > 0 ? [v[0]] : [], tags: v.slice(1) };
+        return { folders: v.folders || [], tags: v.tags || [] };
+      })()
+    : { folders: [], tags: [] };
+  const hasAnyIcons = currentOverlay.folders.length + currentOverlay.tags.length > 0;
 
   // Batch selection
   const [batchMode, setBatchMode] = useState(false);
@@ -259,17 +269,38 @@ export default function App() {
     };
   }, [currentImage]);
 
-  // Apply an icon to current (or batch) image(s)
+  // Palette target (which row clicks default to). Persisted in memory only.
+  const [paletteTarget, setPaletteTarget] = useState("tags"); // 'folders' | 'tags'
+
+  // Helper: read the two-row overlay for an image (with legacy migration from arrays)
+  const getOverlay = (state, name) => {
+    const v = state[name];
+    if (!v) return { folders: [], tags: [] };
+    if (Array.isArray(v)) {
+      // Legacy migration: first icon = folder, rest = tags
+      return {
+        folders: v.length > 0 ? [v[0]] : [],
+        tags: v.slice(1),
+      };
+    }
+    return { folders: v.folders || [], tags: v.tags || [] };
+  };
+
+  // Apply an icon to current (or batch) image(s) — always to a specific row
   const applyIcon = useCallback(
-    (icon) => {
-      const decorated = { ...icon, uid: uid("ovl") };
+    (icon, row = "tags") => {
       setAppliedByImage((cur) => {
         const next = { ...cur };
         const targets = batchMode && batchSelected.size > 0
           ? [...batchSelected]
           : currentImage ? [currentImage.name] : [];
         for (const name of targets) {
-          next[name] = [...(cur[name] || []), { ...decorated, uid: uid("ovl") }];
+          const prev = getOverlay(cur, name);
+          const decorated = { ...icon, uid: uid("ovl") };
+          next[name] = {
+            folders: row === "folders" ? [...prev.folders, decorated] : prev.folders,
+            tags: row === "tags" ? [...prev.tags, decorated] : prev.tags,
+          };
         }
         return next;
       });
@@ -277,26 +308,35 @@ export default function App() {
     [batchMode, batchSelected, currentImage]
   );
 
-  const reorderIcons = (newList) => {
+  const reorderRow = (row, newList) => {
     if (!currentImage) return;
-    setAppliedByImage((cur) => ({ ...cur, [currentImage.name]: newList }));
+    setAppliedByImage((cur) => {
+      const prev = getOverlay(cur, currentImage.name);
+      return {
+        ...cur,
+        [currentImage.name]: { ...prev, [row]: newList },
+      };
+    });
   };
-  const removeAppliedIcon = (u) => {
+  const removeFromRow = (row, uid) => {
     if (!currentImage) return;
-    setAppliedByImage((cur) => ({
-      ...cur,
-      [currentImage.name]: (cur[currentImage.name] || []).filter((i) => i.uid !== u),
-    }));
+    setAppliedByImage((cur) => {
+      const prev = getOverlay(cur, currentImage.name);
+      return {
+        ...cur,
+        [currentImage.name]: { ...prev, [row]: prev[row].filter((i) => i.uid !== uid) },
+      };
+    });
   };
 
-  // Drag from palette onto image
+  // Drop directly onto the image (not on a row) → default to current palette target
   const onImageDrop = (e) => {
     e.preventDefault();
     const raw = e.dataTransfer.getData("application/x-pps-icon");
     if (!raw) return;
     try {
       const item = JSON.parse(raw);
-      applyIcon(item);
+      applyIcon(item, paletteTarget);
     } catch {}
   };
 
@@ -352,9 +392,14 @@ export default function App() {
     const undoEntries = [];
     const movedNames = [];
     for (const img of targets) {
-      const icons = appliedByImage[img.name] || [];
-      if (icons.length === 0) {
-        toast.error(`No icons on ${img.name}`, { description: "Drag icons to build the path first." });
+      const overlay = (() => {
+        const v = appliedByImage[img.name];
+        if (!v) return { folders: [], tags: [] };
+        if (Array.isArray(v)) return { folders: v.length > 0 ? [v[0]] : [], tags: v.slice(1) };
+        return { folders: v.folders || [], tags: v.tags || [] };
+      })();
+      if (overlay.folders.length + overlay.tags.length === 0) {
+        toast.error(`No icons on ${img.name}`, { description: "Drag icons to Folders / Filename first." });
         continue;
       }
       const imgPath = `${currentSourcePath}/${img.name}`;
@@ -372,7 +417,8 @@ export default function App() {
       }
 
       const { folderParts, fileName } = renderTemplate(settings.filenameTemplate, {
-        icons,
+        folders: overlay.folders,
+        tags: overlay.tags,
         originalName: img.name,
         exifDate: imgExifDate,
         stars,
@@ -627,15 +673,16 @@ export default function App() {
     if (!currentImage) return null;
     const stars = currentImage ? (ratings[`${currentSourcePath}/${currentImage.name}`] || 0) : 0;
     const rendered = renderTemplate(settings.filenameTemplate, {
-      icons: appliedIcons,
+      folders: currentOverlay.folders,
+      tags: currentOverlay.tags,
       originalName: currentImage.name,
       exifDate: exif?.DateTimeOriginal || exif?.CreateDate || null,
       stars,
     });
-    if (appliedIcons.length === 0) return null;
+    if (!hasAnyIcons) return null;
     const root = destSelected?.path || destRootName || "…";
     return `${root} / ${rendered.pathPreview}`;
-  }, [appliedIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif]);
+  }, [currentOverlay, hasAnyIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif]);
 
   // ------------------------------------------------------------------------
   // Render
@@ -823,6 +870,8 @@ export default function App() {
                 activeCatId={activeCatId}
                 onSetCat={setActiveCatId}
                 onApply={applyIcon}
+                target={paletteTarget}
+                onSetTarget={setPaletteTarget}
               />
             </div>
             <div className="flex items-center gap-1 shrink-0">
@@ -913,9 +962,14 @@ export default function App() {
               />
               <IconOverlay
                 containerRef={imageAreaRef}
-                icons={appliedIcons}
-                onReorder={reorderIcons}
-                onRemove={removeAppliedIcon}
+                folders={currentOverlay.folders}
+                tags={currentOverlay.tags}
+                onReorderFolders={(nl) => reorderRow("folders", nl)}
+                onReorderTags={(nl) => reorderRow("tags", nl)}
+                onRemoveFolder={(u) => removeFromRow("folders", u)}
+                onRemoveTag={(u) => removeFromRow("tags", u)}
+                onDropFolder={(icon) => applyIcon(icon, "folders")}
+                onDropTag={(icon) => applyIcon(icon, "tags")}
               />
               {/* Nav buttons */}
               <button

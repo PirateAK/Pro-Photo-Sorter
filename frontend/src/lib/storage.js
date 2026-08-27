@@ -3,7 +3,7 @@ const KEY = "pps.state.v2";
 
 const DEFAULT_SETTINGS = {
   moveMode: false,
-  filenameTemplate: "{folder}/{labels}{ext}",
+  filenameTemplate: "{folders}/{tags}{ext}",
   minStarFilter: 0,
 };
 
@@ -51,10 +51,15 @@ export function loadState() {
       return DEFAULT_STATE;
     }
     const parsed = JSON.parse(raw);
+    const settings = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) };
+    // Migrate legacy default template so existing users get nested-folder support
+    if (settings.filenameTemplate === "{folder}/{labels}{ext}") {
+      settings.filenameTemplate = "{folders}/{tags}{ext}";
+    }
     return {
       ...DEFAULT_STATE,
       ...parsed,
-      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
+      settings,
       ratings: parsed.ratings || {},
       looks: parsed.looks || [],
     };

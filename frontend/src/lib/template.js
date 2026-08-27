@@ -1,13 +1,27 @@
 // Filename/path template renderer.
+//
+// NEW context (iteration 10+):
+//   { folders: [{label}, ...], tags: [{label}, ...], originalName, exifDate, stars }
+//
+// Legacy (single-list) callers may pass { icons: [...] } instead — the first
+// icon becomes the sole folder and the rest become tags (matches previous v1
+// behavior).
+//
 // Tokens:
-//   {folder}      first icon label (or "unsorted")
-//   {labels}      remaining icon labels joined by "_" (or original stem)
-//   {label1}..{labelN}  individual icon labels (empty string if missing)
-//   {allLabels}   all icon labels joined by "_"
-//   {date}        YYYY-MM-DD from EXIF (falls back to today)
-//   {stars}       "5" or "0" as text
-//   {original}    original filename stem
-//   {ext}         extension including dot (".jpg")
+//   {folders}      folder labels joined by "/"
+//   {folder1}..N   Nth folder label (empty if missing)
+//   {tags}         tag labels joined by "_"
+//   {tag1}..N      Nth tag label
+//   Legacy:
+//     {folder}   = {folder1}
+//     {labels}   = {tags}
+//     {label1}..N = {tagN}
+//     {allLabels} = folders + tags joined by "_"
+//   {date}    EXIF date YYYY-MM-DD
+//   {stars}   0..5
+//   {original} original filename stem
+//   {ext}     extension incl. dot
+
 import { sanitizeName } from "./fsapi";
 
 function pad2(n) { return n < 10 ? "0" + n : "" + n; }
@@ -29,37 +43,60 @@ export function baseName(name) {
   return i > 0 ? name.slice(0, i) : name;
 }
 
+function coerce(ctx) {
+  // Accept both legacy { icons } and new { folders, tags }
+  if (Array.isArray(ctx.icons)) {
+    const icons = ctx.icons;
+    return {
+      folders: icons.length > 0 ? [icons[0]] : [],
+      tags: icons.slice(1),
+    };
+  }
+  return {
+    folders: Array.isArray(ctx.folders) ? ctx.folders : [],
+    tags: Array.isArray(ctx.tags) ? ctx.tags : [],
+  };
+}
+
 export function renderTemplate(template, ctx) {
   const {
-    icons = [],
     originalName = "photo.jpg",
     exifDate = null,
     stars = 0,
   } = ctx;
-
+  const { folders, tags } = coerce(ctx);
   const ext = extToLower(originalName);
   const stem = baseName(originalName);
-  const labels = icons.map((i) => sanitizeName(i.label)).filter(Boolean);
-  const folder = labels[0] || "unsorted";
-  const rest = labels.slice(1);
-  const restJoined = rest.length ? rest.join("_") : stem;
-  const allJoined = labels.length ? labels.join("_") : stem;
+  const folderLabels = folders.map((i) => sanitizeName(i.label)).filter(Boolean);
+  const tagLabels = tags.map((i) => sanitizeName(i.label)).filter(Boolean);
+
+  const folderPath = folderLabels.length ? folderLabels.join("/") : "unsorted";
+  const tagsJoined = tagLabels.length ? tagLabels.join("_") : stem;
+  const allJoined = [...folderLabels, ...tagLabels].length
+    ? [...folderLabels, ...tagLabels].join("_")
+    : stem;
   const dateStr = fmtDate(exifDate) || fmtDate(new Date());
 
-  let out = template || "{folder}/{labels}{ext}";
+  let out = template || "{folders}/{tags}{ext}";
   out = out.replace(/\{(\w+)\}/g, (_, key) => {
-    if (key === "folder") return folder;
-    if (key === "labels") return restJoined;
+    if (key === "folders") return folderPath;
+    if (key === "tags") return tagsJoined;
     if (key === "allLabels") return allJoined;
     if (key === "date") return dateStr;
     if (key === "stars") return String(stars || 0);
     if (key === "original") return stem;
     if (key === "ext") return ext;
-    const m = key.match(/^label(\d+)$/);
-    if (m) {
-      const idx = parseInt(m[1], 10) - 1;
-      return labels[idx] || "";
-    }
+
+    // Legacy compatibility
+    if (key === "folder") return folderLabels[0] || "";
+    if (key === "labels") return tagsJoined;
+
+    let m = key.match(/^folder(\d+)$/);
+    if (m) return folderLabels[parseInt(m[1], 10) - 1] || "";
+    m = key.match(/^tag(\d+)$/);
+    if (m) return tagLabels[parseInt(m[1], 10) - 1] || "";
+    m = key.match(/^label(\d+)$/); // legacy label1..N maps to tag1..N
+    if (m) return tagLabels[parseInt(m[1], 10) - 1] || "";
     return "";
   });
 
@@ -67,11 +104,9 @@ export function renderTemplate(template, ctx) {
   out = out.replace(/_+/g, "_").replace(/\/+/g, "/").replace(/^\/+/, "");
   out = out.replace(/_\./g, ".").replace(/\/_/g, "/").replace(/_\//g, "/");
 
-  // Split into folder parts + filename
   const parts = out.split("/").map((p) => p.trim()).filter(Boolean);
   const fileName = parts.pop() || `photo${ext}`;
   const safeFolders = parts.map(sanitizeName).filter(Boolean);
-  // Sanitize filename but preserve dot for extension
   const dot = fileName.lastIndexOf(".");
   const safeName =
     dot > 0
@@ -86,11 +121,12 @@ export function renderTemplate(template, ctx) {
 }
 
 export const TEMPLATE_TOKENS = [
-  { token: "{folder}", desc: "First icon label (subfolder)" },
-  { token: "{labels}", desc: "Remaining icons joined by _" },
-  { token: "{label1}", desc: "First icon label" },
-  { token: "{label2}", desc: "Second icon label" },
-  { token: "{allLabels}", desc: "All icon labels joined by _" },
+  { token: "{folders}", desc: "All folder icons joined by /" },
+  { token: "{folder1}", desc: "First folder icon" },
+  { token: "{folder2}", desc: "Second folder icon" },
+  { token: "{tags}", desc: "All filename icons joined by _" },
+  { token: "{tag1}", desc: "First filename icon" },
+  { token: "{tag2}", desc: "Second filename icon" },
   { token: "{date}", desc: "EXIF date YYYY-MM-DD" },
   { token: "{stars}", desc: "Star rating 0-5" },
   { token: "{original}", desc: "Original filename stem" },
@@ -98,9 +134,9 @@ export const TEMPLATE_TOKENS = [
 ];
 
 export const TEMPLATE_PRESETS = [
-  { name: "Default (folder / labels)", value: "{folder}/{labels}{ext}" },
-  { name: "Date-first", value: "{folder}/{date}_{labels}{ext}" },
-  { name: "Star culling", value: "{stars}stars/{folder}/{labels}{ext}" },
-  { name: "Studio format", value: "{date}-{folder}-{labels}{ext}" },
-  { name: "Original preserved", value: "{folder}/{labels}_{original}{ext}" },
+  { name: "Default (folders / tags)", value: "{folders}/{tags}{ext}" },
+  { name: "Date-first", value: "{folders}/{date}_{tags}{ext}" },
+  { name: "Star culling", value: "{stars}stars/{folders}/{tags}{ext}" },
+  { name: "Studio format", value: "{date}-{folders}-{tags}{ext}" },
+  { name: "Original preserved", value: "{folders}/{tags}_{original}{ext}" },
 ];

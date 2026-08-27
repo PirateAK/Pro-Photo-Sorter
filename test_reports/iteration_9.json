@@ -1,0 +1,37 @@
+{
+  "summary": "Iteration 10 (two-row icon overlay) frontend testing. Ran 3 Playwright sessions against https://photo-sorter-30.preview.emergentagent.com plus a 13-case Node unit test of the new template renderer and static source review of IconOverlay.jsx / IconPalette.jsx / template.js / App.js. App loads with 0 console errors and 0 page errors. New palette target segmented control renders, defaults to 'tags', and toggles correctly. Category dropdown, Settings modal (+presets & live preview), Category Manager (add/remove list, add/remove icon, custom-image mode), Shortcuts modal (opens, closes with Escape) all work. Template renderer passed all 13 token/back-compat cases. One real defect found: DEFAULT_SETTINGS.filenameTemplate in lib/storage.js was NOT updated to '{folders}/{tags}{ext}' - it is still legacy '{folder}/{labels}{ext}', so out-of-the-box nested multi-level folders do NOT work (only first folder icon is used). Drag-and-drop onto overlay rows with real images could not be exercised (File System Access picker not automatable) - verified statically only.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "lib/storage.js DEFAULT_SETTINGS", "issue": "filenameTemplate default is still legacy '{folder}/{labels}{ext}' (confirmed live in Settings modal textarea on a fresh profile). With the new two-row model this uses only folder1, so multi-level nested subfolders (2024/weddings/smith-family) silently collapse to one level. Should be '{folders}/{tags}{ext}' + a migration for users whose persisted settings still hold the legacy string.", "selector": "[data-testid=\"open-settings\"] -> template textarea", "priority": "HIGH"},
+      {"component": "CategoryManager footer", "issue": "Stale copy: 'Icons are used to build destination path: first_icon/label2_label3.jpg' still describes the old single-list model; should explain Folders row (/) vs Filename row (_).", "selector": "[data-testid=\"category-manager\"]", "priority": "LOW"},
+      {"component": "SettingsModal live preview", "issue": "Preview passes legacy { icons: [...] } shape, so {folders} shows only the first preview icon and multi-folder nesting cannot be previewed. No crash (back-compat works), but preview is misleading for the new model. Recommend preview data { folders:[{label:'2024'},{label:'weddings'}], tags:[{label:'ceremony'},{label:'outdoor'}] }.", "selector": "text=LIVE PREVIEW", "priority": "MEDIUM"},
+      {"component": "IconPalette target selector", "issue": "paletteTarget is in-memory only (resets to 'tags' on reload) and has no visible text label; only an 11px icon with a title tooltip. Consider persisting in settings and adding aria-label / pressed state for a11y.", "selector": "[data-testid=\"palette-target-folders\"]", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Toolbar row 2", "issues": ["Target segmented control icons are 11px with no label - very low discoverability for a control that changes where every click lands"]}
+    ]
+  },
+  "test_report_links": ["/app/tests/template_test.mjs"],
+  "action_items": [
+    "Update DEFAULT_SETTINGS.filenameTemplate in /app/frontend/src/lib/storage.js to '{folders}/{tags}{ext}' and migrate persisted legacy templates.",
+    "Update SettingsModal preview data to the new { folders, tags } shape so nested folders are previewable.",
+    "Update CategoryManager footer helper text to describe the two rows.",
+    "Optional: persist paletteTarget and add aria-pressed/labels to the target buttons."
+  ],
+  "critical_code_review_comments": [
+    "The legacy-array -> {folders,tags} migration block is duplicated 3x (App.js L105-112, getOverlay L276-287, storeCurrent L395-400). Extract one module-level helper to avoid divergence.",
+    "App.js is 1279 lines (>700) - split overlay/store/keyboard logic into hooks.",
+    "storage.js default template is out of sync with template.js default ('{folders}/{tags}{ext}') - single source of truth needed.",
+    "IconOverlay useEffect([containerRef]) resets position based on a stable ref object; it never re-fires on image change - if resetting per-image is intended, key on the image name instead.",
+    "Verified statically as requested: IconOverlay exports two IconRow instances with data-testid overlay-row-folders / overlay-row-tags, both guarding on 'application/x-pps-icon' MIME with separators '/' and '_'; applyIcon(icon,row) writes the correct row for current + batch targets; reorderRow/removeFromRow handle both rows; onImageDrop uses paletteTarget; storeCurrent and previewPath both pass { folders, tags } to renderTemplate."
+  ],
+  "updated_files": ["/app/tests/template_test.mjs"],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "92% - 25/26 checks passed (default template check failed)"},
+  "seed_data_creation": "Transient localStorage category 'TEST_List' created and deleted during Category Manager test",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Overlay row drag/drop with real images is NOT automatable (File System Access API picker). Template renderer has a runnable unit test: `node /app/tests/template_test.mjs` (inlines sanitizeName from fsapi.js) - re-run it after any template.js change. Remaining unverified-at-runtime area: applyIcon batch-mode writes to correct row, overlay row reorder/remove interactions.",
+  "rca_of_the_issue": "Iteration 10 changed template.js's internal fallback default to '{folders}/{tags}{ext}' but DEFAULT_SETTINGS in lib/storage.js was left at the legacy '{folder}/{labels}{ext}'. Because settings.filenameTemplate is always defined, the template.js fallback never applies, so every fresh user renders paths through the legacy single-folder token and loses nested subfolder support - the headline feature of this iteration."
+}

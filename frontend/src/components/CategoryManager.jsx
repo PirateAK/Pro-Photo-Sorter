@@ -312,7 +312,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         </div>
 
         <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim">
-          <div>Icons are used to build destination path: <span className="font-mono">first_icon/label2_label3.jpg</span></div>
+          <div>Drag icons onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] font-medium text-sm"

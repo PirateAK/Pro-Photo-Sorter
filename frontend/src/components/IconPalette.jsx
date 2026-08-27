@@ -1,12 +1,8 @@
 import React from "react";
 import { IconPreview } from "./CategoryManager";
-import { ChevronDown, Layers } from "lucide-react";
+import { ChevronDown, Layers, FolderTree, Tag } from "lucide-react";
 
-/**
- * The icon palette shown in the top toolbar. Users drag from here onto the image
- * (or single-click to append).
- */
-export default function IconPalette({ categories, activeCatId, onSetCat, onApply }) {
+export default function IconPalette({ categories, activeCatId, onSetCat, onApply, target, onSetTarget }) {
   const active = categories.find((c) => c.id === activeCatId) || categories[0];
   return (
     <div className="flex items-center gap-3 min-w-0">
@@ -27,6 +23,29 @@ export default function IconPalette({ categories, activeCatId, onSetCat, onApply
           </select>
           <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-dim" />
         </div>
+        {/* Target selector: which row clicks (and default drops) go to */}
+        <div className="flex rounded overflow-hidden border border-app shrink-0" title="Where do clicks go?">
+          <button
+            onClick={() => onSetTarget("folders")}
+            className={`px-2 py-1 text-[10px] flex items-center gap-1 ${
+              target === "folders" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover text-dim"
+            }`}
+            data-testid="palette-target-folders"
+            title="Click adds to Folders row"
+          >
+            <FolderTree size={11} />
+          </button>
+          <button
+            onClick={() => onSetTarget("tags")}
+            className={`px-2 py-1 text-[10px] flex items-center gap-1 ${
+              target === "tags" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover text-dim"
+            }`}
+            data-testid="palette-target-tags"
+            title="Click adds to Filename row"
+          >
+            <Tag size={11} />
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-1 overflow-x-auto min-w-0 flex-1">
         {active?.items.length === 0 && (
@@ -40,9 +59,9 @@ export default function IconPalette({ categories, activeCatId, onSetCat, onApply
               e.dataTransfer.setData("application/x-pps-icon", JSON.stringify(it));
               e.dataTransfer.effectAllowed = "copy";
             }}
-            onClick={() => onApply(it)}
+            onClick={() => onApply(it, target)}
             className="shrink-0 flex items-center gap-1.5 px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app hover:border-primary-earth/60 text-xs transition-colors group cursor-grab active:cursor-grabbing"
-            title={`Drag or click to apply "${it.label}"`}
+            title={`Drag to a row, or click to add "${it.label}" to ${target === "folders" ? "Folders" : "Filename"}`}
             data-testid={`palette-item-${it.id}`}
           >
             <span className="text-primary-earth">
