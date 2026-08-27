@@ -1,0 +1,125 @@
+{
+  "theme": "dark",
+  "app_name": "Pro Photo Sorter",
+  "typography": {
+    "fonts": {
+      "heading": "Manrope, sans-serif",
+      "body": "IBM Plex Sans, sans-serif",
+      "monospace": "JetBrains Mono, monospace"
+    },
+    "scale": {
+      "h1": "text-2xl font-bold tracking-tight text-text_primary",
+      "h2": "text-xl font-semibold tracking-tight text-text_primary",
+      "h3": "text-sm font-semibold tracking-wide uppercase text-text_secondary",
+      "body": "text-sm leading-relaxed text-text_primary",
+      "small": "text-xs text-text_secondary"
+    },
+    "pairing_rationale": "Manrope provides clean, geometric but friendly headings, while IBM Plex Sans offers dense, highly legible utility for complex file trees and data without looking like a generic template."
+  },
+  "colors": {
+    "background": "#1A1715",
+    "surface": "#26221F",
+    "surface_hover": "#332D29",
+    "border": "#423A35",
+    "primary": "#C68A53",
+    "primary_hover": "#D99D66",
+    "success": "#7A9073",
+    "danger": "#B65A5A",
+    "text_primary": "#F2EBE5",
+    "text_secondary": "#A69C95",
+    "text_inverse": "#1A1715"
+  },
+  "visual_enhancers": {
+    "filmstrip": "Add subtle perforation details to the filmstrip container to evoke analog contact sheets. Use a dark, near-black background (#110F0E) with CSS pseudo-elements creating repeating 'sprocket holes' (small dark squares) along the top and bottom borders.",
+    "draggable_overlay": "The user-created category icons overlaid on the center image should sit in a glassmorphic floating toolbar. Use backdrop-blur-md bg-surface/60 border border-border/50 shadow-xl.",
+    "textures": "Keep backgrounds flat and solid (no gradients) to let photos pop, but surfaces can have a very subtle 1px inner border for depth."
+  },
+  "components": {
+    "button": "Rounded flex items-center justify-center px-3 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background hover:bg-surface_hover border border-transparent hover:border-border",
+    "primary_button": "bg-primary text-text_inverse hover:bg-primary_hover shadow-md",
+    "file_tree_item": "text-sm text-text_secondary hover:text-text_primary transition-colors cursor-pointer py-1 px-2 rounded-sm hover:bg-surface flex items-center gap-2",
+    "image_thumbnail": "h-32 w-auto object-cover rounded-sm border-2 border-transparent cursor-pointer hover:border-primary/50 transition-all opacity-70 hover:opacity-100",
+    "image_thumbnail_active": "border-primary opacity-100 shadow-[0_0_15px_rgba(198,138,83,0.2)]",
+    "dropdown": "Use Shadcn Select component customized with earthy dark colors, bg-surface, and solid backgrounds. ABSOLUTELY NO transparent dropdown backgrounds.",
+    "toast": "Use Sonner for the Undo toast notification, positioned bottom-right, styled with bg-surface border-border text-text_primary shadow-lg.",
+    "modal": "Use Shadcn Dialog for the Category Management modal. Require a backdrop overlay (bg-black/80 backdrop-blur-sm) and the modal body should be bg-surface border border-border."
+  },
+  "grids_and_layouts": {
+    "main_app_layout": "h-screen w-screen grid grid-cols-[260px_1fr_260px] grid-rows-[1fr_220px] overflow-hidden bg-background text-text_primary",
+    "regions": {
+      "left_panel": "col-start-1 row-start-1 border-r border-border bg-surface overflow-y-auto flex flex-col p-4",
+      "right_panel": "col-start-3 row-start-1 border-l border-border bg-surface overflow-y-auto flex flex-col p-4 relative",
+      "center_column": "col-start-2 row-start-1 flex flex-col overflow-hidden bg-background",
+      "top_toolbar": "w-full border-b border-border bg-surface px-4 py-2 flex flex-col gap-2 shrink-0 z-10",
+      "center_image_area": "flex-1 w-full relative flex items-center justify-center p-6 overflow-hidden",
+      "bottom_filmstrip": "col-span-3 row-start-2 border-t border-border bg-[#110F0E] overflow-x-auto flex items-center px-6 gap-4 z-20 shrink-0"
+    }
+  },
+  "motion": {
+    "transitions": "Use transition-colors and transition-opacity duration-200 ease-in-out for standard UI elements.",
+    "hover_lift": "Action buttons and toolbars can use a subtle hover:-translate-y-[1px].",
+    "drag_and_drop": "Use Framer Motion or a robust drag library for smooth, 60fps repositioning of the category icon overlay on the center image."
+  },
+  "accessibility": {
+    "contrast": "Ensure text meets WCAG AA on dark earthy backgrounds. Focus states MUST use primary color ring.",
+    "keyboard_shortcuts": "Crucial for a pro tool: All primary actions (Delete, Skip, Store, Undo) must have visible keyboard shortcut hints (e.g. 'Del', 'Space', 'S', '⌘Z') displayed in text-[10px] text-text_secondary next to the label or in a tooltip.",
+    "aria": "Use aria-labels on all icon-only buttons (like category icons)."
+  },
+  "media": {
+    "images": "Photos are the hero. Use object-contain for the center viewer to ensure the entire photo is visible without cropping. Use object-cover for the filmstrip thumbnails."
+  },
+  "image_urls": [
+    {
+      "url": "https://images.unsplash.com/photo-1691483059022-e8ad9f2d9d12?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwxfHxsYW5kc2NhcGUlMjBwaG90b2dyYXBoeSUyMG5hdHVyZXxlbnwwfHx8fDE3ODc3OTEyNDR8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Mountain range with trees in the foreground",
+      "category": "center_viewer_mock"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1529651121800-01d45d421ec9?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwzfHxsYW5kc2NhcGUlMjBwaG90b2dyYXBoeSUyMG5hdHVyZXxlbnwwfHx8fDE3ODc3OTEyNDR8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Winding road through snowy Zion National Park",
+      "category": "filmstrip_mock_1"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1563216368-5b6a40648062?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHwyfHxsYW5kc2NhcGUlMjBwaG90b2dyYXBoeSUyMG5hdHVyZXxlbnwwfHx8fDE3ODc3OTEyNDR8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Purple-petaled flowers growing at the mountain during sunrise",
+      "category": "filmstrip_mock_2"
+    },
+    {
+      "url": "https://images.unsplash.com/photo-1604715686140-d5bef96c8b9d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2OTV8MHwxfHNlYXJjaHw0fHxsYW5kc2NhcGUlMjBwaG90b2dyYXBoeSUyMG5hdHVyZXxlbnwwfHx8fDE3ODc3OTEyNDR8MA&ixlib=rb-4.1.0&q=85",
+      "description": "Green grass field near lake under white sky",
+      "category": "filmstrip_mock_3"
+    }
+  ],
+  "3d_libraries_and_steps": null,
+  "component_path": "/app/frontend/src/components/ui",
+  "instructions_to_main_agent": [
+    "Build a desktop-like responsive layout using CSS Grid where left/right/bottom panels are fixed and independently scrollable, and the center viewer takes the remaining space.",
+    "The central column should contain the dropdowns (Date, Location, Categories) and action buttons at the top, and the main image viewer below.",
+    "Implement an absolute positioned draggable icon bar overlaid on top of the center image.",
+    "Do NOT use native HTML <select>. Use Shadcn Select component.",
+    "No emojis. Use lucide-react icons exclusively.",
+    "Implement Sonner toast for the Undo functionality.",
+    "Place the author credit footer 'Built for photographers • by [author]' discreetly at the bottom of the right panel.",
+    "Create a detailed tree-view structure for the left and right panels with expand/collapse icons."
+  ],
+  "UNIVERSAL GUIDELINES FOR MAIN AGENT": [
+    "You tend to converge toward generic outputs. Avoid this: make creative, distinctive frontends that surprise and delight.",
+    "Dark colors look good when used independently without gradients. DO NOT use dark colors as gradients.",
+    "Don't make generic centered layouts, simplistic gradients, and uniform styling.",
+    "Create depth through layered design elements with z-index hierarchy.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) where appropriate, but NEVER with fully transparent backgrounds on elements that overlap content.",
+    "You MUST NOT apply universal transition (e.g., transition: all). This results in breaking transforms. Add transitions for specific properties.",
+    "You MUST NOT center align the app container, i.e., do not add .App { text-align: center; } in the css file.",
+    "Always use modern button styles with tight padding and interaction animations.",
+    "NEVER use AI assistant Emoji characters for icons.",
+    "Every interaction needs micro-animations - hover states, transitions, active states.",
+    "All interactive and key informational elements MUST include a data-testid attribute to facilitate robust automated testing.",
+    "Missing categories for images means use placeholder text, which is FORBIDDEN. ALWAYS USE PROVIDED IMAGES."
+  ],
+  "general_ui_ux_guidelines": [
+    "Professional density: Since this is a pro tool, spacing should be compact (p-2 to p-4) to maximize data visibility without feeling cluttered.",
+    "Visual Hierarchy: The selected photo in the center viewer is the highest priority. All chrome around it must visually recede into the earth-toned background.",
+    "Interaction Feedback: Every click (Delete, Skip, Store) must have immediate visual feedback and a subtle toast notification if the action is destructive.",
+    "All interactive elements must include a data-testid attribute."
+  ]
+}

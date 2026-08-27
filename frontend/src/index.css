@@ -1,0 +1,198 @@
+@import url("https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=IBM+Plex+Sans:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+    --bg: #1a1715;
+    --bg-deep: #110f0e;
+    --surface: #26221f;
+    --surface-hover: #332d29;
+    --border: #423a35;
+    --border-strong: #55493f;
+    --primary: #c68a53;
+    --primary-hover: #d99d66;
+    --primary-soft: rgba(198, 138, 83, 0.15);
+    --success: #7a9073;
+    --danger: #b65a5a;
+    --danger-hover: #c76c6c;
+    --text: #f2ebe5;
+    --text-dim: #a69c95;
+    --text-inverse: #1a1715;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: "IBM Plex Sans", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow: hidden;
+}
+
+.font-heading {
+    font-family: "Manrope", sans-serif;
+    letter-spacing: -0.01em;
+}
+.font-mono {
+    font-family: "JetBrains Mono", monospace;
+}
+
+::selection {
+    background: var(--primary);
+    color: var(--text-inverse);
+}
+
+/* Scrollbars — subtle, earthy */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-strong);
+}
+
+/* Filmstrip sprocket-hole aesthetic */
+.filmstrip {
+    background: var(--bg-deep);
+    background-image:
+        radial-gradient(
+            circle at 12px 8px,
+            #000 0,
+            #000 3px,
+            transparent 3.5px
+        ),
+        radial-gradient(
+            circle at 12px calc(100% - 8px),
+            #000 0,
+            #000 3px,
+            transparent 3.5px
+        );
+    background-size: 24px 100%;
+    background-repeat: repeat-x;
+    background-position: 0 0;
+    padding-top: 20px;
+    padding-bottom: 20px;
+}
+
+/* Thin translucent card */
+.pane {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+/* Focus ring */
+.focus-ring:focus-visible {
+    outline: none;
+    box-shadow:
+        0 0 0 2px var(--bg),
+        0 0 0 4px var(--primary);
+}
+
+/* Draggable overlay on image */
+.icon-overlay {
+    backdrop-filter: blur(14px);
+    background: rgba(38, 34, 31, 0.7);
+    border: 1px solid rgba(66, 58, 53, 0.8);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+/* Hide default file input */
+input[type="file"].hidden-file {
+    display: none;
+}
+
+/* Prevent text selection during drag */
+.no-select {
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+/* Marching-ants selected border */
+.selected-thumb {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+    box-shadow: 0 0 20px rgba(198, 138, 83, 0.25);
+}
+
+/* Empty-state subtle grain */
+.grain::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='120' height='120'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/><feColorMatrix values='0 0 0 0 0.65  0 0 0 0 0.55  0 0 0 0 0.45  0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+    pointer-events: none;
+    opacity: 0.4;
+    mix-blend-mode: overlay;
+}
+
+/* Tailwind color helpers using CSS vars */
+.bg-app {
+    background: var(--bg);
+}
+.bg-deep {
+    background: var(--bg-deep);
+}
+.bg-surface {
+    background: var(--surface);
+}
+.bg-surface-hover:hover {
+    background: var(--surface-hover);
+}
+.border-app {
+    border-color: var(--border);
+}
+.text-app {
+    color: var(--text);
+}
+.text-dim {
+    color: var(--text-dim);
+}
+.text-primary-earth {
+    color: var(--primary);
+}
+.bg-primary-earth {
+    background: var(--primary);
+}
+.bg-primary-earth:hover {
+    background: var(--primary-hover);
+}
+.bg-danger-earth {
+    background: var(--danger);
+}
+.bg-success-earth {
+    background: var(--success);
+}
+
+/* kbd hint chip */
+.kbd {
+    font-family: "JetBrains Mono", monospace;
+    font-size: 10px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(0, 0, 0, 0.35);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    line-height: 1.2;
+}
+
+button {
+    font-family: inherit;
+}

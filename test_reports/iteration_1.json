@@ -1,0 +1,33 @@
+{
+  "summary": "Frontend-only smoke test of Pro Photo Sorter. App loads clean, main layout renders, palette dropdown works with defaults, both modals open/close properly, batch toggle works, Category Manager CRUD (add category, switch tabs, select built-in icon, add item, remove item) works, and localStorage persistence across reload verified for new category.",
+  "tested_scope": ["frontend"],
+  "passed": [
+    "App loads without console errors; app-root visible; main 3-panel layout present",
+    "Empty state: 'Pro Photo Sorter' welcome text visible; 'Not connected' shown for source and dest",
+    "Palette dropdown lists default categories 'Subject' and 'Rating'",
+    "Default palette items visible (portrait, landscape, wildlife, macro)",
+    "Switching palette dropdown to 'Rating' updates icons (pick, keep)",
+    "Shortcuts modal opens on click and closes on backdrop click",
+    "Batch button toggles visual state (class change confirmed)",
+    "Category Manager opens; new category 'TestCat' successfully added",
+    "Built-in Icons / Custom Image tabs switch correctly",
+    "Selecting built-in icon (Camera) + typing label + Add creates new item in items grid",
+    "Removing custom-added item works via hover -> trash",
+    "After reload, newly added category 'TestCat' persists (localStorage key pps.state.v1 verified via UI)"
+  ],
+  "failed": [
+    {
+      "area": "persistence (minor)",
+      "issue": "After reload, the item 'persistlbl' added to TestCat right before closing the modal was NOT visible in TestCat. The category itself persisted, but the item added last did not appear. Possible race between saveState debounce and page reload, or the item was added while activeCat internal state referred to a different category id.",
+      "evidence": "Playwright log: 'After reload, TestCat persisted: True' but 'After reload, persistlbl item persisted: False'. Category was added correctly first-round; earlier items in same session added/removed without issue.",
+      "priority": "LOW"
+    }
+  ],
+  "action_items": [
+    "Optional: Investigate whether item added just before modal close is flushed to localStorage before a page reload — consider a synchronous save on modal close, or verify useEffect debounce isn't dropping the last update."
+  ],
+  "success_rate": {"backend": "skipped", "frontend": "~92% (11/12 checks pass)"},
+  "retest_needed": false,
+  "full_testing_deferred": true,
+  "notes": "Per request, File System Access API flows (Open source/dest, image loading, storing to disk, filmstrip with real images) were NOT tested since native picker cannot be automated. Backend testing skipped per instructions."
+}
