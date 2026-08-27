@@ -1,0 +1,59 @@
+{
+  "summary": "Iteration 5 frontend-only verification of Pro Photo Sorter (Batch Rename, Comparison View, Face-Detection Auto-Rate, Contact Sheet PDF). Runtime Playwright checks on https://photo-sorter-30.preview.emergentagent.com confirmed: app loads with 0 console/page errors; all new toolbar controls render (open-editor, compare-1/2/3 segmented control, auto-rate-btn, open-rename, open-contact, open-category-manager, open-settings, show-help); all image-dependent buttons correctly disabled with no folder open; compare-1 carries the active highlight (bg-primary-earth) by default; Escape closes Settings, Categories and Help modals; SettingsModal Cancel bugfix (iteration-2) still holds (template value unchanged after edit+cancel+reopen). Static verification passed for rename.js (renderRenameTemplate, RENAME_PRESETS, RENAME_TOKENS), focusScore.js (computeFocusScore, detectFaces, computeAutoRating, isFaceApiAvailable), contactSheet.js (buildContactSheet), BatchRenameModal.jsx, ContactSheetModal.jsx, ComparisonView.jsx, jspdf@2.5.2 in package.json and node_modules, App.js batchAutoRate/batchAutoEnhance, Escape branches for showRename/showContact, and storage.js default schema (categories, settings, ratings, looks). Rename/Contact/Auto-Rate/Compare runtime flows could not be exercised (File System Access directory picker cannot be automated) - reviewed by source inspection only.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [
+      {
+        "flow": "Batch Rename -> star ratings persistence",
+        "issue": "Ratings are keyed by `${sourcePath}/${img.name}` in localStorage. runRename() renames files in place and onDone() re-lists the directory, but no rating-key remapping is done, so all star ratings for renamed photos are silently lost (and {stars} tokens on a re-run would read 0).",
+        "affected_selectors": ["[data-testid=\"rename-run\"]"]
+      },
+      {
+        "flow": "Batch Rename preview EXIF date",
+        "issue": "BatchRenameModal preview loop only parses EXIF for the first 8 images (`if (i < 8)`); every image at index >= 8 gets exifDate = null and renderRenameTemplate falls back to today's date. Because runRename() consumes these same previews, {date} templates write today's date instead of the real capture date for all photos after the 8th - a data-correctness bug, not just a preview limitation.",
+        "affected_selectors": ["[data-testid=\"rename-template-input\"]", "[data-testid=\"rename-preview-0\"]"]
+      },
+      {
+        "flow": "Batch Rename crash-safety",
+        "issue": "runRename() copies each source to a __pps_tmp_* file and immediately removeEntry()s the original before phase 2 renames temps to final names. If the tab is closed / an error occurs between the two phases, the user's originals are already deleted and only __pps_tmp_* files remain (no recovery path). Consider writing the final name first and deleting the original only after a successful write.",
+        "affected_selectors": ["[data-testid=\"rename-run\"]"]
+      },
+      {
+        "flow": "Contact Sheet generation",
+        "issue": "ContactSheetModal builds `entries` by calling img.handle.getFile() for every image up-front without awaiting/catching, so for large filmstrips all file promises are created eagerly and a rejected promise (deleted/moved file) surfaces as an unhandled rejection before buildContactSheet awaits it. Wrap in a lazy accessor (() => handle.getFile()) or per-entry catch.",
+        "affected_selectors": ["[data-testid=\"contact-generate\"]"]
+      }
+    ],
+    "design_issues": [
+      {
+        "screen": "Comparison view (compareMode 2/3)",
+        "issues": [
+          "When compareMode > 1 the IconOverlay, nav-prev/nav-next buttons and the rating-overlay are not rendered at all, so a user in compare mode loses drag-drop tagging, arrow navigation buttons and star rating UI with no on-screen hint that they must return to x1. Recommend keeping at least nav buttons + rating overlay, or showing an explanatory badge.",
+          "ComparisonView renders fewer panes than requested when images.length < panes without any indication (e.g. x3 selected with 2 images silently shows 2 panes)."
+        ]
+      }
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [
+    "Remap rating keys (old path -> new path) after Batch Rename so star ratings survive renaming.",
+    "Parse EXIF for all images (or lazily at rename time) instead of only the first 8, otherwise {date} renames are wrong for photos 9+.",
+    "Make Batch Rename crash-safe: write final name before deleting the original, or clean up orphan __pps_tmp_* files on next folder load.",
+    "Make ContactSheetModal entries lazy / add per-file catch to avoid unhandled promise rejections on missing files.",
+    "Consider retaining rating overlay + nav buttons in comparison mode (currently hidden with no user hint)."
+  ],
+  "critical_code_review_comments": [
+    "App.js is 1119 lines - well past the 700-line guideline. Extract the toolbar, keyboard-shortcut effect and modal wiring into separate modules.",
+    "Keyboard handler returns early when activeElement is an input/textarea/select; inside BatchRenameModal and ContactSheetModal the template/title input is focused by default, so Escape will NOT close those modals while typing. Either handle Escape locally in each modal (onKeyDown) or allow Escape through the input guard.",
+    "compareMode is not reset to 1 when the source folder is closed/changed; state persists while the compare buttons are disabled, which can surprise the user on the next folder open.",
+    "focusScore.computeFocusScore normalization constants (log10 2.0..3.6) are empirical magic numbers - move to named constants and document, since they directly drive user-visible star ratings."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (frontend-only request)", "frontend": "100% of automatable checks passed (11/11 runtime + static assertions)" },
+  "seed_data_creation": "None. No backend/DB involvement; app is fully client-side with localStorage.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All runtime-automatable iteration-5 checks pass: toolbar testids (open-editor, compare-1/2/3, auto-rate-btn, open-rename, open-contact, open-category-manager, open-settings, show-help - NOTE the help button testid is 'show-help', not 'open-help'), disabled states with no folder, compare-1 active highlight, Escape on settings-modal/category-manager/help-modal, settings-cancel no-persist bugfix. Modals are plain divs (no role=\"dialog\"); use their data-testid (settings-modal, category-manager, help-modal, batch-rename-modal, contact-sheet-modal). Rename/Contact/Auto-Rate/Compare cannot be exercised without the File System Access directory picker - source review only. Reported issues are all business-logic/UX level (rating key remap after rename, EXIF only for first 8 images, non-atomic rename, eager getFile promises, hidden controls in compare mode); no code was modified by this agent. Pre-existing eslint warning: App.js line 103 appliedIcons/useMemo exhaustive-deps.",
+  "rca_of_the_issue": "Rating loss after rename: ratings are stored keyed on file path (`${sourcePath}/${name}`); BatchRenameModal.runRename changes the file names but onDone only re-lists the directory - nothing rewrites the ratings map, so the old keys become orphaned and the renamed files show 0 stars. EXIF bug: the `if (i < 8)` guard in the preview effect was intended to limit expensive exifr parsing for display, but previews are also the source of truth used by runRename, so the today's-date fallback leaks into the actual written filenames."
+}

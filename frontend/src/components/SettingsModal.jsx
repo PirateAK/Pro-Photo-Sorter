@@ -12,6 +12,16 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
     if (open) setLocal(settings);
   }, [open, settings]);
 
+  // Local Escape handler — bypasses App.js keyboard guard when typing in input
+  useEffect(() => {
+    if (!open) return;
+    const h = (e) => {
+      if (e.key === "Escape") { e.preventDefault(); onClose(); }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   const applyAndClose = () => {

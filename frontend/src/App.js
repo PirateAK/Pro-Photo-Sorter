@@ -31,7 +31,7 @@ import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
-import { Settings as Cog, MoveRight, Copy as CopyIcon, Star as StarIcon, Scissors, Wand2 } from "lucide-react";
+import { Settings as Cog, MoveRight, Copy as CopyIcon, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -43,6 +43,10 @@ import {
 import { loadState, saveState, uid } from "@/lib/storage";
 import { renderTemplate } from "@/lib/template";
 import { autoAnalyzeFile } from "@/lib/autoTone";
+import { computeAutoRating } from "@/lib/focusScore";
+import BatchRenameModal from "@/components/BatchRenameModal";
+import ContactSheetModal from "@/components/ContactSheetModal";
+import ComparisonView from "@/components/ComparisonView";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -107,6 +111,10 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+  const [showContact, setShowContact] = useState(false);
+  const [compareMode, setCompareMode] = useState(1); // 1 = single, 2/3 = split panes
+  const [autoRating, setAutoRating] = useState(false); // in-progress flag
 
   // Current image star rating
   const currentImagePath = currentImage ? `${currentSourcePath}/${currentImage.name}` : null;
@@ -153,6 +161,7 @@ export default function App() {
     setCurrentSourcePath(path);
     setSelectedIdx(0);
     setBatchSelected(new Set());
+    setCompareMode(1); // reset compare view on folder change
     try {
       const imgs = await listImagesInDir(node.handle);
       setImages(imgs);
@@ -404,6 +413,41 @@ export default function App() {
     });
   };
 
+  // Auto-rate: analyze each image's focus + faces and set star rating
+  const batchAutoRate = async () => {
+    const targets = (batchMode && batchSelected.size > 0)
+      ? images.filter((i) => batchSelected.has(i.name))
+      : images;
+    if (targets.length === 0) return;
+    setAutoRating(true);
+    const t = toast.loading(`Auto-rating 0 / ${targets.length}…`);
+    let done = 0;
+    const newRatings = {};
+    for (const img of targets) {
+      try {
+        const file = await img.handle.getFile();
+        const url = URL.createObjectURL(file);
+        const el = await new Promise((res, rej) => {
+          const im = new Image();
+          im.onload = () => res(im);
+          im.onerror = rej;
+          im.src = url;
+        });
+        const r = await computeAutoRating(el);
+        URL.revokeObjectURL(url);
+        newRatings[`${currentSourcePath}/${img.name}`] = r.stars;
+      } catch (e) { /* skip */ }
+      done++;
+      toast.loading(`Auto-rating ${done} / ${targets.length}…`, { id: t });
+    }
+    toast.dismiss(t);
+    setRatings((cur) => ({ ...cur, ...newRatings }));
+    const withFaceHint = window.FaceDetector ? "" : " (focus-only; browser lacks face API)";
+    toast.success(`Auto-rated ${done} photo${done !== 1 ? "s" : ""}${withFaceHint}`);
+    setAutoRating(false);
+    if (batchMode) setBatchSelected(new Set());
+  };
+
   // Batch auto-enhance: iterate over batch-selected images, analyze histogram,
   // apply auto-tone, and save as new JPG next to each source.
   const batchAutoEnhance = async () => {
@@ -486,13 +530,15 @@ export default function App() {
         if (showHelp) { e.preventDefault(); setShowHelp(false); }
         else if (showSettings) { e.preventDefault(); setShowSettings(false); }
         else if (showCatMgr) { e.preventDefault(); setShowCatMgr(false); }
+        else if (showRename) { e.preventDefault(); setShowRename(false); }
+        else if (showContact) { e.preventDefault(); setShowContact(false); }
       }
       else if (e.key >= "0" && e.key <= "5") { e.preventDefault(); setCurrentStars(parseInt(e.key, 10)); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line
-  }, [images, selectedIdx, currentImage, appliedByImage, destRoot, destSelected, batchMode, batchSelected, history, showEditor, currentImagePath, showHelp, showSettings, showCatMgr]);
+  }, [images, selectedIdx, currentImage, appliedByImage, destRoot, destSelected, batchMode, batchSelected, history, showEditor, currentImagePath, showHelp, showSettings, showCatMgr, showRename, showContact]);
 
   // Derived date & location strings from EXIF
   const exifDate = useMemo(() => {
@@ -628,6 +674,50 @@ export default function App() {
             >
               <Scissors size={12} /> Edit
             </button>
+            {/* Comparison mode segmented control */}
+            <div className="flex rounded overflow-hidden border border-app" data-testid="compare-mode">
+              {[1, 2, 3].map((n) => (
+                <button
+                  key={n}
+                  onClick={() => setCompareMode(n)}
+                  disabled={images.length === 0}
+                  className={`px-2 py-1 text-xs font-mono border-l first:border-l-0 border-app disabled:opacity-40 ${
+                    compareMode === n ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover"
+                  }`}
+                  data-testid={`compare-${n}`}
+                  title={n === 1 ? "Single view" : `${n}-pane comparison`}
+                >
+                  {n === 1 ? <Columns size={11} /> : `×${n}`}
+                </button>
+              ))}
+            </div>
+            <button
+              onClick={batchAutoRate}
+              disabled={images.length === 0 || autoRating}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="auto-rate-btn"
+              title="Auto-rate photos by focus and faces"
+            >
+              <Sparkles size={12} /> {autoRating ? "Rating…" : "Auto-Rate"}
+            </button>
+            <button
+              onClick={() => setShowRename(true)}
+              disabled={images.length === 0 || !currentSourceFolder}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="open-rename"
+              title="Batch rename filmstrip"
+            >
+              <FileEdit size={12} /> Rename
+            </button>
+            <button
+              onClick={() => setShowContact(true)}
+              disabled={images.length === 0}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="open-contact"
+              title="Export contact sheet PDF"
+            >
+              <FileText size={12} /> Sheet
+            </button>
             <button
               onClick={() => setShowCatMgr(true)}
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
@@ -744,6 +834,27 @@ export default function App() {
           data-testid="image-viewer"
         >
           {currentImage && previewUrl ? (
+            compareMode > 1 ? (
+              <>
+                <ComparisonView
+                  images={images}
+                  selectedIdx={selectedIdx}
+                  panes={compareMode}
+                  onSelect={setSelectedIdx}
+                  ratings={ratings}
+                  sourcePath={currentSourcePath}
+                />
+                {/* Star rating overlay stays available for the active pane */}
+                <div className="absolute top-3 right-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-2 z-30" data-testid="rating-overlay">
+                  <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Rate</span>
+                  <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
+                </div>
+                {/* Hint that tagging is disabled in compare */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur border border-app text-[11px] text-dim">
+                  Comparison mode · press <span className="kbd">×1</span> to tag & drag icons
+                </div>
+              </>
+            ) : (
             <>
               <img
                 src={previewUrl}
@@ -784,6 +895,7 @@ export default function App() {
                 <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
               </div>
             </>
+            )
           ) : (
             <div className="text-center text-dim">
               <Camera size={40} className="mx-auto mb-3 text-primary-earth/60" />
@@ -934,6 +1046,50 @@ export default function App() {
         destDirHandle={destSelected?.handle || destRoot}
         looks={looks}
         onLooksChange={setLooks}
+      />
+
+      <BatchRenameModal
+        open={showRename}
+        onClose={() => setShowRename(false)}
+        images={images}
+        sourceFolder={currentSourceFolder}
+        ratings={ratings}
+        sourcePath={currentSourcePath}
+        onRatingsRemap={(remap) => {
+          setRatings((cur) => {
+            const next = { ...cur };
+            for (const [oldKey, newKey] of Object.entries(remap)) {
+              if (next[oldKey] != null) {
+                next[newKey] = next[oldKey];
+                delete next[oldKey];
+              }
+            }
+            return next;
+          });
+        }}
+        onDone={async () => {
+          if (currentSourceFolder) {
+            try {
+              const imgs = await listImagesInDir(currentSourceFolder);
+              setImages(imgs);
+              setSelectedIdx(0);
+            } catch {}
+          }
+        }}
+      />
+
+      <ContactSheetModal
+        open={showContact}
+        onClose={() => setShowContact(false)}
+        images={
+          (batchMode && batchSelected.size > 0)
+            ? images.filter((i) => batchSelected.has(i.name))
+            : images
+        }
+        ratings={ratings}
+        sourcePath={currentSourcePath}
+        sourceDirHandle={currentSourceFolder}
+        destDirHandle={destSelected?.handle || destRoot}
       />
 
       {showHelp && (
