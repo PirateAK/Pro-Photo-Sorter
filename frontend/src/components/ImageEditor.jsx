@@ -521,6 +521,21 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     }
   };
 
+  const hasAnyEdits = () => (
+    brightness !== 0 || contrast !== 0 || saturation !== 0 || sharpness !== 0 ||
+    rotation !== 0 || Math.abs(angle) > 0.01 || crop !== null
+  );
+
+  const doneEditing = async () => {
+    if (hasAnyEdits()) {
+      await saveEdited();
+      // saveEdited already toasts "Saved edited image" and calls onClose.
+    } else {
+      toast("No changes to save");
+      onClose(null);
+    }
+  };
+
   if (!open) return null;
 
   const showSlider = (label, Icon, val, setter, min, max, testid, help) => (
@@ -596,6 +611,15 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
             data-testid="editor-save"
           >
             <Save size={13} /> {saving ? "Saving…" : "Save as new"}
+          </button>
+          <button
+            onClick={doneEditing}
+            disabled={saving || !imgEl}
+            className="px-3 py-1.5 rounded bg-success-earth text-[color:var(--text-inverse)] text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
+            data-testid="editor-done"
+            title="Save any changes and return to sorting"
+          >
+            ✓ Done
           </button>
           <button
             onClick={() => onClose(null)}

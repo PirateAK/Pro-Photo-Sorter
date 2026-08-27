@@ -1,22 +1,23 @@
 import React, { useState, useEffect, useCallback, useMemo, createElement } from "react";
-import { ChevronRight, ChevronDown, Folder, FolderOpen, HardDrive } from "lucide-react";
+import { ChevronRight, ChevronDown, Folder, FolderOpen, HardDrive, FolderPlus, Pencil, Trash2 } from "lucide-react";
 import { listChildren } from "../lib/fsapi";
 
 function TreeNode(props) {
   const {
     node, depth, onSelectFolder, selectedPath, path,
-    justStored,      // { [folderPath]: count }
-    refreshCounter,  // int; increments to trigger re-list of matching branches
+    justStored,
+    refreshCounter,
+    editable,             // if true, hover-actions for add/rename/delete appear
+    onCreateSubfolder,    // (parentHandle, parentPath) => void
+    onRenameFolder,       // (parentHandle, folderHandle, oldName, parentPath) => void
+    onDeleteFolder,       // (parentHandle, folderHandle, name, parentPath) => void
   } = props;
   const [open, setOpen] = useState(depth === 0);
   const [children, setChildren] = useState(null);
   const [loading, setLoading] = useState(false);
   const isSelected = selectedPath === path;
 
-  // Own badge count for this exact folder
   const badgeCount = justStored?.[path] || 0;
-
-  // Does this node OR any of its descendants have a store in it?
   const branchHasStore = useMemo(() => {
     if (!justStored) return false;
     for (const p of Object.keys(justStored)) {
@@ -43,29 +44,22 @@ function TreeNode(props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Auto-expand when a store lands in this branch
   useEffect(() => {
     if (branchHasStore) setOpen(true);
   }, [branchHasStore]);
 
-  // Force re-list children whenever refreshCounter changes AND this branch matches
   useEffect(() => {
     if (!refreshCounter) return;
     if (!branchHasStore) return;
-    if (open) {
-      load(true);
-    } else {
-      // Branch is currently closed. Invalidate cached children so the pending
-      // auto-expand triggers a fresh listChildren call.
-      setChildren(null);
-    }
+    if (open) load(true);
+    else setChildren(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [refreshCounter]);
 
-  const toggle = (e) => {
-    e.stopPropagation();
-    setOpen((v) => !v);
-  };
+  const toggle = (e) => { e.stopPropagation(); setOpen((v) => !v); };
+
+  // Compute parent path (everything before the last '/')
+  const parentPath = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : path;
 
   const IconLeft = depth === 0 ? HardDrive : open ? FolderOpen : Folder;
   const iconLeftCls = depth === 0 ? "shrink-0 text-primary-earth" : "shrink-0";
@@ -75,7 +69,7 @@ function TreeNode(props) {
       <div
         data-testid={`tree-node-${path}`}
         onClick={() => onSelectFolder(node, path)}
-        className={`flex items-center gap-1 py-1 pr-2 rounded cursor-pointer text-sm transition-colors ${
+        className={`group flex items-center gap-1 py-1 pr-1 rounded cursor-pointer text-sm transition-colors ${
           isSelected ? "bg-primary-earth/20 text-primary-earth" : "hover:bg-surface-hover text-app"
         }`}
         style={{ paddingLeft: 4 + depth * 12 }}
@@ -89,6 +83,49 @@ function TreeNode(props) {
         </button>
         <IconLeft size={14} className={iconLeftCls} />
         <span className="truncate flex-1">{node.name}</span>
+
+        {editable && (
+          <div className="hidden group-hover:flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCreateSubfolder?.(node.handle, path);
+              }}
+              className="w-5 h-5 rounded flex items-center justify-center hover:bg-app text-dim hover:text-primary-earth"
+              title="Create subfolder"
+              data-testid={`tree-add-${path}`}
+            >
+              <FolderPlus size={11} />
+            </button>
+            {depth > 0 && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRenameFolder?.(props.parentHandle, node.handle, node.name, parentPath);
+                  }}
+                  className="w-5 h-5 rounded flex items-center justify-center hover:bg-app text-dim hover:text-primary-earth"
+                  title="Rename (empty folders only)"
+                  data-testid={`tree-rename-${path}`}
+                >
+                  <Pencil size={11} />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDeleteFolder?.(props.parentHandle, node.handle, node.name, parentPath);
+                  }}
+                  className="w-5 h-5 rounded flex items-center justify-center hover:bg-app text-dim hover:text-danger-earth"
+                  title="Delete (empty folders only)"
+                  data-testid={`tree-delete-${path}`}
+                >
+                  <Trash2 size={11} />
+                </button>
+              </>
+            )}
+          </div>
+        )}
+
         {badgeCount > 0 && (
           <span
             className="shrink-0 px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-success-earth text-[color:var(--text-inverse)]"
@@ -117,6 +154,11 @@ function TreeNode(props) {
                   path: `${path}/${c.name}`,
                   justStored,
                   refreshCounter,
+                  editable,
+                  onCreateSubfolder,
+                  onRenameFolder,
+                  onDeleteFolder,
+                  parentHandle: node.handle,
                 })
               )
             : null}

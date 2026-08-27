@@ -1,0 +1,39 @@
+{
+  "summary": "Frontend-only testing of Pro Photo Sorter iteration 11 (destination tree hover actions + Image Editor 'Done' button). Did static code review of TreeNode.jsx / FileTree.jsx / ImageEditor.jsx / App.js, plus runtime Playwright testing at the public URL. Because the FSA directory picker cannot be automated, I injected a mock window.showDirectoryPicker (in-memory directory/file handles with entries/getDirectoryHandle/removeEntry/createWritable) via add_init_script, which allowed full runtime exercise of the new tree edit handlers AND the editor Done flow. All new features pass; 0 console/page errors in every run.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "renameDestFolder does removeEntry(oldName) then getDirectoryHandle(safe, {create:true}); if the create step throws (e.g. invalid/duplicate name after sanitization) the original folder is already gone — consider creating the new folder first, then removing the old one.",
+    "App.js is 1352 lines; consider splitting handlers (tree housekeeping, store/undo, rename/contact-sheet) into hooks/modules for maintainability.",
+    "TreeNode refreshCounter effect only refreshes branches where branchHasStore is true; handlers work around this by writing a 0-count justStored entry. Works, but it is implicit coupling — a dedicated 'dirtyPaths' set would be clearer."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "seed_data_creation": "No persistent seed data. Ephemeral in-browser mock FSA handles (MockDest with EmptyFolder/FullFolder, MockSrc with photo1.jpg/photo2.jpg) injected per test run only.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "test_credentials": "N/A - app has no auth",
+  "verified_pass_list": [
+    "App loads at public URL, 0 console errors / 0 page errors across 3 runs.",
+    "Toolbar regression: open-editor, compare-1/2/3, auto-rate-btn, open-rename, open-contact, open-category-manager, toggle-batch, open-settings, show-help all present & visible. No COPY/MOVE text (iter 8 removal intact).",
+    "help-modal and settings-modal open on click and close on Escape (note: modals use data-testid, not role=dialog).",
+    "TreeNode: root node (depth 0) renders ONLY tree-add-<path>; subfolders render tree-add/tree-rename/tree-delete. Hover reveal via group-hover works at runtime (verified visible only on hover).",
+    "FileTree forwards editable/onCreateSubfolder/onRenameFolder/onDeleteFolder + parentHandle={null}; destination FileTree passes editable, source FileTree does not (read-only) — confirmed in App.js.",
+    "Runtime create subfolder: prompt accepted 'New Kids' -> sanitized to New_Kids, success toast, node appears in tree (destRefreshCounter refresh works).",
+    "Runtime delete non-empty folder: 'Folder is not empty' error toast, no deletion, no confirm shown.",
+    "Runtime delete empty folder: window.confirm accepted -> 'Deleted' toast, node removed from tree.",
+    "Runtime rename empty folder: prompt 'Renamed One' -> 'Renamed to \"Renamed_One\"' toast, old node gone, new node present.",
+    "ImageEditor: editor-done button present next to editor-save, green (rgb(122,144,115) = bg-success-earth), enabled when image loaded.",
+    "Done with NO edits: shows 'No changes to save' toast and closes editor back to sorting window (no file written).",
+    "Done WITH edits (brightness +30): saves new file photo1_edit_<timestamp>.jpg (createWritable called once), closes editor, filmstrip refreshes and selects the new file.",
+    "Escape still closes the Image Editor."
+  ],
+  "context_for_next_testing_agent": "FSA picker automation trick: inject window.showDirectoryPicker via page.add_init_script returning a mock directory handle implementing async *entries(), getDirectoryHandle(name,{create}), getFileHandle(name,{create}), removeEntry(name), and for files getFile()/createWritable(). This enables full runtime testing of tree + editor + store flows. window.prompt/confirm handled with page.once('dialog', d => d.accept('name')). Toasts auto-dismiss in ~4s, so assert on toast text within ~2s of the action. Modals expose data-testid (help-modal, settings-modal), not role=dialog.",
+  "rca_of_the_issue": "No defects found in iteration 11 scope."
+}

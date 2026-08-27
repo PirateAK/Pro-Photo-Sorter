@@ -237,6 +237,76 @@ export default function App() {
     setDestSelected({ handle: node.handle, path });
   }, []);
 
+  // Destination tree housekeeping actions
+  const createDestSubfolder = async (parentHandle, parentPath) => {
+    const raw = window.prompt("New subfolder name:", "");
+    if (!raw || !raw.trim()) return;
+    const safe = raw.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, "").replace(/\s+/g, "_").slice(0, 80);
+    if (!safe) { toast.error("Invalid folder name"); return; }
+    try {
+      await parentHandle.getDirectoryHandle(safe, { create: true });
+      toast.success(`Created "${safe}"`);
+      const newPath = `${parentPath}/${safe}`;
+      setJustStored((cur) => ({ ...cur, [newPath]: cur[newPath] || 0 }));
+      setDestRefreshCounter((c) => c + 1);
+    } catch (e) {
+      toast.error("Create failed", { description: e.message });
+    }
+  };
+
+  const isDirEmpty = async (dirHandle) => {
+    // eslint-disable-next-line no-unused-vars
+    for await (const _entry of dirHandle.entries()) return false;
+    return true;
+  };
+
+  const deleteDestFolder = async (parentHandle, folderHandle, name, parentPath) => {
+    if (!parentHandle) { toast.error("Can't delete the root folder"); return; }
+    try {
+      const empty = await isDirEmpty(folderHandle);
+      if (!empty) {
+        toast.error("Folder is not empty", { description: "Only empty folders can be deleted here." });
+        return;
+      }
+    } catch (e) {
+      toast.error("Couldn't inspect folder", { description: e.message });
+      return;
+    }
+    if (!window.confirm(`Delete empty folder "${name}"?`)) return;
+    try {
+      await parentHandle.removeEntry(name);
+      toast.success(`Deleted "${name}"`);
+      setJustStored((cur) => ({ ...cur, [parentPath]: cur[parentPath] || 0 }));
+      setDestRefreshCounter((c) => c + 1);
+    } catch (e) {
+      toast.error("Delete failed", { description: e.message });
+    }
+  };
+
+  const renameDestFolder = async (parentHandle, folderHandle, oldName, parentPath) => {
+    if (!parentHandle) { toast.error("Can't rename the root folder"); return; }
+    const raw = window.prompt(`Rename "${oldName}" to:`, oldName);
+    if (!raw || raw === oldName) return;
+    const safe = raw.trim().replace(/[<>:"/\\|?*\x00-\x1F]/g, "").replace(/\s+/g, "_").slice(0, 80);
+    if (!safe) { toast.error("Invalid folder name"); return; }
+    try {
+      const empty = await isDirEmpty(folderHandle);
+      if (!empty) {
+        toast.error("Folder is not empty", { description: "Only empty folders can be renamed here — move contents first." });
+        return;
+      }
+      // Atomic-ish rename: create the new folder FIRST, then remove the old one.
+      // If create fails (invalid or duplicate), original is preserved.
+      await parentHandle.getDirectoryHandle(safe, { create: true });
+      await parentHandle.removeEntry(oldName);
+      toast.success(`Renamed to "${safe}"`);
+      setJustStored((cur) => ({ ...cur, [`${parentPath}/${safe}`]: cur[`${parentPath}/${safe}`] || 0 }));
+      setDestRefreshCounter((c) => c + 1);
+    } catch (e) {
+      toast.error("Rename failed", { description: e.message });
+    }
+  };
+
   // Load preview + EXIF when selection changes
   useEffect(() => {
     let alive = true;
@@ -1038,6 +1108,10 @@ export default function App() {
             testIdPrefix="dest"
             justStored={justStored}
             refreshCounter={destRefreshCounter}
+            editable
+            onCreateSubfolder={createDestSubfolder}
+            onRenameFolder={renameDestFolder}
+            onDeleteFolder={deleteDestFolder}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center p-6 text-center text-dim text-xs">
