@@ -69,6 +69,14 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
   - "Save as new" — writes JPG with `_edit_YYYYMMDD_HHMMSS` suffix, non-destructive
   - Target selector: save into source folder or destination folder
 
+### Iteration 3 additions
+- ✅ **Rotate & Straighten**: 90° CW/CCW buttons + fine-tune angle slider (−15° to +15° in 0.1° steps); rotation applied full-res in save pipeline. Crop is disabled while rotated (mutually exclusive) with a hint.
+- ✅ **Contrast** slider (−50 to +50) using CSS filter
+- ✅ **Saturation** slider (−100 to +100) using CSS filter
+- ✅ **Before / After Peek**: Hold `\` or `` ` `` (or press-and-hold the "Peek" button) to bypass every edit and preview the original with an "ORIGINAL" badge; releases on keyup/mouseup
+- ✅ **Rating Filter Chip**: When the minimum-star filter is set > 0 and photos are loaded, an earth-tone chip appears at the head of the filmstrip showing "≥ N stars" with an X to clear the filter in one tap
+- ✅ Polish: Escape key closes any open modal; help modal now has explicit close button; editor keyboard peek ignores input-focused elements
+
 
 ## Backlog / Future Enhancements
 - P1: Direct MOVE (currently only copies — user can delete original manually or use Delete)

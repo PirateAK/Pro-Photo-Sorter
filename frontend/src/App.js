@@ -19,6 +19,7 @@ import {
   ChevronRight,
   CheckSquare,
   Square,
+  X as XIcon,
 } from "lucide-react";
 
 import "@/App.css";
@@ -418,12 +419,18 @@ export default function App() {
       else if (e.key === "b" || e.key === "B") { e.preventDefault(); toggleBatch(); }
       else if (e.key === "e" || e.key === "E") { e.preventDefault(); if (currentImage) setShowEditor(true); }
       else if (e.key === "?" ) { e.preventDefault(); setShowHelp((v) => !v); }
+      else if (e.key === "Escape") {
+        // Close top-most modal if any
+        if (showHelp) { e.preventDefault(); setShowHelp(false); }
+        else if (showSettings) { e.preventDefault(); setShowSettings(false); }
+        else if (showCatMgr) { e.preventDefault(); setShowCatMgr(false); }
+      }
       else if (e.key >= "0" && e.key <= "5") { e.preventDefault(); setCurrentStars(parseInt(e.key, 10)); }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
     // eslint-disable-next-line
-  }, [images, selectedIdx, currentImage, appliedByImage, destRoot, destSelected, batchMode, batchSelected, history, showEditor, currentImagePath]);
+  }, [images, selectedIdx, currentImage, appliedByImage, destRoot, destSelected, batchMode, batchSelected, history, showEditor, currentImagePath, showHelp, showSettings, showCatMgr]);
 
   // Derived date & location strings from EXIF
   const exifDate = useMemo(() => {
@@ -755,6 +762,23 @@ export default function App() {
 
       {/* BOTTOM — Filmstrip */}
       <div className="region-strip filmstrip flex items-center gap-3 px-6 overflow-x-auto" data-testid="filmstrip">
+        {(settings.minStarFilter || 0) > 0 && images.length > 0 && (
+          <div
+            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-primary-earth/20 border border-primary-earth text-primary-earth text-[11px] font-medium"
+            data-testid="star-filter-chip"
+          >
+            <StarIcon size={11} fill="currentColor" />
+            <span>≥ {settings.minStarFilter} star{settings.minStarFilter > 1 ? "s" : ""}</span>
+            <button
+              onClick={() => setSettings({ ...settings, minStarFilter: 0 })}
+              className="ml-1 w-4 h-4 rounded flex items-center justify-center hover:bg-primary-earth hover:text-[color:var(--text-inverse)]"
+              data-testid="clear-star-filter"
+              title="Clear filter"
+            >
+              <XIcon size={11} />
+            </button>
+          </div>
+        )}
         {images.length === 0 ? (
           <div className="text-dim text-xs italic">
             {currentSourceFolder ? "No images in this folder." : "Select a folder on the left."}
@@ -842,6 +866,14 @@ export default function App() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6" data-testid="help-modal">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowHelp(false)} />
           <div className="relative pane rounded-lg w-full max-w-md p-6">
+            <button
+              onClick={() => setShowHelp(false)}
+              className="absolute top-2 right-2 w-7 h-7 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-app"
+              data-testid="help-close"
+              aria-label="Close"
+            >
+              <XIcon size={14} />
+            </button>
             <div className="flex items-center gap-2 mb-4">
               <Keyboard size={18} className="text-primary-earth" />
               <h3 className="font-heading font-semibold text-lg">Keyboard Shortcuts</h3>
@@ -855,6 +887,7 @@ export default function App() {
                 ["E", "Open image editor"],
                 ["1 – 5", "Set star rating"],
                 ["0", "Clear star rating"],
+                ["\\  or  `", "Hold to peek original (in editor)"],
                 ["Ctrl / ⌘ + Z", "Undo last action"],
                 ["B", "Toggle batch mode"],
                 ["?", "Show / hide this panel"],

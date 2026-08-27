@@ -1,25 +1,30 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   X, ZoomIn, ZoomOut, RotateCcw, Save, Crop, Sun, Moon, Zap,
-  Maximize2, Move, Scissors,
+  Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
 
 /**
- * ImageEditor - modal editor with zoom, pan, crop, sharpen, darken, lighten.
- * Non-destructive: writes a new file to the same source folder or destination.
+ * ImageEditor - modal editor with zoom, pan, crop, rotate/straighten,
+ * brightness/contrast/saturation/sharpen, before/after peek, save-as-new.
  */
 export default function ImageEditor({ open, onClose, imageFileHandle, imageName, destDirHandle, sourceDirHandle }) {
   const [imgEl, setImgEl] = useState(null);
   const [zoom, setZoom] = useState(1); // 0.1 .. 8
   const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [brightness, setBrightness] = useState(0); // -100..100
+  const [brightness, setBrightness] = useState(0); // -80..80
+  const [contrast, setContrast] = useState(0); // -50..50
+  const [saturation, setSaturation] = useState(0); // -100..100
   const [sharpness, setSharpness] = useState(0); // 0..100
+  const [rotation, setRotation] = useState(0); // 0,90,180,270
+  const [angle, setAngle] = useState(0); // -15..15 straighten
   const [cropMode, setCropMode] = useState(false);
   const [crop, setCrop] = useState(null); // in image-space {x,y,w,h}
   const [saving, setSaving] = useState(false);
   const [saveTarget, setSaveTarget] = useState("source"); // 'source' or 'destination'
+  const [peeking, setPeeking] = useState(false);
 
   const canvasRef = useRef(null);
   const stageRef = useRef(null);
@@ -55,7 +60,11 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     setZoom(1);
     setPan({ x: 0, y: 0 });
     setBrightness(0);
+    setContrast(0);
+    setSaturation(0);
     setSharpness(0);
+    setRotation(0);
+    setAngle(0);
     setCrop(null);
     setCropMode(false);
     workBmpRef.current = null;
@@ -66,14 +75,19 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
   const fit = useCallback(() => {
     if (!imgEl || !stageRef.current) return;
     const rect = stageRef.current.getBoundingClientRect();
-    const z = Math.min(rect.width / imgEl.width, rect.height / imgEl.height, 1);
+    // Account for rotation-swap of dimensions when rotated ±90/270
+    const swap = rotation === 90 || rotation === 270;
+    const iw = swap ? imgEl.height : imgEl.width;
+    const ih = swap ? imgEl.width : imgEl.height;
+    const z = Math.min(rect.width / iw, rect.height / ih, 1);
     setZoom(z);
     setPan({ x: 0, y: 0 });
-  }, [imgEl]);
+  }, [imgEl, rotation]);
 
   useEffect(() => {
     if (imgEl) fit();
-  }, [imgEl, fit]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [imgEl]);
 
   // Sharpen (convolution) - build once per sharpness change
   const buildSharpBitmap = useCallback(async (amount) => {
@@ -87,9 +101,7 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     if (amount > 0) {
       const src = cx.getImageData(0, 0, c.width, c.height);
       const dst = cx.createImageData(c.width, c.height);
-      const a = amount / 100; // 0..1
-      // Kernel: sharpen mix
-      // center = 1 + 4a, sides = -a
+      const a = amount / 100;
       const k = [
         0, -a, 0,
         -a, 1 + 4 * a, -a,
@@ -116,7 +128,6 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
           d[i + 3] = s[i + 3];
         }
       }
-      // Copy borders unchanged
       for (let y = 0; y < h; y++) {
         for (let x = 0; x < w; x++) {
           if (x === 0 || y === 0 || x === w - 1 || y === h - 1) {
@@ -132,6 +143,15 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     return c;
   }, [imgEl]);
 
+  // Combined CSS filter string for brightness/contrast/saturation
+  const buildFilterString = useCallback(() => {
+    const parts = [];
+    if (brightness !== 0) parts.push(`brightness(${1 + brightness / 100})`);
+    if (contrast !== 0) parts.push(`contrast(${1 + contrast / 100})`);
+    if (saturation !== 0) parts.push(`saturate(${1 + saturation / 100})`);
+    return parts.length ? parts.join(" ") : "none";
+  }, [brightness, contrast, saturation]);
+
   // Render to canvas whenever anything changes
   useEffect(() => {
     if (!imgEl || !canvasRef.current || !stageRef.current) return;
@@ -146,55 +166,64 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingQuality = "high";
 
-      const source = sharpness > 0 ? await buildSharpBitmap(sharpness) : imgEl;
+      // "Peek original" bypasses all edits (keeps zoom+pan for context)
+      const source =
+        peeking || sharpness === 0 ? imgEl : await buildSharpBitmap(sharpness);
       if (cancelled) return;
 
       const iw = imgEl.width, ih = imgEl.height;
-      const dw = iw * zoom, dh = ih * zoom;
-      const dx = (canvas.width - dw) / 2 + pan.x;
-      const dy = (canvas.height - dh) / 2 + pan.y;
+      // Effective rotation for display
+      const totalDeg = peeking ? 0 : rotation + angle;
+      const rad = (totalDeg * Math.PI) / 180;
+      // Approximate bounding box (only exact for 90-multiples but good enough for zoom-fit)
+      const cw = canvas.width;
+      const ch = canvas.height;
+      const cx = cw / 2 + pan.x;
+      const cy = ch / 2 + pan.y;
 
-      // Brightness via filter
-      const bfilter = brightness === 0 ? "none" : `brightness(${1 + brightness / 100})`;
-      ctx.filter = bfilter;
-      ctx.drawImage(source, 0, 0, iw, ih, dx, dy, dw, dh);
+      ctx.filter = peeking ? "none" : buildFilterString();
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(rad);
+      ctx.scale(zoom, zoom);
+      ctx.drawImage(source, -iw / 2, -ih / 2, iw, ih);
+      ctx.restore();
       ctx.filter = "none";
 
-      // Draw crop overlay
-      if (crop) {
-        // Convert image-space crop to canvas-space rect
-        const cx = dx + crop.x * zoom;
-        const cy = dy + crop.y * zoom;
-        const cw = crop.w * zoom;
-        const ch = crop.h * zoom;
-        // Darken outside
+      // Draw crop overlay only when not peeking, and only for un-rotated case
+      // (crop coords are in un-rotated image space)
+      if (crop && !peeking && rotation === 0 && angle === 0) {
+        const dx = cx - (iw * zoom) / 2;
+        const dy = cy - (ih * zoom) / 2;
+        const rx = dx + crop.x * zoom;
+        const ry = dy + crop.y * zoom;
+        const rw = crop.w * zoom;
+        const rh = crop.h * zoom;
         ctx.fillStyle = "rgba(0,0,0,0.55)";
-        ctx.fillRect(0, 0, canvas.width, cy);
-        ctx.fillRect(0, cy + ch, canvas.width, canvas.height - (cy + ch));
-        ctx.fillRect(0, cy, cx, ch);
-        ctx.fillRect(cx + cw, cy, canvas.width - (cx + cw), ch);
-        // Border
+        ctx.fillRect(0, 0, cw, ry);
+        ctx.fillRect(0, ry + rh, cw, ch - (ry + rh));
+        ctx.fillRect(0, ry, rx, rh);
+        ctx.fillRect(rx + rw, ry, cw - (rx + rw), rh);
         ctx.strokeStyle = "#c68a53";
         ctx.lineWidth = 2;
-        ctx.strokeRect(cx, cy, cw, ch);
-        // Grid thirds
+        ctx.strokeRect(rx, ry, rw, rh);
         ctx.strokeStyle = "rgba(255,255,255,0.35)";
         ctx.lineWidth = 1;
         for (let i = 1; i < 3; i++) {
           ctx.beginPath();
-          ctx.moveTo(cx + (cw * i) / 3, cy);
-          ctx.lineTo(cx + (cw * i) / 3, cy + ch);
+          ctx.moveTo(rx + (rw * i) / 3, ry);
+          ctx.lineTo(rx + (rw * i) / 3, ry + rh);
           ctx.stroke();
           ctx.beginPath();
-          ctx.moveTo(cx, cy + (ch * i) / 3);
-          ctx.lineTo(cx + cw, cy + (ch * i) / 3);
+          ctx.moveTo(rx, ry + (rh * i) / 3);
+          ctx.lineTo(rx + rw, ry + (rh * i) / 3);
           ctx.stroke();
         }
       }
     })();
 
     return () => { cancelled = true; };
-  }, [imgEl, zoom, pan, brightness, sharpness, crop, buildSharpBitmap]);
+  }, [imgEl, zoom, pan, brightness, contrast, saturation, sharpness, rotation, angle, crop, buildSharpBitmap, buildFilterString, peeking]);
 
   // Wheel to zoom
   const onWheel = (e) => {
@@ -205,7 +234,7 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     setZoom((z) => Math.max(0.1, Math.min(8, z * factor)));
   };
 
-  // Convert canvas coords to image coords
+  // Convert canvas coords to image coords (only valid when rotation==0, angle==0)
   const canvasToImage = (cx, cy) => {
     if (!imgEl || !canvasRef.current) return null;
     const canvas = canvasRef.current;
@@ -213,21 +242,19 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     const dw = iw * zoom, dh = ih * zoom;
     const dx = (canvas.width - dw) / 2 + pan.x;
     const dy = (canvas.height - dh) / 2 + pan.y;
-    const ix = (cx - dx) / zoom;
-    const iy = (cy - dy) / zoom;
-    return { x: ix, y: iy };
+    return { x: (cx - dx) / zoom, y: (cy - dy) / zoom };
   };
 
-  // Pointer handlers - either pan or draw crop
+  const canCrop = rotation === 0 && angle === 0;
+
   const onPointerDown = (e) => {
     if (!imgEl || !canvasRef.current) return;
     const rect = canvasRef.current.getBoundingClientRect();
     const cx = e.clientX - rect.left;
     const cy = e.clientY - rect.top;
-
-    if (cropMode) {
+    if (cropMode && canCrop) {
       const p = canvasToImage(cx, cy);
-      cropDrag.current = { start: p, current: p };
+      cropDrag.current = { start: p };
       setCrop({ x: p.x, y: p.y, w: 0, h: 0 });
     } else {
       dragging.current = { startX: e.clientX - pan.x, startY: e.clientY - pan.y };
@@ -262,6 +289,30 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
   };
 
+  // Keyboard peek (\ or `) — hold to peek original
+  useEffect(() => {
+    if (!open) return;
+    const isInInput = () => {
+      const tag = document.activeElement?.tagName?.toLowerCase();
+      return tag === "input" || tag === "textarea" || tag === "select";
+    };
+    const down = (e) => {
+      if (isInInput()) return;
+      if (e.key === "\\" || e.key === "`") { e.preventDefault(); setPeeking(true); }
+      if (e.key === "Escape") { e.preventDefault(); onClose(null); }
+    };
+    const up = (e) => {
+      if (isInInput()) return;
+      if (e.key === "\\" || e.key === "`") { e.preventDefault(); setPeeking(false); }
+    };
+    window.addEventListener("keydown", down);
+    window.addEventListener("keyup", up);
+    return () => {
+      window.removeEventListener("keydown", down);
+      window.removeEventListener("keyup", up);
+    };
+  }, [open, onClose]);
+
   // Save edited image
   const saveEdited = async () => {
     if (!imgEl) return;
@@ -274,26 +325,46 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     try {
       const source = sharpness > 0 ? await buildSharpBitmap(sharpness) : imgEl;
 
-      // Determine output rect (crop or full)
-      const rect = crop
+      // Step 1: Full-res rotate (rotation + straighten). If both are zero, use source directly.
+      const totalDeg = rotation + angle;
+      let rotated = source;
+      if (totalDeg !== 0) {
+        const rad = (totalDeg * Math.PI) / 180;
+        const sw = source.width, sh = source.height;
+        // Bounding box after rotation
+        const cos = Math.abs(Math.cos(rad));
+        const sin = Math.abs(Math.sin(rad));
+        const nw = Math.round(sw * cos + sh * sin);
+        const nh = Math.round(sw * sin + sh * cos);
+        const rc = document.createElement("canvas");
+        rc.width = nw;
+        rc.height = nh;
+        const rctx = rc.getContext("2d");
+        rctx.imageSmoothingQuality = "high";
+        rctx.translate(nw / 2, nh / 2);
+        rctx.rotate(rad);
+        rctx.drawImage(source, -sw / 2, -sh / 2);
+        rotated = rc;
+      }
+
+      // Step 2: Crop (only allowed when rotation+angle=0, guarded in UI)
+      const useCrop = crop && rotation === 0 && angle === 0;
+      const rect = useCrop
         ? { sx: Math.round(crop.x), sy: Math.round(crop.y), sw: Math.round(crop.w), sh: Math.round(crop.h) }
-        : { sx: 0, sy: 0, sw: imgEl.width, sh: imgEl.height };
+        : { sx: 0, sy: 0, sw: rotated.width, sh: rotated.height };
 
       const out = document.createElement("canvas");
       out.width = rect.sw;
       out.height = rect.sh;
       const octx = out.getContext("2d");
       octx.imageSmoothingQuality = "high";
-      // Apply brightness via ctx.filter
-      octx.filter = brightness === 0 ? "none" : `brightness(${1 + brightness / 100})`;
-      octx.drawImage(source, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, rect.sw, rect.sh);
+      octx.filter = buildFilterString();
+      octx.drawImage(rotated, rect.sx, rect.sy, rect.sw, rect.sh, 0, 0, rect.sw, rect.sh);
       octx.filter = "none";
 
-      // Blob & write
       const blob = await new Promise((res) => out.toBlob(res, "image/jpeg", 0.92));
       if (!blob) throw new Error("Failed to encode");
 
-      // Build a filename: originalStem_edit_TIMESTAMP.jpg
       const dot = imageName.lastIndexOf(".");
       const stem = dot > 0 ? imageName.slice(0, dot) : imageName;
       const ts = new Date();
@@ -317,6 +388,29 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
 
   if (!open) return null;
 
+  const showSlider = (label, Icon, val, setter, min, max, testid, help) => (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
+          <Icon size={11} /> {label}
+        </div>
+        <span className="text-xs font-mono text-primary-earth" data-testid={`${testid}-value`}>
+          {val > 0 ? `+${val}` : val}
+        </span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={val}
+        onChange={(e) => setter(parseInt(e.target.value, 10))}
+        className="w-full accent-[color:var(--primary)]"
+        data-testid={`${testid}-slider`}
+      />
+      {help && <p className="text-[10px] text-dim mt-0.5">{help}</p>}
+    </div>
+  );
+
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/95" data-testid="image-editor">
       {/* Header */}
@@ -327,6 +421,21 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
           <span className="text-xs text-dim font-mono truncate max-w-xs">{imageName}</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onMouseDown={() => setPeeking(true)}
+            onMouseUp={() => setPeeking(false)}
+            onMouseLeave={() => setPeeking(false)}
+            onTouchStart={() => setPeeking(true)}
+            onTouchEnd={() => setPeeking(false)}
+            className={`px-2.5 py-1 rounded text-xs flex items-center gap-1 border ${
+              peeking ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent" : "bg-app hover:bg-surface-hover border-app"
+            }`}
+            data-testid="peek-original"
+            title="Hold to preview original (or hold ` or \\)"
+          >
+            <Eye size={13} /> {peeking ? "Original" : "Peek"}
+            {!peeking && <span className="kbd ml-1">\</span>}
+          </button>
           <div className="flex rounded overflow-hidden border border-app">
             <button
               onClick={() => setSaveTarget("source")}
@@ -365,7 +474,6 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
 
       {/* Body: sidebar + canvas */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar controls */}
         <div className="w-64 border-r border-app bg-surface p-4 space-y-5 overflow-auto shrink-0">
           {/* Zoom */}
           <div>
@@ -403,31 +511,65 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
             </p>
           </div>
 
-          {/* Brightness */}
+          {/* Rotate & Straighten */}
           <div>
+            <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-2 flex items-center gap-1">
+              <RotateCw size={11} /> Rotate & Straighten
+            </div>
+            <div className="flex gap-1 mb-2">
+              <button
+                onClick={() => setRotation((r) => (r + 270) % 360)}
+                className="flex-1 px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
+                data-testid="rotate-ccw"
+                title="Rotate 90° counter-clockwise"
+              >
+                <RotateCcw size={12} /> −90°
+              </button>
+              <button
+                onClick={() => setRotation((r) => (r + 90) % 360)}
+                className="flex-1 px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
+                data-testid="rotate-cw"
+                title="Rotate 90° clockwise"
+              >
+                <RotateCw size={12} /> +90°
+              </button>
+            </div>
             <div className="flex items-center justify-between mb-1">
-              <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
-                <Sun size={11} /> Brightness
-              </div>
-              <span className="text-xs font-mono text-primary-earth" data-testid="brightness-value">
-                {brightness > 0 ? `+${brightness}` : brightness}
+              <span className="text-[10px] text-dim">Fine-tune</span>
+              <span className="text-xs font-mono text-primary-earth" data-testid="angle-value">
+                {angle > 0 ? `+${angle.toFixed(1)}` : angle.toFixed(1)}°
               </span>
             </div>
             <input
               type="range"
-              min="-80"
-              max="80"
-              value={brightness}
-              onChange={(e) => setBrightness(parseInt(e.target.value, 10))}
+              min="-15"
+              max="15"
+              step="0.1"
+              value={angle}
+              onChange={(e) => setAngle(parseFloat(e.target.value))}
               className="w-full accent-[color:var(--primary)]"
-              data-testid="brightness-slider"
+              data-testid="angle-slider"
             />
             <div className="flex items-center justify-between text-[10px] text-dim mt-0.5">
-              <Moon size={9} />
-              <span>0</span>
-              <Sun size={9} />
+              <span>−15°</span>
+              <button onClick={() => setAngle(0)} className="underline hover:text-app" data-testid="angle-reset">
+                0
+              </button>
+              <span>+15°</span>
             </div>
+            {rotation !== 0 && (
+              <p className="text-[10px] text-dim mt-1 font-mono">rotation: {rotation}°</p>
+            )}
           </div>
+
+          {/* Brightness */}
+          {showSlider("Brightness", Sun, brightness, setBrightness, -80, 80, "brightness", null)}
+
+          {/* Contrast */}
+          {showSlider("Contrast", Contrast, contrast, setContrast, -50, 50, "contrast", null)}
+
+          {/* Saturation */}
+          {showSlider("Saturation", Droplet, saturation, setSaturation, -100, 100, "saturation", null)}
 
           {/* Sharpen */}
           <div>
@@ -454,10 +596,12 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
             <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-2">Crop</div>
             <button
               onClick={() => { setCropMode(!cropMode); if (cropMode) setCrop(null); }}
+              disabled={!canCrop}
               className={`w-full px-2 py-1.5 rounded text-xs flex items-center justify-center gap-1 border ${
                 cropMode ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent" : "bg-app border-app hover:bg-surface-hover"
-              }`}
+              } disabled:opacity-40 disabled:cursor-not-allowed`}
               data-testid="crop-toggle"
+              title={canCrop ? "Draw a crop region" : "Reset rotation to crop"}
             >
               <Crop size={12} /> {cropMode ? "Cropping — drag on image" : "Draw crop region"}
             </button>
@@ -468,6 +612,9 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
                   clear
                 </button>
               </div>
+            )}
+            {!canCrop && (
+              <p className="text-[10px] text-dim mt-1">Crop disabled while rotated. Reset rotation to enable.</p>
             )}
           </div>
 
@@ -482,6 +629,7 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
 
           <div className="pt-3 border-t border-app text-[10px] text-dim">
             <p className="mb-1">Non-destructive: your original file is never touched. A new JPG is written next to it.</p>
+            <p>Hold <span className="kbd">\</span> or <span className="kbd">`</span> to peek the original.</p>
           </div>
         </div>
 
@@ -494,7 +642,7 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
         >
           <canvas
             ref={canvasRef}
-            className={cropMode ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"}
+            className={cropMode && canCrop ? "cursor-crosshair" : "cursor-grab active:cursor-grabbing"}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -504,6 +652,11 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
           {!imgEl && (
             <div className="absolute inset-0 flex items-center justify-center text-dim">
               Loading image…
+            </div>
+          )}
+          {peeking && imgEl && (
+            <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/70 backdrop-blur border border-primary-earth text-xs font-mono font-semibold text-primary-earth flex items-center gap-1.5" data-testid="peek-badge">
+              <Eye size={12} /> ORIGINAL
             </div>
           )}
         </div>
