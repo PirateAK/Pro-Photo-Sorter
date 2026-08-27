@@ -31,6 +31,7 @@ import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
+import ExifChip from "@/components/ExifChip";
 import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown } from "lucide-react";
 import {
   isFSAccessSupported,
@@ -65,6 +66,11 @@ function usePersistedState() {
       persist((s) => ({ ...s, ratings: typeof updater === "function" ? updater(s.ratings) : updater })),
     setLooks: (looks) =>
       persist((s) => ({ ...s, looks: typeof looks === "function" ? looks(s.looks || []) : looks })),
+    setExifOverrides: (updater) =>
+      persist((s) => ({
+        ...s,
+        exifOverrides: typeof updater === "function" ? updater(s.exifOverrides || {}) : updater,
+      })),
   };
 }
 
@@ -78,8 +84,8 @@ function baseName(name) {
 }
 
 export default function App() {
-  const { state, setCategories, setSettings, setRatings, setLooks } = usePersistedState();
-  const { categories, settings, ratings, looks = [] } = state;
+  const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides } = usePersistedState();
+  const { categories, settings, ratings, looks = [], exifOverrides = {} } = state;
   const [activeCatId, setActiveCatId] = useState(categories[0]?.id || null);
 
   // Source
@@ -835,21 +841,78 @@ export default function App() {
         <div className="border-b border-app bg-surface px-4 py-2 flex flex-col gap-2 shrink-0 z-10">
           {/* Row 1: dropdowns & meta */}
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="flex items-center gap-1.5 pane rounded px-2 py-1 text-xs" data-testid="exif-date">
-              <Calendar size={12} className="text-primary-earth" />
-              <span className="text-dim">Date:</span>
-              <span className="font-mono">{exifDate || "—"}</span>
-            </div>
-            <div className="flex items-center gap-1.5 pane rounded px-2 py-1 text-xs" data-testid="exif-loc">
-              <MapPin size={12} className="text-primary-earth" />
-              <span className="text-dim">Location:</span>
-              <span className="font-mono">{exifLoc || "—"}</span>
-            </div>
-            <div className="flex items-center gap-1.5 pane rounded px-2 py-1 text-xs" data-testid="exif-cam">
-              <Aperture size={12} className="text-primary-earth" />
-              <span className="text-dim">Cam:</span>
-              <span className="font-mono">{exif?.Model || "—"}</span>
-            </div>
+            <span className="text-[10px] uppercase tracking-widest text-dim font-heading shrink-0" title="Metadata read from the photo — click a field to override">
+              EXIF
+            </span>
+            <ExifChip
+              icon={Calendar}
+              label="Date"
+              testid="exif-date"
+              value={(() => {
+                const o = currentImagePath ? exifOverrides[currentImagePath]?.date : null;
+                return o || exifDate || "";
+              })()}
+              overridden={!!(currentImagePath && exifOverrides[currentImagePath]?.date)}
+              editable={!!currentImage}
+              onSave={(val) => {
+                if (!currentImagePath) return;
+                setExifOverrides((cur) => {
+                  const next = { ...cur };
+                  const entry = { ...(next[currentImagePath] || {}) };
+                  if (val) entry.date = val; else delete entry.date;
+                  if (Object.keys(entry).length === 0) delete next[currentImagePath];
+                  else next[currentImagePath] = entry;
+                  return next;
+                });
+              }}
+              placeholder="e.g. 2024-08-14"
+            />
+            <ExifChip
+              icon={MapPin}
+              label="Location"
+              testid="exif-loc"
+              value={(() => {
+                const o = currentImagePath ? exifOverrides[currentImagePath]?.location : null;
+                return o || exifLoc || "";
+              })()}
+              overridden={!!(currentImagePath && exifOverrides[currentImagePath]?.location)}
+              editable={!!currentImage}
+              onSave={(val) => {
+                if (!currentImagePath) return;
+                setExifOverrides((cur) => {
+                  const next = { ...cur };
+                  const entry = { ...(next[currentImagePath] || {}) };
+                  if (val) entry.location = val; else delete entry.location;
+                  if (Object.keys(entry).length === 0) delete next[currentImagePath];
+                  else next[currentImagePath] = entry;
+                  return next;
+                });
+              }}
+              placeholder="e.g. Kenai, Alaska"
+            />
+            <ExifChip
+              icon={Aperture}
+              label="Cam"
+              testid="exif-cam"
+              value={(() => {
+                const o = currentImagePath ? exifOverrides[currentImagePath]?.camera : null;
+                return o || exif?.Model || "";
+              })()}
+              overridden={!!(currentImagePath && exifOverrides[currentImagePath]?.camera)}
+              editable={!!currentImage}
+              onSave={(val) => {
+                if (!currentImagePath) return;
+                setExifOverrides((cur) => {
+                  const next = { ...cur };
+                  const entry = { ...(next[currentImagePath] || {}) };
+                  if (val) entry.camera = val; else delete entry.camera;
+                  if (Object.keys(entry).length === 0) delete next[currentImagePath];
+                  else next[currentImagePath] = entry;
+                  return next;
+                });
+              }}
+              placeholder="e.g. Canon EOS R5"
+            />
             <div className="flex-1" />
             <button
               onClick={() => setShowEditor(true)}

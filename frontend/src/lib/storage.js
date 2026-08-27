@@ -33,6 +33,7 @@ const DEFAULT_STATE = {
   looks: [
     // { id, name, brightness, contrast, saturation, sharpness }
   ],
+  exifOverrides: {}, // { [imagePath]: { date?, location?, camera? } }
 };
 
 export function loadState() {
@@ -62,6 +63,7 @@ export function loadState() {
       settings,
       ratings: parsed.ratings || {},
       looks: parsed.looks || [],
+      exifOverrides: parsed.exifOverrides || {},
     };
   } catch {
     return DEFAULT_STATE;
