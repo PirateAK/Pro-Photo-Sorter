@@ -1,5 +1,11 @@
-// LocalStorage-backed persistence for categories and app state.
-const KEY = "pps.state.v1";
+// LocalStorage-backed persistence for categories, settings, ratings.
+const KEY = "pps.state.v2";
+
+const DEFAULT_SETTINGS = {
+  moveMode: false,
+  filenameTemplate: "{folder}/{labels}{ext}",
+  minStarFilter: 0,
+};
 
 const DEFAULT_STATE = {
   categories: [
@@ -22,15 +28,32 @@ const DEFAULT_STATE = {
       ],
     },
   ],
-  history: [], // last actions for undo
+  settings: DEFAULT_SETTINGS,
+  ratings: {}, // { [imagePath]: 1-5 }
 };
 
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return DEFAULT_STATE;
+    if (!raw) {
+      // Try to migrate from v1
+      const v1 = localStorage.getItem("pps.state.v1");
+      if (v1) {
+        const parsed = JSON.parse(v1);
+        return {
+          ...DEFAULT_STATE,
+          categories: parsed.categories || DEFAULT_STATE.categories,
+        };
+      }
+      return DEFAULT_STATE;
+    }
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_STATE, ...parsed };
+    return {
+      ...DEFAULT_STATE,
+      ...parsed,
+      settings: { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) },
+      ratings: parsed.ratings || {},
+    };
   } catch {
     return DEFAULT_STATE;
   }
@@ -47,3 +70,5 @@ export function saveState(state) {
 export function uid(prefix = "id") {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}-${Date.now().toString(36)}`;
 }
+
+export { DEFAULT_SETTINGS };

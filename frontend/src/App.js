@@ -27,6 +27,9 @@ import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
 import IconOverlay from "@/components/IconOverlay";
+import StarRating from "@/components/StarRating";
+import SettingsModal from "@/components/SettingsModal";
+import { Settings as Cog, MoveRight, Copy as CopyIcon } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -34,21 +37,26 @@ import {
   getOrCreateSubdir,
   copyFileTo,
   removeEntry,
-  sanitizeName,
 } from "@/lib/fsapi";
 import { loadState, saveState, uid } from "@/lib/storage";
+import { renderTemplate } from "@/lib/template";
 
-function useLocalPersistedCategories() {
+function usePersistedState() {
   const [state, setState] = useState(() => loadState());
-  const setCategories = (cats) => {
+  const persist = (updater) => {
     setState((s) => {
-      const next = { ...s, categories: cats };
-      // Save synchronously so a fast page reload doesn't miss the update.
+      const next = typeof updater === "function" ? updater(s) : updater;
       saveState(next);
       return next;
     });
   };
-  return { categories: state.categories, setCategories };
+  return {
+    state,
+    setCategories: (cats) => persist((s) => ({ ...s, categories: cats })),
+    setSettings: (settings) => persist((s) => ({ ...s, settings })),
+    setRatings: (updater) =>
+      persist((s) => ({ ...s, ratings: typeof updater === "function" ? updater(s.ratings) : updater })),
+  };
 }
 
 function extToLower(name) {
@@ -60,24 +68,9 @@ function baseName(name) {
   return i > 0 ? name.slice(0, i) : name;
 }
 
-// Build destination path parts from applied icons.
-// First icon = folder, remaining = filename parts joined by "_"
-function buildDestPath(icons, originalName) {
-  const ext = extToLower(originalName);
-  const labels = icons.map((i) => sanitizeName(i.label)).filter(Boolean);
-  if (labels.length === 0) {
-    return { folderParts: [], fileName: originalName };
-  }
-  const [folder, ...rest] = labels;
-  const filenameStem = rest.length > 0 ? rest.join("_") : baseName(originalName);
-  return {
-    folderParts: [folder],
-    fileName: `${filenameStem}${ext}`,
-  };
-}
-
 export default function App() {
-  const { categories, setCategories } = useLocalPersistedCategories();
+  const { state, setCategories, setSettings, setRatings } = usePersistedState();
+  const { categories, settings, ratings } = state;
   const [activeCatId, setActiveCatId] = useState(categories[0]?.id || null);
 
   // Source
@@ -107,6 +100,7 @@ export default function App() {
   // Category manager modal
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Undo history
   const [history, setHistory] = useState([]);
@@ -277,14 +271,33 @@ export default function App() {
 
     let stored = 0;
     const undoEntries = [];
+    const movedNames = [];
     for (const img of targets) {
       const icons = appliedByImage[img.name] || [];
       if (icons.length === 0) {
         toast.error(`No icons on ${img.name}`, { description: "Drag icons to build the path first." });
         continue;
       }
-      const { folderParts, fileName } = buildDestPath(icons, img.name);
-      // Anchor to destSelected if chosen, else destRoot
+      const imgPath = `${currentSourcePath}/${img.name}`;
+      const stars = ratings[imgPath] || 0;
+      // We need EXIF date for template; parse quickly for batch items other than current.
+      let imgExifDate = null;
+      if (img === currentImage) {
+        imgExifDate = exif?.DateTimeOriginal || exif?.CreateDate || null;
+      } else {
+        try {
+          const f = await img.handle.getFile();
+          const d = await exifr.parse(f, { pick: ["DateTimeOriginal", "CreateDate"] });
+          imgExifDate = d?.DateTimeOriginal || d?.CreateDate || null;
+        } catch { /* ignore */ }
+      }
+
+      const { folderParts, fileName } = renderTemplate(settings.filenameTemplate, {
+        icons,
+        originalName: img.name,
+        exifDate: imgExifDate,
+        stars,
+      });
       const anchor = destSelected?.handle || destRoot;
       try {
         const targetDir = await getOrCreateSubdir(anchor, folderParts);
@@ -295,17 +308,38 @@ export default function App() {
           sourceName: img.name,
           targetDir,
           writtenName,
+          moved: settings.moveMode,
         });
+        // Move mode: delete source after successful copy
+        if (settings.moveMode && currentSourceFolder) {
+          try {
+            await removeEntry(currentSourceFolder, img.name);
+            movedNames.push(img.name);
+          } catch (e) {
+            toast.error(`Moved but couldn't remove source: ${img.name}`);
+          }
+        }
       } catch (e) {
         toast.error(`Store failed: ${img.name}`, { description: e.message });
       }
     }
     if (stored > 0) {
       setHistory((h) => [{ type: "store-batch", entries: undoEntries }, ...h].slice(0, 30));
-      toast.success(`Stored ${stored} photo${stored > 1 ? "s" : ""}`, {
+      const verb = settings.moveMode ? "Moved" : "Stored";
+      toast.success(`${verb} ${stored} photo${stored > 1 ? "s" : ""}`, {
         description: destSelected?.path || destRootName,
       });
-      // Clear batch after successful store
+      // Remove moved files from filmstrip
+      if (movedNames.length > 0) {
+        const removedSet = new Set(movedNames);
+        setImages((imgs) => imgs.filter((im) => !removedSet.has(im.name)));
+        setAppliedByImage((cur) => {
+          const n = { ...cur };
+          for (const nm of movedNames) delete n[nm];
+          return n;
+        });
+        setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - movedNames.length - 1)));
+      }
       if (batchMode) setBatchSelected(new Set());
     }
   };
