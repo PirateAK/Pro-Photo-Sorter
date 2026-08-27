@@ -31,7 +31,7 @@ import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
-import { Settings as Cog, MoveRight, Copy as CopyIcon, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -673,13 +673,6 @@ export default function App() {
               <span className="font-mono">{exif?.Model || "—"}</span>
             </div>
             <div className="flex-1" />
-            {/* Move/Copy mode indicator */}
-            <div className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-medium ${
-              settings.moveMode ? "bg-danger-earth/20 text-[color:var(--danger)] border border-[color:var(--danger)]/40" : "bg-app border border-app text-dim"
-            }`} data-testid="mode-indicator">
-              {settings.moveMode ? <MoveRight size={11} /> : <CopyIcon size={11} />}
-              {settings.moveMode ? "MOVE" : "COPY"}
-            </div>
             <button
               onClick={() => setShowEditor(true)}
               disabled={!currentImage}
