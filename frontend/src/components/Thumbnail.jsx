@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from "react";
 import { getThumbnail } from "../lib/thumbCache";
-import { Image as ImageIcon } from "lucide-react";
+import { Image as ImageIcon, CheckSquare, Square } from "lucide-react";
 
-export default function Thumbnail({ file, cacheKey, active, batchSelected, onClick, onDoubleClick }) {
+export default function Thumbnail({ file, cacheKey, active, batchMode, batchSelected, onClick, onDoubleClick }) {
   const [src, setSrc] = useState(null);
   const [err, setErr] = useState(false);
 
@@ -45,6 +45,19 @@ export default function Thumbnail({ file, cacheKey, active, batchSelected, onCli
           )}
         </div>
       )}
+
+      {batchMode && (
+        <div
+          className={`absolute top-1 right-1 w-6 h-6 rounded flex items-center justify-center backdrop-blur border shadow ${
+            batchSelected ? "bg-success-earth text-[color:var(--text-inverse)] border-transparent" : "bg-black/60 text-app border-app"
+          }`}
+          data-testid={`thumb-check-${file.name}`}
+          aria-label={batchSelected ? "Selected for batch" : "Not selected"}
+        >
+          {batchSelected ? <CheckSquare size={14} strokeWidth={2.2} /> : <Square size={14} strokeWidth={2.2} />}
+        </div>
+      )}
+
       <div className="absolute bottom-0 left-0 right-0 px-1 py-0.5 bg-black/60 rounded-b text-[10px] font-mono truncate text-app">
         {file.name}
       </div>

@@ -1,0 +1,25 @@
+{
+  "summary": "Iteration 12 (frontend only) — Batch mode UX overhaul verified via static code inspection + full runtime E2E using a mocked window.showDirectoryPicker (3 synthetic PNG file handles), which allowed real exercise of batch selection and the new Run Batch dropdown. All 7 requested checks pass with 0 console errors. Static: toggleBatch pre-selects visible images honoring settings.minStarFilter on ON and clears on OFF; selectAllBatch/selectNoneBatch/showBatchMenu exist; Thumbnail receives batchMode; batch-select-controls (All/None) render when batchMode; run-batch-btn + batch-menu with store/auto-enhance/auto-rate/contact/cancel testids render when batchMode && selected>0; standalone 'batch-auto-enhance' toolbar button removed (only batch-menu-auto-enhance remains). Thumbnail.jsx renders thumb-check-<name> overlay top-right (CheckSquare/Square) only when batchMode. Runtime: with 0 images Batch turns green showing 'Batch (0/0)', Run Batch not rendered; with 3 mock images Batch ON auto-selected all 3 -> 'Batch (3/3)' and 'Run Batch (3)'; thumb click deselect -> (2/3); None -> (0/3) and Run Batch disappears; All -> (3/3); dropdown shows all 5 items; backdrop click closes menu; Contact Sheet PDF action closed menu and opened modal (3 photos), Escape closed it; Auto-Rate ran, applied star ratings and cleared selection; Exit batch mode removed All/None controls and thumbnail checkboxes. Regression: Edit/compare-1/2/3/auto-rate-btn/open-rename/open-contact/open-category-manager/open-settings/show-help present (disabled only when no images, as designed); Escape closed Help, Settings, Categories, Contact modals.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Top toolbar (batch mode ON)", "issues": ["Toolbar wraps to a second row (Shortcuts drops to line 2) once All/None + 'Run Batch (N)' appear at 1920px width — consider condensing labels or grouping batch controls to avoid layout shift"]}
+    ]
+  },
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Spec note (no code change needed): the review request's runtime bullet says All/None should not render with 0 selected, but implementation (and static spec item e) renders batch-select-controls whenever batchMode is true — verified behavior matches item (e); confirm which is intended.",
+    "App.js is 1458 lines; the toolbar/batch-menu block is a good candidate to extract into a BatchToolbar component before it grows further.",
+    "eslint reports several no-empty catch blocks in App.js (lines 411, 566, 698, 1355, 1391) and an unescaped apostrophe at App.js:972 — silent catches hide FSA/EXIF failures from users."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "seed_data_creation": "Runtime-only mock: window.showDirectoryPicker stubbed in a Playwright init script returning a fake directory handle with 3 canvas-generated PNG file handles (a1/b2/c3.png). No app files changed.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "FSA picker CAN be automated: add_init_script stubbing window.showDirectoryPicker with an object exposing {kind:'directory', name, async *entries(), getFileHandle(create), getDirectoryHandle(create), removeEntry} and file handles with getFile()/createWritable(). This unlocks filmstrip, batch, rename, contact sheet and editor flows. Store-to-destination via batch-menu-store was NOT exercised (needs a second mocked destination picker + write assertions) — next agent can extend the mock to verify copy/move behavior.",
+  "rca_of_the_issue": "No defects found in iteration 12 scope."
+}

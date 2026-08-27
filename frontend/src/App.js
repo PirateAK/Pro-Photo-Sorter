@@ -31,7 +31,7 @@ import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -115,6 +115,7 @@ export default function App() {
   // Batch selection
   const [batchMode, setBatchMode] = useState(false);
   const [batchSelected, setBatchSelected] = useState(new Set());
+  const [showBatchMenu, setShowBatchMenu] = useState(false);
 
   // Destination "just stored" tracking — shows +N badges + auto-expands the tree
   const [justStored, setJustStored] = useState({}); // { pathString: count }
@@ -573,9 +574,28 @@ export default function App() {
   const goNext = () => setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
 
   const toggleBatch = () => {
-    setBatchMode((v) => !v);
-    setBatchSelected(new Set());
+    setBatchMode((cur) => {
+      if (cur) {
+        // Turning OFF — clear the selection
+        setBatchSelected(new Set());
+        return false;
+      } else {
+        // Turning ON — pre-select every visible thumb (respect star filter)
+        const visible = images.filter(
+          (im) => (ratings[`${currentSourcePath}/${im.name}`] || 0) >= (settings.minStarFilter || 0)
+        );
+        setBatchSelected(new Set(visible.map((i) => i.name)));
+        return true;
+      }
+    });
   };
+  const selectAllBatch = () => {
+    const visible = images.filter(
+      (im) => (ratings[`${currentSourcePath}/${im.name}`] || 0) >= (settings.minStarFilter || 0)
+    );
+    setBatchSelected(new Set(visible.map((i) => i.name)));
+  };
+  const selectNoneBatch = () => setBatchSelected(new Set());
   const toggleBatchSel = (name) => {
     setBatchSelected((cur) => {
       const n = new Set(cur);
@@ -814,7 +834,7 @@ export default function App() {
         {/* Top toolbar */}
         <div className="border-b border-app bg-surface px-4 py-2 flex flex-col gap-2 shrink-0 z-10">
           {/* Row 1: dropdowns & meta */}
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1.5 pane rounded px-2 py-1 text-xs" data-testid="exif-date">
               <Calendar size={12} className="text-primary-earth" />
               <span className="text-dim">Date:</span>
@@ -900,19 +920,104 @@ export default function App() {
               title="Batch mode (B)"
             >
               {batchMode ? <CheckSquare size={12} /> : <Square size={12} />} Batch
-              {batchMode && batchSelected.size > 0 && (
-                <span className="ml-1 font-mono">({batchSelected.size})</span>
+              {batchMode && (
+                <span className="ml-1 font-mono">({batchSelected.size}/{images.length})</span>
               )}
             </button>
+            {batchMode && (
+              <div className="flex rounded overflow-hidden border border-app" data-testid="batch-select-controls">
+                <button
+                  onClick={selectAllBatch}
+                  className="px-1.5 py-1 text-[10px] bg-app hover:bg-surface-hover"
+                  data-testid="batch-select-all"
+                  title="Select every photo in the filmstrip"
+                >
+                  All
+                </button>
+                <button
+                  onClick={selectNoneBatch}
+                  className="px-1.5 py-1 text-[10px] bg-app hover:bg-surface-hover border-l border-app"
+                  data-testid="batch-select-none"
+                  title="Deselect all"
+                >
+                  None
+                </button>
+              </div>
+            )}
             {batchMode && batchSelected.size > 0 && (
-              <button
-                onClick={batchAutoEnhance}
-                className="px-2.5 py-1 rounded bg-primary-earth/20 border border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)] text-xs flex items-center gap-1"
-                data-testid="batch-auto-enhance"
-                title="Auto-tone every selected photo and save as _auto.jpg"
-              >
-                <Wand2 size={12} /> Auto ({batchSelected.size})
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowBatchMenu((v) => !v)}
+                  className="px-3 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90 text-xs font-semibold flex items-center gap-1"
+                  data-testid="run-batch-btn"
+                  title="Run an action on the selected photos"
+                >
+                  <Play size={11} fill="currentColor" /> Run Batch ({batchSelected.size}) <ChevDown size={11} />
+                </button>
+                {showBatchMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-30"
+                      onClick={() => setShowBatchMenu(false)}
+                    />
+                    <div className="absolute right-0 top-full mt-1 w-64 pane rounded-lg shadow-2xl z-40 py-1" data-testid="batch-menu">
+                      <button
+                        onClick={() => { setShowBatchMenu(false); storeCurrent(); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-store"
+                      >
+                        <Save size={12} className="text-primary-earth" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Store to destination</div>
+                          <div className="text-[10px] text-dim">Uses each photo's icons for the path</div>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => { setShowBatchMenu(false); batchAutoEnhance(); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-auto-enhance"
+                      >
+                        <Wand2 size={12} className="text-primary-earth" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Auto-Enhance</div>
+                          <div className="text-[10px] text-dim">Saves _auto.jpg next to each</div>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => { setShowBatchMenu(false); batchAutoRate(); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-auto-rate"
+                      >
+                        <Sparkles size={12} className="text-primary-earth" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Auto-Rate</div>
+                          <div className="text-[10px] text-dim">Focus + faces → star ratings</div>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => { setShowBatchMenu(false); setShowContact(true); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-contact"
+                      >
+                        <FileText size={12} className="text-primary-earth" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Contact Sheet PDF</div>
+                          <div className="text-[10px] text-dim">Print-ready gallery of selected</div>
+                        </span>
+                      </button>
+                      <div className="border-t border-app my-1" />
+                      <button
+                        onClick={() => { setShowBatchMenu(false); setBatchSelected(new Set()); setBatchMode(false); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2 text-dim"
+                        data-testid="batch-menu-cancel"
+                      >
+                        <XIcon size={12} />
+                        <span>Exit batch mode</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <button
               onClick={() => setShowSettings(true)}
@@ -1197,6 +1302,7 @@ export default function App() {
                     file={img}
                     cacheKey={`${currentSourcePath}/${img.name}`}
                     active={i === selectedIdx}
+                    batchMode={batchMode}
                     batchSelected={batchMode && batchSelected.has(img.name)}
                     onClick={() => {
                       if (batchMode) toggleBatchSel(img.name);
