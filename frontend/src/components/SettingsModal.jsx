@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star } from "lucide-react";
+import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
 import { toast } from "sonner";
@@ -211,6 +211,90 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
               >
                 <Trash2 size={12} /> Clear cache
               </button>
+            </div>
+          </section>
+
+          {/* Batch behavior */}
+          <section>
+            <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-1">
+              <Layers size={13} className="text-primary-earth" /> Batch Behavior
+            </h3>
+            <p className="text-xs text-dim mb-3">
+              Controls how "Run Batch" processes many photos at once. You can still override the
+              default in the Run Batch dropdown per-run.
+            </p>
+
+            <div className="pane rounded p-3 bg-app space-y-4">
+              {/* Batch size limit */}
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-xs font-medium text-app">Max photos per batch</div>
+                  <div className="text-[11px] text-dim">
+                    Prevents PC lag on large filmstrips. If selection exceeds this, you'll be
+                    asked whether to process the first N or all.
+                  </div>
+                </div>
+                <input
+                  type="number"
+                  min={1}
+                  max={500}
+                  value={local.batchSizeLimit ?? 20}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      // Allow empty while typing; will be clamped on blur.
+                      setLocal({ ...local, batchSizeLimit: "" });
+                      return;
+                    }
+                    const n = Math.max(1, Math.min(500, parseInt(raw, 10)));
+                    if (!Number.isNaN(n)) setLocal({ ...local, batchSizeLimit: n });
+                  }}
+                  onBlur={() => {
+                    if (local.batchSizeLimit === "" || Number.isNaN(local.batchSizeLimit)) {
+                      setLocal({ ...local, batchSizeLimit: 20 });
+                    }
+                  }}
+                  className="w-20 bg-surface border border-app rounded px-2 py-1 text-sm font-mono text-right focus-ring"
+                  data-testid="batch-size-limit-input"
+                />
+              </div>
+
+              {/* Default after-action */}
+              <div>
+                <div className="text-xs font-medium text-app mb-1">
+                  After batch store, source photos should:
+                </div>
+                <div className="text-[11px] text-dim mb-2">
+                  Default action after each batch. Individual runs can override this from the
+                  Run Batch dropdown.
+                </div>
+                <div className="flex rounded overflow-hidden border border-app">
+                  {[
+                    { v: "keep", label: "Keep in source", hint: "Remove from filmstrip only" },
+                    { v: "move", label: "Move", hint: "Delete originals after copy" },
+                    { v: "delete", label: "Delete", hint: "Confirms first" },
+                  ].map((o) => (
+                    <button
+                      key={o.v}
+                      onClick={() => setLocal({ ...local, batchAfterAction: o.v })}
+                      className={`flex-1 px-3 py-1.5 text-xs ${
+                        (local.batchAfterAction ?? "keep") === o.v
+                          ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                          : "bg-surface hover:bg-surface-hover"
+                      }`}
+                      data-testid={`batch-after-${o.v}`}
+                      title={o.hint}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+                <div className="text-[10px] text-dim mt-1.5">
+                  {local.batchAfterAction === "delete" && "You'll be asked to confirm every time a batch delete runs."}
+                  {local.batchAfterAction === "move" && "Originals removed after successful copy to destination."}
+                  {(local.batchAfterAction === "keep" || !local.batchAfterAction) && "Safest option — originals stay on your source drive."}
+                </div>
+              </div>
             </div>
           </section>
         </div>

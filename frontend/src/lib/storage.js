@@ -5,6 +5,9 @@ const DEFAULT_SETTINGS = {
   moveMode: false,
   filenameTemplate: "{folders}/{tags}{ext}",
   minStarFilter: 0,
+  // Batch controls (Feb 2026)
+  batchSizeLimit: 20, // max photos processed per batch run
+  batchAfterAction: "keep", // "keep" | "move" | "delete" - fate of source after batch Store
 };
 
 const DEFAULT_STATE = {

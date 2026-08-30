@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -455,33 +455,96 @@ export default function App() {
     }
   };
 
-  const storeCurrent = async () => {
+  const storeCurrent = async (opts = {}) => {
     if (!currentImage) return;
     if (!destRoot) {
       toast.error("Choose a destination drive first");
       return;
     }
-    const targets = batchMode && batchSelected.size > 0
+
+    const isBatch = batchMode && batchSelected.size > 0;
+    let targets = isBatch
       ? images.filter((i) => batchSelected.has(i.name))
       : [currentImage];
 
+    // --- Batch-size limit: chunk large selections ---
+    const limit = Math.max(1, parseInt(settings.batchSizeLimit ?? 20, 10) || 20);
+    let leftoverNames = null; // names to keep selected for the next run
+    if (isBatch && !opts.forceAll && targets.length > limit) {
+      const okFirst = window.confirm(
+        `${targets.length} photos selected, but your batch limit is ${limit}.\n\n` +
+        `Click OK to process the first ${limit} now (the other ${targets.length - limit} will stay selected for the next run).\n\n` +
+        `Click Cancel to process ALL ${targets.length} at once (may lag your PC).`
+      );
+      if (okFirst) {
+        leftoverNames = new Set(targets.slice(limit).map((t) => t.name));
+        targets = targets.slice(0, limit);
+      }
+      // If user cancelled (chose "process all"), targets stays full
+    }
+
+    // --- Build effective overlay map for this run ---
+    let effectiveOverlays = appliedByImage;
+
+    // Auto-apply icons: if this is a batch and only ONE selected photo has icons,
+    // offer to copy them to all selected photos.
+    if (isBatch && targets.length > 1) {
+      const withIcons = targets.filter((t) => {
+        const ov = getOverlay(appliedByImage, t.name);
+        return ov.folders.length + ov.tags.length > 0;
+      });
+      if (withIcons.length === 1) {
+        const src = withIcons[0];
+        const srcOverlay = getOverlay(appliedByImage, src.name);
+        const ok = window.confirm(
+          `Only "${src.name}" has icons applied.\n\n` +
+          `Apply the same icons (folders + filename tags) to all ${targets.length} selected photos?`
+        );
+        if (!ok) return;
+        effectiveOverlays = { ...appliedByImage };
+        for (const t of targets) {
+          if (t.name === src.name) continue;
+          effectiveOverlays[t.name] = {
+            folders: srcOverlay.folders.map((f) => ({ ...f, uid: uid("ovl") })),
+            tags: srcOverlay.tags.map((f) => ({ ...f, uid: uid("ovl") })),
+          };
+        }
+        setAppliedByImage(effectiveOverlays);
+      } else if (withIcons.length === 0) {
+        toast.error("No icons applied", { description: "Drag icons onto at least one photo first." });
+        return;
+      }
+    }
+
+    // --- Determine after-action ---
+    // Batch: use per-run override → Settings default → "keep"
+    // Single: honor legacy moveMode toggle (copy vs move)
+    const afterAction = isBatch
+      ? (opts.afterAction ?? settings.batchAfterAction ?? "keep")
+      : (settings.moveMode ? "move" : "keep");
+
+    // For batch "delete" mode, always confirm.
+    if (isBatch && afterAction === "delete") {
+      const ok = window.confirm(
+        `After storing ${targets.length} photo${targets.length > 1 ? "s" : ""} to destination, DELETE the ` +
+        `original${targets.length > 1 ? "s" : ""} from your source drive?\n\n` +
+        `This CANNOT be undone.`
+      );
+      if (!ok) return;
+    }
+
     let stored = 0;
     const undoEntries = [];
-    const movedNames = [];
+    const removedFromFilmstrip = []; // names to remove after loop
+    const deletedFromDisk = []; // names deleted from source
     for (const img of targets) {
-      const overlay = (() => {
-        const v = appliedByImage[img.name];
-        if (!v) return { folders: [], tags: [] };
-        if (Array.isArray(v)) return { folders: v.length > 0 ? [v[0]] : [], tags: v.slice(1) };
-        return { folders: v.folders || [], tags: v.tags || [] };
-      })();
+      const overlay = getOverlay(effectiveOverlays, img.name);
       if (overlay.folders.length + overlay.tags.length === 0) {
         toast.error(`No icons on ${img.name}`, { description: "Drag icons to Folders / Filename first." });
         continue;
       }
       const imgPath = `${currentSourcePath}/${img.name}`;
       const stars = ratings[imgPath] || 0;
-      // We need EXIF date for template; parse quickly for batch items other than current.
       let imgExifDate = null;
       if (img === currentImage) {
         imgExifDate = exif?.DateTimeOriginal || exif?.CreateDate || null;
@@ -506,7 +569,6 @@ export default function App() {
         const targetDir = await getOrCreateSubdir(anchor, folderParts);
         const writtenName = await copyFileTo(img.handle, targetDir, fileName);
         stored++;
-        // Record which destination folder just received a file (for badge + auto-expand)
         const targetPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
         setJustStored((cur) => ({ ...cur, [targetPath]: (cur[targetPath] || 0) + 1 }));
         undoEntries.push({
@@ -514,40 +576,54 @@ export default function App() {
           sourceName: img.name,
           targetDir,
           writtenName,
-          moved: settings.moveMode,
+          moved: afterAction === "move" || afterAction === "delete",
         });
-        // Move mode: delete source after successful copy
-        if (settings.moveMode && currentSourceFolder) {
+        // Handle after-action per image
+        if ((afterAction === "move" || afterAction === "delete") && currentSourceFolder) {
           try {
             await removeEntry(currentSourceFolder, img.name);
-            movedNames.push(img.name);
+            deletedFromDisk.push(img.name);
+            removedFromFilmstrip.push(img.name);
           } catch (e) {
-            toast.error(`Moved but couldn't remove source: ${img.name}`);
+            toast.error(`Stored but couldn't remove source: ${img.name}`);
           }
+        } else if (afterAction === "keep" && isBatch) {
+          // In batch keep-mode, remove from filmstrip only (marks as done)
+          removedFromFilmstrip.push(img.name);
         }
       } catch (e) {
         toast.error(`Store failed: ${img.name}`, { description: e.message });
       }
     }
+
     if (stored > 0) {
       setHistory((h) => [{ type: "store-batch", entries: undoEntries }, ...h].slice(0, 30));
-      setDestRefreshCounter((c) => c + 1); // triggers tree to re-read affected branches
-      const verb = settings.moveMode ? "Moved" : "Stored";
+      setDestRefreshCounter((c) => c + 1);
+      const verb = afterAction === "move" ? "Moved" : afterAction === "delete" ? "Stored + deleted" : "Stored";
       toast.success(`${verb} ${stored} photo${stored > 1 ? "s" : ""}`, {
         description: destSelected?.path || destRootName,
       });
-      // Remove moved files from filmstrip
-      if (movedNames.length > 0) {
-        const removedSet = new Set(movedNames);
+      if (removedFromFilmstrip.length > 0) {
+        const removedSet = new Set(removedFromFilmstrip);
         setImages((imgs) => imgs.filter((im) => !removedSet.has(im.name)));
         setAppliedByImage((cur) => {
           const n = { ...cur };
-          for (const nm of movedNames) delete n[nm];
+          for (const nm of removedFromFilmstrip) delete n[nm];
           return n;
         });
-        setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - movedNames.length - 1)));
+        setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - removedFromFilmstrip.length - 1)));
       }
-      if (batchMode) setBatchSelected(new Set());
+      // Preserve leftover selection for the next batch run
+      if (isBatch) {
+        if (leftoverNames && leftoverNames.size > 0) {
+          setBatchSelected(leftoverNames);
+          toast.info(`${leftoverNames.size} photo${leftoverNames.size > 1 ? "s" : ""} still selected`, {
+            description: "Click 'Run Batch' again to process the next group.",
+          });
+        } else {
+          setBatchSelected(new Set());
+        }
+      }
     }
   };
 
@@ -647,23 +723,58 @@ export default function App() {
   };
 
   // Batch auto-enhance: iterate over batch-selected images, analyze histogram,
-  // apply auto-tone, and save as new JPG next to each source.
+  // apply auto-tone, and save the enhanced JPG to the DESTINATION folder.
+  // Destination resolution priority:
+  //   1. If ANY batch image has folder icons applied → use those (renderTemplate path)
+  //   2. Else if a folder is currently selected in the destination tree → use that
+  //   3. Else error out.
   const batchAutoEnhance = async () => {
     if (!batchMode || batchSelected.size === 0) return;
-    if (!currentSourceFolder) {
-      toast.error("No source folder open");
+    if (!destRoot) {
+      toast.error("Choose a destination drive first");
       return;
     }
-    const targets = images.filter((i) => batchSelected.has(i.name));
+
+    let targets = images.filter((i) => batchSelected.has(i.name));
+
+    // Batch-size limit
+    const limit = Math.max(1, parseInt(settings.batchSizeLimit ?? 20, 10) || 20);
+    let leftoverNames = null;
+    if (targets.length > limit) {
+      const okFirst = window.confirm(
+        `${targets.length} photos selected for auto-enhance, but your batch limit is ${limit}.\n\n` +
+        `Click OK to process the first ${limit} now.\n\n` +
+        `Click Cancel to process ALL ${targets.length} at once.`
+      );
+      if (okFirst) {
+        leftoverNames = new Set(targets.slice(limit).map((t) => t.name));
+        targets = targets.slice(0, limit);
+      }
+    }
+
+    // Find a "template" image with icons — first one that has any
+    const templateImg = targets.find((t) => {
+      const ov = getOverlay(appliedByImage, t.name);
+      return ov.folders.length + ov.tags.length > 0;
+    });
+
+    if (!templateImg && !destSelected) {
+      toast.error("Pick a destination folder", {
+        description: "Either drag folder icons onto the first photo, or click a folder in the destination tree.",
+      });
+      return;
+    }
+
     let done = 0;
     let failed = 0;
     const t = toast.loading(`Auto-enhancing 0 / ${targets.length}…`);
+    const removedFromFilmstrip = [];
+
     for (const img of targets) {
       try {
         const file = await img.handle.getFile();
         const { result, img: loadedImg } = await autoAnalyzeFile(file);
 
-        // Render to a canvas with the suggested filter
         const out = document.createElement("canvas");
         out.width = loadedImg.width;
         out.height = loadedImg.height;
@@ -680,29 +791,73 @@ export default function App() {
         const blob = await new Promise((res) => out.toBlob(res, "image/jpeg", 0.92));
         if (!blob) throw new Error("encode failed");
 
+        // Build destination path
         const dot = img.name.lastIndexOf(".");
         const stem = dot > 0 ? img.name.slice(0, dot) : img.name;
         const outName = `${stem}_auto.jpg`;
-        const newHandle = await currentSourceFolder.getFileHandle(outName, { create: true });
+
+        let targetDir;
+        if (templateImg) {
+          // Use icons from the template image for every enhanced file
+          const overlay = getOverlay(appliedByImage, templateImg.name);
+          const anchor = destSelected?.handle || destRoot;
+          const { folderParts } = renderTemplate(settings.filenameTemplate, {
+            folders: overlay.folders,
+            tags: overlay.tags,
+            originalName: img.name,
+            exifDate: null,
+            stars: 0,
+          });
+          targetDir = await getOrCreateSubdir(anchor, folderParts);
+        } else {
+          // Save into the selected destination-tree folder
+          targetDir = destSelected.handle;
+        }
+
+        // Convert blob to a File so we can reuse copyFileTo signature (needs handle-like source).
+        // Actually we need to write directly since it's a blob, not a file handle:
+        const newHandle = await targetDir.getFileHandle(outName, { create: true });
         const w = await newHandle.createWritable();
         await w.write(blob);
         await w.close();
+
         done++;
+        removedFromFilmstrip.push(img.name);
       } catch (e) {
         failed++;
       }
       toast.loading(`Auto-enhancing ${done + failed} / ${targets.length}…`, { id: t });
     }
     toast.dismiss(t);
-    if (done > 0) toast.success(`Auto-enhanced ${done} photo${done > 1 ? "s" : ""}`, { description: failed ? `${failed} failed` : "Saved with _auto suffix" });
+
+    if (done > 0) {
+      setDestRefreshCounter((c) => c + 1);
+      toast.success(`Auto-enhanced ${done} photo${done > 1 ? "s" : ""}`, {
+        description: failed ? `${failed} failed` : `Saved to ${destSelected?.path || destRootName}`,
+      });
+    }
     if (done === 0 && failed > 0) toast.error(`All ${failed} failed`);
 
-    // Refresh filmstrip
-    try {
-      const imgs = await listImagesInDir(currentSourceFolder);
-      setImages(imgs);
-    } catch {}
-    setBatchSelected(new Set());
+    // Remove processed items from filmstrip
+    if (removedFromFilmstrip.length > 0) {
+      const removedSet = new Set(removedFromFilmstrip);
+      setImages((imgs) => imgs.filter((im) => !removedSet.has(im.name)));
+      setAppliedByImage((cur) => {
+        const n = { ...cur };
+        for (const nm of removedFromFilmstrip) delete n[nm];
+        return n;
+      });
+    }
+
+    // Preserve leftover selection
+    if (leftoverNames && leftoverNames.size > 0) {
+      setBatchSelected(leftoverNames);
+      toast.info(`${leftoverNames.size} photo${leftoverNames.size > 1 ? "s" : ""} still selected`, {
+        description: "Click 'Run Batch' again to process the next group.",
+      });
+    } else {
+      setBatchSelected(new Set());
+    }
   };
 
   // Keyboard shortcuts
@@ -1023,18 +1178,60 @@ export default function App() {
                       className="fixed inset-0 z-30"
                       onClick={() => setShowBatchMenu(false)}
                     />
-                    <div className="absolute right-0 top-full mt-1 w-64 pane rounded-lg shadow-2xl z-40 py-1" data-testid="batch-menu">
+                    <div className="absolute right-0 top-full mt-1 w-72 pane rounded-lg shadow-2xl z-40 py-1" data-testid="batch-menu">
+                      <div className="px-3 py-1.5 text-[10px] uppercase tracking-widest text-dim font-heading border-b border-app">
+                        Store to destination
+                      </div>
                       <button
                         onClick={() => { setShowBatchMenu(false); storeCurrent(); }}
                         className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
                         data-testid="batch-menu-store"
+                        title={`Uses default: ${settings.batchAfterAction || "keep"}`}
                       >
                         <Save size={12} className="text-primary-earth" />
                         <span className="flex-1">
-                          <div className="font-semibold text-app">Store to destination</div>
-                          <div className="text-[10px] text-dim">Uses each photo's icons for the path</div>
+                          <div className="font-semibold text-app">
+                            Store (default: {settings.batchAfterAction === "move" ? "move" : settings.batchAfterAction === "delete" ? "delete originals" : "keep in source"})
+                          </div>
+                          <div className="text-[10px] text-dim">
+                            Limit {settings.batchSizeLimit || 20} per run · uses each photo's icons
+                          </div>
                         </span>
                       </button>
+                      <button
+                        onClick={() => { setShowBatchMenu(false); storeCurrent({ afterAction: "keep" }); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-store-keep"
+                      >
+                        <Copy size={12} className="text-primary-earth" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Store · Keep in source</div>
+                          <div className="text-[10px] text-dim">Originals stay on source drive, removed from filmstrip only</div>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => { setShowBatchMenu(false); storeCurrent({ afterAction: "move" }); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-store-move"
+                      >
+                        <MoveRight size={12} className="text-primary-earth" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Store · Move originals</div>
+                          <div className="text-[10px] text-dim">Deletes source files after successful copy</div>
+                        </span>
+                      </button>
+                      <button
+                        onClick={() => { setShowBatchMenu(false); storeCurrent({ afterAction: "delete" }); }}
+                        className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
+                        data-testid="batch-menu-store-delete"
+                      >
+                        <Trash2 size={12} className="text-red-400" />
+                        <span className="flex-1">
+                          <div className="font-semibold text-app">Store · Delete originals</div>
+                          <div className="text-[10px] text-dim">Confirms before deleting from disk</div>
+                        </span>
+                      </button>
+                      <div className="border-t border-app my-1" />
                       <button
                         onClick={() => { setShowBatchMenu(false); batchAutoEnhance(); }}
                         className="w-full text-left px-3 py-2 text-xs hover:bg-surface-hover flex items-center gap-2"
@@ -1043,7 +1240,7 @@ export default function App() {
                         <Wand2 size={12} className="text-primary-earth" />
                         <span className="flex-1">
                           <div className="font-semibold text-app">Auto-Enhance</div>
-                          <div className="text-[10px] text-dim">Saves _auto.jpg next to each</div>
+                          <div className="text-[10px] text-dim">Saves _auto.jpg to destination (using folder icons or selected dest folder)</div>
                         </span>
                       </button>
                       <button
