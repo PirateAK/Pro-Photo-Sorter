@@ -125,12 +125,31 @@ body,
         0 0 0 4px var(--primary);
 }
 
-/* Draggable overlay on image */
+/* Draggable overlay on image — theme-aware */
 .icon-overlay {
     backdrop-filter: blur(14px);
     background: rgba(38, 34, 31, 0.7);
     border: 1px solid rgba(66, 58, 53, 0.8);
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+}
+
+[data-theme="light"] .icon-overlay {
+    background: rgba(255, 253, 248, 0.85);
+    border: 1px solid rgba(184, 165, 139, 0.7);
+    box-shadow: 0 10px 40px rgba(58, 45, 34, 0.35);
+}
+
+/* Icon chips inside the overlay — small pills that carry a folder or tag label.
+   Need enough contrast against the semi-transparent overlay background in BOTH themes. */
+.icon-overlay [data-icon-item] {
+    background: rgba(0, 0, 0, 0.35);
+}
+[data-theme="light"] .icon-overlay [data-icon-item] {
+    background: rgba(220, 205, 180, 0.9);
+    color: var(--text);
+}
+[data-theme="light"] .icon-overlay [data-icon-item]:hover {
+    background: rgba(200, 180, 148, 1);
 }
 
 /* Hide default file input */
