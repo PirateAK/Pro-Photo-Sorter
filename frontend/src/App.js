@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -48,6 +48,9 @@ import { computeAutoRating } from "@/lib/focusScore";
 import BatchRenameModal from "@/components/BatchRenameModal";
 import ContactSheetModal from "@/components/ContactSheetModal";
 import ComparisonView from "@/components/ComparisonView";
+import SessionStats from "@/components/SessionStats";
+import RecentFoldersDropdown from "@/components/RecentFoldersDropdown";
+import { addRecent, reacquire } from "@/lib/recentFolders";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -123,6 +126,14 @@ export default function App() {
   const [batchSelected, setBatchSelected] = useState(new Set());
   const [showBatchMenu, setShowBatchMenu] = useState(false);
 
+  // Session stats — counters reset on manual reset (Iter 8, Feb 2026)
+  const [sessionStats, setSessionStats] = useState({
+    stored: 0, moved: 0, deleted: 0, skipped: 0, rated: 0, enhanced: 0,
+  });
+  const bumpStat = useCallback((key, by = 1) => {
+    setSessionStats((s) => ({ ...s, [key]: (s[key] || 0) + by }));
+  }, []);
+
   // Destination "just stored" tracking — shows +N badges + auto-expands the tree
   const [justStored, setJustStored] = useState({}); // { pathString: count }
   const [destRefreshCounter, setDestRefreshCounter] = useState(0);
@@ -156,6 +167,17 @@ export default function App() {
   const imageAreaRef = useRef(null);
   const filmstripRef = useRef(null);
   const [filmstripCanScroll, setFilmstripCanScroll] = useState({ left: false, right: false });
+
+  // Apply theme to <html> root (Iter 8, Feb 2026)
+  useEffect(() => {
+    const t = settings.theme || "dark";
+    document.documentElement.setAttribute("data-theme", t);
+  }, [settings.theme]);
+
+  const toggleTheme = () => {
+    const next = (settings.theme || "dark") === "dark" ? "light" : "dark";
+    setSettings({ ...settings, theme: next });
+  };
 
   // Track whether the filmstrip has content off-screen (so we know when to show arrows)
   useEffect(() => {
@@ -204,6 +226,8 @@ export default function App() {
       // Auto-select root so the filmstrip immediately populates
       onSelectSourceFolder({ name: h.name, handle: h }, h.name);
       toast.success(`Loaded source: ${h.name}`);
+      // Save to recents (Iter 8)
+      try { await addRecent("source", h, h.name); } catch { /* ignore */ }
     } catch (e) {
       if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
     }
@@ -218,9 +242,31 @@ export default function App() {
       // Reset any stale "+N" badges from a previous destination
       setJustStored({});
       toast.success(`Loaded destination: ${h.name}`);
+      try { await addRecent("dest", h, h.name); } catch { /* ignore */ }
     } catch (e) {
       if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
     }
+  };
+
+  // Pick a recent folder (from RecentFoldersDropdown) — reacquires permission first
+  const pickRecentSource = async (handle, name) => {
+    const h = await reacquire(handle, "readwrite");
+    if (!h) { toast.error("Permission denied for that folder"); return; }
+    setSourceRoot(h);
+    setSourceRootName(name);
+    onSelectSourceFolder({ name, handle: h }, name);
+    toast.success(`Reopened source: ${name}`);
+    try { await addRecent("source", h, name); } catch { /* ignore */ }
+  };
+  const pickRecentDest = async (handle, name) => {
+    const h = await reacquire(handle, "readwrite");
+    if (!h) { toast.error("Permission denied for that folder"); return; }
+    setDestRoot(h);
+    setDestRootName(name);
+    setDestSelected({ handle: h, path: name });
+    setJustStored({});
+    toast.success(`Reopened destination: ${name}`);
+    try { await addRecent("dest", h, name); } catch { /* ignore */ }
   };
 
   // When user clicks a folder in the source tree
@@ -419,6 +465,21 @@ export default function App() {
 
   // Actions ---------------------------------------------------------------
 
+  // Helper: move a file to `.pps-trash` in the source folder (safer than hard delete).
+  // Returns true on success. The trash lives on the source drive; user can dig files
+  // back out via File Explorer or the Undo toast the caller shows.
+  const TRASH_DIR = ".pps-trash";
+  const moveToTrash = async (fileHandle, sourceFolder, name) => {
+    try {
+      const trash = await sourceFolder.getDirectoryHandle(TRASH_DIR, { create: true });
+      const written = await copyFileTo(fileHandle, trash, name);
+      await removeEntry(sourceFolder, name);
+      return { ok: true, trashHandle: trash, trashedName: written };
+    } catch (e) {
+      return { ok: false, error: e };
+    }
+  };
+
   const removeCurrentFromView = () => {
     if (!currentImage) return;
     // "Remove" = drop from the working list (does not touch disk)
@@ -431,28 +492,57 @@ export default function App() {
       return n;
     });
     setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - 2)));
+    bumpStat("skipped");
     toast("Removed from list", { description: nm });
   };
 
   const deleteCurrentFile = async () => {
     if (!currentImage || !currentSourceFolder) return;
     const nm = currentImage.name;
-    const ok = window.confirm(`Delete "${nm}" from disk? This cannot be undone.`);
+    const ok = window.confirm(
+      `Move "${nm}" to the .pps-trash folder inside your source drive?\n\n` +
+      `You can restore it from that folder any time before you empty it in File Explorer.`
+    );
     if (!ok) return;
-    try {
-      await removeEntry(currentSourceFolder, nm);
-      setHistory((h) => [{ type: "delete", name: nm }, ...h].slice(0, 30));
-      setImages((imgs) => imgs.filter((_, i) => i !== selectedIdx));
-      setAppliedByImage((cur) => {
-        const n = { ...cur };
-        delete n[nm];
-        return n;
-      });
-      setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - 2)));
-      toast.error("Deleted from disk", { description: nm });
-    } catch (e) {
-      toast.error("Delete failed", { description: e.message });
+    const res = await moveToTrash(currentImage.handle, currentSourceFolder, nm);
+    if (!res.ok) {
+      toast.error("Trash failed", { description: res.error?.message });
+      return;
     }
+    setHistory((h) => [{
+      type: "trash",
+      name: nm,
+      trashHandle: res.trashHandle,
+      trashedName: res.trashedName,
+      parentHandle: currentSourceFolder,
+    }, ...h].slice(0, 30));
+    setImages((imgs) => imgs.filter((_, i) => i !== selectedIdx));
+    setAppliedByImage((cur) => {
+      const n = { ...cur };
+      delete n[nm];
+      return n;
+    });
+    setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - 2)));
+    bumpStat("deleted");
+    toast("Moved to .pps-trash", {
+      description: nm,
+      action: {
+        label: "Undo",
+        onClick: async () => {
+          try {
+            const trashHandle = res.trashHandle;
+            const trashedFileHandle = await trashHandle.getFileHandle(res.trashedName);
+            await copyFileTo(trashedFileHandle, currentSourceFolder, res.trashedName);
+            await removeEntry(trashHandle, res.trashedName);
+            const imgs = await listImagesInDir(currentSourceFolder);
+            setImages(imgs);
+            toast.success("Restored", { description: res.trashedName });
+          } catch (e) {
+            toast.error("Undo failed", { description: e.message });
+          }
+        },
+      },
+    });
   };
 
   const storeCurrent = async (opts = {}) => {
@@ -581,6 +671,11 @@ export default function App() {
         // Handle after-action per image
         if ((afterAction === "move" || afterAction === "delete") && currentSourceFolder) {
           try {
+            if (afterAction === "delete") {
+              // Batch delete → move to trash (safer than hard-delete)
+              const trash = await currentSourceFolder.getDirectoryHandle(TRASH_DIR, { create: true });
+              await copyFileTo(img.handle, trash, img.name);
+            }
             await removeEntry(currentSourceFolder, img.name);
             deletedFromDisk.push(img.name);
             removedFromFilmstrip.push(img.name);
@@ -599,10 +694,14 @@ export default function App() {
     if (stored > 0) {
       setHistory((h) => [{ type: "store-batch", entries: undoEntries }, ...h].slice(0, 30));
       setDestRefreshCounter((c) => c + 1);
-      const verb = afterAction === "move" ? "Moved" : afterAction === "delete" ? "Stored + deleted" : "Stored";
+      const verb = afterAction === "move" ? "Moved" : afterAction === "delete" ? "Stored + trashed" : "Stored";
       toast.success(`${verb} ${stored} photo${stored > 1 ? "s" : ""}`, {
         description: destSelected?.path || destRootName,
       });
+      // Bump session stats
+      if (afterAction === "move") bumpStat("moved", stored);
+      else if (afterAction === "delete") { bumpStat("stored", stored); bumpStat("deleted", stored); }
+      else bumpStat("stored", stored);
       if (removedFromFilmstrip.length > 0) {
         const removedSet = new Set(removedFromFilmstrip);
         setImages((imgs) => imgs.filter((im) => !removedSet.has(im.name)));
@@ -718,6 +817,7 @@ export default function App() {
     setRatings((cur) => ({ ...cur, ...newRatings }));
     const withFaceHint = window.FaceDetector ? "" : " (focus-only; browser lacks face API)";
     toast.success(`Auto-rated ${done} photo${done !== 1 ? "s" : ""}${withFaceHint}`);
+    bumpStat("rated", done);
     setAutoRating(false);
     if (batchMode) setBatchSelected(new Set());
   };
@@ -835,6 +935,7 @@ export default function App() {
       toast.success(`Auto-enhanced ${done} photo${done > 1 ? "s" : ""}`, {
         description: failed ? `${failed} failed` : `Saved to ${destSelected?.path || destRootName}`,
       });
+      bumpStat("enhanced", done);
     }
     if (done === 0 && failed > 0) toast.error(`All ${failed} failed`);
 
@@ -956,24 +1057,27 @@ export default function App() {
 
   return (
     <div className="app-grid text-app" data-testid="app-root">
-      <Toaster theme="dark" position="bottom-right" richColors closeButton />
+      <Toaster theme={settings.theme || "dark"} position="bottom-right" richColors closeButton />
 
       {/* LEFT — Source drive tree */}
       <div className="region-left">
         <div className="px-3 py-2.5 border-b border-app flex items-center justify-between shrink-0">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-widest text-dim font-heading">Source</div>
             <div className="text-sm font-medium truncate" data-testid="source-root-name">
               {sourceRootName || "Not connected"}
             </div>
           </div>
-          <button
-            onClick={pickSource}
-            className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
-            data-testid="pick-source-btn"
-          >
-            <FolderOpen size={12} /> Open
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={pickSource}
+              className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
+              data-testid="pick-source-btn"
+            >
+              <FolderOpen size={12} /> Open
+            </button>
+            <RecentFoldersDropdown kind="source" onPick={pickRecentSource} />
+          </div>
         </div>
         {sourceRoot ? (
           <FileTree
@@ -1280,6 +1384,15 @@ export default function App() {
               </div>
             )}
             <button
+              onClick={toggleTheme}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+              data-testid="toggle-theme"
+              title={`Switch to ${settings.theme === "light" ? "Earth Dark" : "Earth Light"}`}
+              aria-label={`Switch to ${settings.theme === "light" ? "Earth Dark" : "Earth Light"} theme`}
+            >
+              {settings.theme === "light" ? <Moon size={12} /> : <Sun size={12} />}
+            </button>
+            <button
               onClick={() => setShowSettings(true)}
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
               data-testid="open-settings"
@@ -1450,19 +1563,22 @@ export default function App() {
       {/* RIGHT — Destination tree */}
       <div className="region-right">
         <div className="px-3 py-2.5 border-b border-app flex items-center justify-between shrink-0">
-          <div>
+          <div className="min-w-0 flex-1">
             <div className="text-[10px] uppercase tracking-widest text-dim font-heading">Destination</div>
             <div className="text-sm font-medium truncate" data-testid="dest-root-name">
               {destRootName || "Not connected"}
             </div>
           </div>
-          <button
-            onClick={pickDest}
-            className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
-            data-testid="pick-dest-btn"
-          >
-            <FolderOpen size={12} /> Open
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              onClick={pickDest}
+              className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
+              data-testid="pick-dest-btn"
+            >
+              <FolderOpen size={12} /> Open
+            </button>
+            <RecentFoldersDropdown kind="dest" onPick={pickRecentDest} />
+          </div>
         </div>
         {destRoot ? (
           <FileTree
@@ -1488,8 +1604,13 @@ export default function App() {
         </div>
       </div>
 
-      {/* BOTTOM — Filmstrip */}
-      <div className="region-strip relative">
+      {/* BOTTOM — Filmstrip with session stats bar on top */}
+      <div className="region-strip relative flex flex-col">
+        <SessionStats
+          stats={sessionStats}
+          onReset={() => setSessionStats({ stored: 0, moved: 0, deleted: 0, skipped: 0, rated: 0, enhanced: 0 })}
+        />
+        <div className="relative flex-1 min-h-0">
         {/* Left scroll button */}
         {filmstripCanScroll.left && (
           <button
@@ -1585,6 +1706,7 @@ export default function App() {
             });
           })()
         )}
+        </div>
         </div>
       </div>
 

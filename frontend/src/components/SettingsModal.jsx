@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers } from "lucide-react";
+import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
 import { toast } from "sonner";
@@ -56,6 +56,43 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
         </div>
 
         <div className="p-5 space-y-6">
+          {/* Theme */}
+          <section>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1">Appearance</h3>
+                <p className="text-xs text-dim">
+                  Earth Dark is easy on the eyes in low light; Earth Light is warm parchment
+                  for daylight editing. Also toggle-able from the top-toolbar sun/moon button.
+                </p>
+              </div>
+              <div className="flex rounded overflow-hidden border border-app shrink-0">
+                <button
+                  onClick={() => setLocal({ ...local, theme: "dark" })}
+                  className={`px-3 py-1.5 text-xs flex items-center gap-1 ${
+                    (local.theme ?? "dark") === "dark"
+                      ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                      : "bg-app hover:bg-surface-hover"
+                  }`}
+                  data-testid="theme-dark"
+                >
+                  <Moon size={12} /> Earth Dark
+                </button>
+                <button
+                  onClick={() => setLocal({ ...local, theme: "light" })}
+                  className={`px-3 py-1.5 text-xs flex items-center gap-1 ${
+                    local.theme === "light"
+                      ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                      : "bg-app hover:bg-surface-hover"
+                  }`}
+                  data-testid="theme-light"
+                >
+                  <Sun size={12} /> Earth Light
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* Move / Copy toggle */}
           <section>
             <div className="flex items-start justify-between gap-4">

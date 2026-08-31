@@ -8,6 +8,8 @@ const DEFAULT_SETTINGS = {
   // Batch controls (Feb 2026)
   batchSizeLimit: 20, // max photos processed per batch run
   batchAfterAction: "keep", // "keep" | "move" | "delete" - fate of source after batch Store
+  // Theme (Feb 2026 – Iter 8)
+  theme: "dark", // "dark" | "light"
 };
 
 const DEFAULT_STATE = {

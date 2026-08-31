@@ -22,6 +22,25 @@
     --text-inverse: #1a1715;
 }
 
+/* Warm Earth Light theme — parchment + terracotta */
+[data-theme="light"] {
+    --bg: #f5efe6;
+    --bg-deep: #ebe1d3;
+    --surface: #ffffff;
+    --surface-hover: #f0e8dc;
+    --border: #d9cbb8;
+    --border-strong: #b8a58b;
+    --primary: #b56d3a;
+    --primary-hover: #a35c2b;
+    --primary-soft: rgba(181, 109, 58, 0.15);
+    --success: #6b7d5e;
+    --danger: #a24545;
+    --danger-hover: #8f3939;
+    --text: #3a2d22;
+    --text-dim: #5c4c3b;
+    --text-inverse: #ffffff;
+}
+
 * {
     box-sizing: border-box;
 }
@@ -187,10 +206,16 @@ input[type="file"].hidden-file {
     font-size: 10px;
     padding: 1px 5px;
     border-radius: 3px;
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--bg-deep);
     border: 1px solid var(--border);
     color: var(--text-dim);
     line-height: 1.2;
+}
+
+/* In dark theme, add a translucent black wash so kbd chips stand out against darker surfaces */
+:root .kbd,
+[data-theme="dark"] .kbd {
+    background: rgba(0, 0, 0, 0.35);
 }
 
 button {

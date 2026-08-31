@@ -1,0 +1,39 @@
+{
+  "summary": "Frontend-only UI testing of Pro Photo Sorter Iteration 8 (Light Palette theme, Recent Folders dropdowns, Session Stats strip). All 12 requested test items PASSED via Playwright on the public preview URL. Trash/delete flow and FSA folder pickers skipped per instructions (require human directory-picker + loaded photos). Zero console errors across load, theme toggles, dropdowns, Settings open/save, and reload.",
+  "backend_issues": { "critical": [], "minor": [] },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "Light theme (global) - keyboard hint chips",
+        "issues": [
+          ".kbd class in /app/frontend/src/index.css:204 hardcodes background: rgba(0,0,0,0.35) with color var(--text-dim). In Earth Light the chip renders as a dark box with near-invisible brown text (visible on Store 'S' keycap, Delete 'Del', Skip 'Space', and the 'press [S] to store' empty-state hint). Should use a theme variable (e.g. var(--bg-deep)/var(--surface-hover)) so it inverts with the palette."
+        ]
+      },
+      {
+        "screen": "Light theme - Session Stats strip",
+        "issues": [
+          "Strip text uses --text-dim (#7a6a58) on --bg-deep (#ebe1d3) at 10-11px, giving ~3.4:1 contrast (below WCAG AA 4.5:1 for small text). Consider darker dim token for light theme."
+        ]
+      }
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_16.json"],
+  "action_items": [
+    "Theme .kbd chip background with a CSS variable instead of hardcoded rgba(0,0,0,0.35) so keycaps stay legible in Earth Light.",
+    "Optional: darken --text-dim for light theme (or bump Session Stats font size) to meet AA contrast."
+  ],
+  "critical_code_review_comments": [
+    "App.js is ~1800+ lines — well over the 700-line guideline; extract toolbar, filmstrip, and destination pane into separate components.",
+    "toggle-theme button has only a title attribute; add aria-label for screen readers.",
+    "index.css light overrides are complete for variables, but hardcoded rgba/black utilities (.kbd, pane box-shadow) are not theme-aware."
+  ],
+  "updated_files": [],
+  "success_rate": { "backend": "N/A (frontend-only request)", "frontend": "100% (12/12 requested items passed)" },
+  "seed_data_creation": "None. Test wrote settings.theme='light' into localStorage key pps.state.v2 during Settings-save verification.",
+  "should_call_test_agent_after_fix": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Verified in Iter 8 run: toggle-theme flips data-theme dark<->light with Sun<->Moon icon swap and --bg #1a1715 <-> #f5efe6; Settings Appearance (theme-dark/theme-light) persists to localStorage pps.state.v2.settings.theme and survives reload; recent-source-toggle/recent-dest-toggle open their menus with 'None yet — pick a folder to add one.' and close on outside click; session-stats-strip sits above filmstrip (y 881 vs 906) with all 6 counters at 0 and session-stats-reset absent when total=0; Iter 7 Batch Behavior testids all still present. NOTE: localStorage may now hold theme='light' — reset if a dark-default test is needed. Untested (needs human FSA picker): recent-folder item selection, .pps-trash move/undo flow, batch delete.",
+  "rca_of_the_issue": "No functional defects found. The light-theme legibility issue is caused by .kbd using a hardcoded black-alpha background that does not participate in the [data-theme='light'] variable overrides."
+}
