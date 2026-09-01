@@ -5,14 +5,22 @@ export function isFSAccessSupported() {
   return typeof window !== "undefined" && "showDirectoryPicker" in window;
 }
 
-export async function pickDirectory() {
+export async function pickDirectory(opts = {}) {
   if (!isFSAccessSupported()) {
     throw new Error(
       "Your browser does not support the File System Access API. Please use Chrome, Edge, or the packaged desktop app."
     );
   }
+  const options = { mode: "readwrite" };
+  // `id` makes the browser remember the last location per-picker (source vs dest).
+  if (opts.id) options.id = opts.id;
+  // `startIn` can be a stored FileSystemHandle (recent folder) OR a well-known
+  // location ("desktop" | "documents" | "downloads" | "pictures" | "music" | "videos").
+  // Spec forbids raw paths like "C:\\" for security, so we fall through to the
+  // browser's per-id memory if neither is provided.
+  if (opts.startIn) options.startIn = opts.startIn;
   // eslint-disable-next-line no-undef
-  return await window.showDirectoryPicker({ mode: "readwrite" });
+  return await window.showDirectoryPicker(options);
 }
 
 const IMAGE_EXTS = ["jpg", "jpeg", "png", "gif", "webp", "bmp", "tif", "tiff", "heic", "heif", "avif"];
