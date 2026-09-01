@@ -187,7 +187,9 @@ export default function App() {
   useEffect(() => {
     if (startupPromptShown.current) return;
     startupPromptShown.current = true;
-    (async () => {
+    // Small delay so sonner's Toaster is fully hydrated and the toast doesn't
+    // get dropped on very fast page loads.
+    const timer = setTimeout(async () => {
       try {
         const [recentSrc, recentDst] = await Promise.all([
           getRecent("source"),
@@ -195,12 +197,14 @@ export default function App() {
         ]);
         const src = recentSrc[0];
         const dst = recentDst[0];
+        // eslint-disable-next-line no-console
+        console.log("[PPS] Startup recents check:", { src: src?.name || null, dst: dst?.name || null });
         if (!src && !dst) return;
         const desc = [src ? `Source: ${src.name}` : null, dst ? `Destination: ${dst.name}` : null]
           .filter(Boolean).join(" · ");
         toast("Reopen last session?", {
           description: desc,
-          duration: 15000,
+          duration: 30000,
           action: {
             label: "Reopen",
             onClick: async () => {
@@ -209,8 +213,12 @@ export default function App() {
             },
           },
         });
-      } catch { /* ignore */ }
-    })();
+      } catch (e) {
+        // eslint-disable-next-line no-console
+        console.log("[PPS] Startup recents error:", e);
+      }
+    }, 600);
+    return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
