@@ -89,7 +89,8 @@ function baseName(name) {
 export default function App() {
   const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides } = usePersistedState();
   const { categories, settings, ratings, looks = [], exifOverrides = {} } = state;
-  const [activeCatId, setActiveCatId] = useState(categories[0]?.id || null);
+  const [foldersCatId, setFoldersCatId] = useState(categories[0]?.id || null);
+  const [tagsCatId, setTagsCatId] = useState(categories[0]?.id || null);
 
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
@@ -392,9 +393,6 @@ export default function App() {
     };
   }, [currentImage]);
 
-  // Palette target (which row clicks default to). Persisted in memory only.
-  const [paletteTarget, setPaletteTarget] = useState("tags"); // 'folders' | 'tags'
-
   // Helper: read the two-row overlay for an image (with legacy migration from arrays)
   const getOverlay = (state, name) => {
     const v = state[name];
@@ -452,14 +450,14 @@ export default function App() {
     });
   };
 
-  // Drop directly onto the image (not on a row) → default to current palette target
+  // Drop directly onto the image (not on a row) → default to Filename (tags row)
   const onImageDrop = (e) => {
     e.preventDefault();
     const raw = e.dataTransfer.getData("application/x-pps-icon");
     if (!raw) return;
     try {
       const item = JSON.parse(raw);
-      applyIcon(item, paletteTarget);
+      applyIcon(item, "tags");
     } catch {}
   };
 
@@ -1011,12 +1009,15 @@ export default function App() {
     return null;
   }, [exif]);
 
-  // Sync activeCatId if categories change
+  // Sync category selections if categories change (deleted, etc.)
   useEffect(() => {
-    if (!categories.find((c) => c.id === activeCatId)) {
-      setActiveCatId(categories[0]?.id || null);
+    if (!categories.find((c) => c.id === foldersCatId)) {
+      setFoldersCatId(categories[0]?.id || null);
     }
-  }, [categories, activeCatId]);
+    if (!categories.find((c) => c.id === tagsCatId)) {
+      setTagsCatId(categories[0]?.id || null);
+    }
+  }, [categories, foldersCatId, tagsCatId]);
 
   const fsSupported = isFSAccessSupported();
 
@@ -1410,16 +1411,23 @@ export default function App() {
             </button>
           </div>
 
-          {/* Row 2: icon palette + actions */}
-          <div className="flex items-center gap-3">
-            <div className="flex-1 min-w-0 pane rounded px-2 py-1">
+          {/* Row 2: icon palette (folders) + Row 3: icon palette (filename) + actions */}
+          <div className="flex items-start gap-3">
+            <div className="flex-1 min-w-0 pane rounded px-2 py-1 flex flex-col gap-1">
               <IconPalette
+                role="folders"
                 categories={categories}
-                activeCatId={activeCatId}
-                onSetCat={setActiveCatId}
+                activeCatId={foldersCatId}
+                onSetCat={setFoldersCatId}
                 onApply={applyIcon}
-                target={paletteTarget}
-                onSetTarget={setPaletteTarget}
+              />
+              <div className="h-px bg-app/60" />
+              <IconPalette
+                role="filename"
+                categories={categories}
+                activeCatId={tagsCatId}
+                onSetCat={setTagsCatId}
+                onApply={applyIcon}
               />
             </div>
             <div className="flex items-center gap-1 shrink-0">
