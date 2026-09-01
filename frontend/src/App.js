@@ -50,7 +50,7 @@ import ContactSheetModal from "@/components/ContactSheetModal";
 import ComparisonView from "@/components/ComparisonView";
 import SessionStats from "@/components/SessionStats";
 import RecentFoldersDropdown from "@/components/RecentFoldersDropdown";
-import { addRecent, reacquire } from "@/lib/recentFolders";
+import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -180,6 +180,40 @@ export default function App() {
     setSettings({ ...settings, theme: next });
   };
 
+  // On startup, offer to reopen the last-used source + destination folders (Iter 9).
+  // Browsers require a user click to grant file-system permission, so we show a
+  // dismissable toast with a "Reopen" button rather than auto-loading silently.
+  const startupPromptShown = useRef(false);
+  useEffect(() => {
+    if (startupPromptShown.current) return;
+    startupPromptShown.current = true;
+    (async () => {
+      try {
+        const [recentSrc, recentDst] = await Promise.all([
+          getRecent("source"),
+          getRecent("dest"),
+        ]);
+        const src = recentSrc[0];
+        const dst = recentDst[0];
+        if (!src && !dst) return;
+        const desc = [src ? `Source: ${src.name}` : null, dst ? `Destination: ${dst.name}` : null]
+          .filter(Boolean).join(" · ");
+        toast("Reopen last session?", {
+          description: desc,
+          duration: 15000,
+          action: {
+            label: "Reopen",
+            onClick: async () => {
+              if (src) await pickRecentSource(src.handle, src.name);
+              if (dst) await pickRecentDest(dst.handle, dst.name);
+            },
+          },
+        });
+      } catch { /* ignore */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Track whether the filmstrip has content off-screen (so we know when to show arrows)
   useEffect(() => {
     const el = filmstripRef.current;
@@ -221,13 +255,18 @@ export default function App() {
 
   const pickSource = async () => {
     try {
-      const h = await pickDirectory();
+      // Prefer the most recent source as the picker's starting point;
+      // otherwise Chrome remembers per-id on its own.
+      let startIn = undefined;
+      try {
+        const recents = await getRecent("source");
+        if (recents[0]?.handle) startIn = recents[0].handle;
+      } catch { /* ignore */ }
+      const h = await pickDirectory({ id: "pps-source", startIn });
       setSourceRoot(h);
       setSourceRootName(h.name);
-      // Auto-select root so the filmstrip immediately populates
       onSelectSourceFolder({ name: h.name, handle: h }, h.name);
       toast.success(`Loaded source: ${h.name}`);
-      // Save to recents (Iter 8)
       try { await addRecent("source", h, h.name); } catch { /* ignore */ }
     } catch (e) {
       if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
@@ -235,12 +274,15 @@ export default function App() {
   };
   const pickDest = async () => {
     try {
-      const h = await pickDirectory();
+      let startIn = undefined;
+      try {
+        const recents = await getRecent("dest");
+        if (recents[0]?.handle) startIn = recents[0].handle;
+      } catch { /* ignore */ }
+      const h = await pickDirectory({ id: "pps-dest", startIn });
       setDestRoot(h);
       setDestRootName(h.name);
-      // Auto-select root so store goes here without a second click
       setDestSelected({ handle: h, path: h.name });
-      // Reset any stale "+N" badges from a previous destination
       setJustStored({});
       toast.success(`Loaded destination: ${h.name}`);
       try { await addRecent("dest", h, h.name); } catch { /* ignore */ }
