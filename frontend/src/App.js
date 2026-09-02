@@ -1484,10 +1484,10 @@ export default function App() {
                 onApply={applyIcon}
               />
             </div>
-            <div className="flex items-center gap-1 shrink-0">
+            <div className="grid grid-cols-2 gap-1 shrink-0">
               <button
                 onClick={removeCurrentFromView}
-                className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
                 data-testid="btn-skip"
                 title="Skip (Space)"
               >
@@ -1495,7 +1495,7 @@ export default function App() {
               </button>
               <button
                 onClick={deleteCurrentFile}
-                className="px-2.5 py-1.5 rounded bg-danger-earth/20 border border-[color:var(--danger)] text-[color:var(--danger)] hover:bg-danger-earth hover:text-[color:var(--text)] text-xs flex items-center gap-1"
+                className="px-2.5 py-1.5 rounded bg-danger-earth/20 border border-[color:var(--danger)] text-[color:var(--danger)] hover:bg-danger-earth hover:text-[color:var(--text)] text-xs flex items-center justify-center gap-1"
                 data-testid="btn-delete"
                 title="Delete from disk (Del)"
               >
@@ -1503,7 +1503,7 @@ export default function App() {
               </button>
               <button
                 onClick={storeCurrent}
-                className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90 text-xs font-semibold flex items-center gap-1"
+                className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90 text-xs font-semibold flex items-center justify-center gap-1"
                 data-testid="btn-store"
                 title="Store to destination (S)"
               >
@@ -1512,7 +1512,7 @@ export default function App() {
               <button
                 onClick={undo}
                 disabled={history.length === 0}
-                className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
                 data-testid="btn-undo"
                 title="Undo (Ctrl+Z)"
               >
