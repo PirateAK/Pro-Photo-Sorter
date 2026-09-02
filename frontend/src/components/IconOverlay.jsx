@@ -160,6 +160,8 @@ export default function IconOverlay({
           onReorder={onReorderFolders}
           onRemove={onRemoveFolder}
           onDrop={onDropFolder}
+          onDropFolders={onDropFolder}
+          onDropTags={onDropTag}
           separator="/"
         />
       </div>
@@ -173,6 +175,8 @@ export default function IconOverlay({
           onReorder={onReorderTags}
           onRemove={onRemoveTag}
           onDrop={onDropTag}
+          onDropFolders={onDropFolder}
+          onDropTags={onDropTag}
           separator="_"
         />
       </div>
