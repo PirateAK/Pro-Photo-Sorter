@@ -1,0 +1,36 @@
+{
+  "name": "pro-photo-sorter",
+  "version": "1.0.0",
+  "description": "Pro Photo Sorter",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win --x64"
+  },
+  "build": {
+    "appId": "com.you.prophotosorter",
+    "productName": "Pro Photo Sorter",
+    "files": [
+      "main.js",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../frontend/build",
+        "to": "app/build"
+      }
+    ],
+    "win": {
+      "target": "nsis"
+    }
+  },
+  "devDependencies": {
+    "electron": "^44.0.0",
+    "electron-builder": "^25.0.0"
+  },
+  "files": [
+    "main.js",
+    "package.json",
+    "build/**"
+  ]
+}
