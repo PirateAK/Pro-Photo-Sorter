@@ -11,7 +11,7 @@ import { IconPreview } from "./CategoryManager";
  * The whole overlay can be dragged around the image.
  * Each row supports drop from the palette, drag-to-reorder, and per-icon remove.
  */
-function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, separator }) {
+function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, onDropFolders, onDropTags, separator }) {
   const [isOver, setIsOver] = useState(false);
   return (
     <div
@@ -29,10 +29,16 @@ function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, sepa
         const raw = e.dataTransfer.getData("application/x-pps-icon");
         if (!raw) return;
         try {
-          const item = JSON.parse(raw);
+          const parsed = JSON.parse(raw);
+          const item = parsed?.item || parsed;
+          const role = parsed?.role;
           e.preventDefault();
           e.stopPropagation();
-          onDrop(item);
+          // Source bar wins over drop location: route via role if provided,
+          // otherwise fall back to this row's default onDrop.
+          if (role === "folders" && onDropFolders) onDropFolders(item);
+          else if (role === "tags" && onDropTags) onDropTags(item);
+          else onDrop(item);
         } catch {}
       }}
       data-testid={testid}
@@ -154,6 +160,8 @@ export default function IconOverlay({
           onReorder={onReorderFolders}
           onRemove={onRemoveFolder}
           onDrop={onDropFolder}
+          onDropFolders={onDropFolder}
+          onDropTags={onDropTag}
           separator="/"
         />
       </div>
@@ -167,6 +175,8 @@ export default function IconOverlay({
           onReorder={onReorderTags}
           onRemove={onRemoveTag}
           onDrop={onDropTag}
+          onDropFolders={onDropFolder}
+          onDropTags={onDropTag}
           separator="_"
         />
       </div>

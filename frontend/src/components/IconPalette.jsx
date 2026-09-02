@@ -52,7 +52,12 @@ export default function IconPalette({
             key={it.id}
             draggable
             onDragStart={(e) => {
-              e.dataTransfer.setData("application/x-pps-icon", JSON.stringify(it));
+              // Include the source bar's role so drops always route correctly
+              // (source bar wins over drop location).
+              e.dataTransfer.setData(
+                "application/x-pps-icon",
+                JSON.stringify({ item: it, role: applyRow })
+              );
               e.dataTransfer.effectAllowed = "copy";
             }}
             onClick={() => onApply(it, applyRow)}

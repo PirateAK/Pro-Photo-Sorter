@@ -11,5 +11,10 @@ frontend/build/
 backend/__pycache__/
 backend/venv/
 .env
+.env.*
+*.env
+credentials.json
+*.key
+.credentials
 .emergent/
 electron-shell/asar-contents.txt
