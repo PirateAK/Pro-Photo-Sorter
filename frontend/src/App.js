@@ -500,14 +500,18 @@ export default function App() {
     });
   };
 
-  // Drop directly onto the image (not on a row) → default to Filename (tags row)
+  // Drop directly onto the image (not on a row).
+  // The drag payload now carries { item, role } — honor the source bar's role.
+  // Fallback to "tags" (Filename) for legacy drops without a role.
   const onImageDrop = (e) => {
     e.preventDefault();
     const raw = e.dataTransfer.getData("application/x-pps-icon");
     if (!raw) return;
     try {
-      const item = JSON.parse(raw);
-      applyIcon(item, "tags");
+      const parsed = JSON.parse(raw);
+      const item = parsed?.item || parsed;
+      const role = parsed?.role === "folders" ? "folders" : "tags";
+      applyIcon(item, role);
     } catch {}
   };
 
