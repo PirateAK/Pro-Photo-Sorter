@@ -85,35 +85,49 @@ export async function* searchPhotos(rootHandle, rootPath, filters, opts = {}) {
   let scanned = 0;
 
   async function* walk(dir, pathSoFar) {
-    for await (const [name, handle] of dir.entries()) {
-      if (signal?.aborted) return;
-      if (handle.kind === "directory") {
-        if (name === ".pps-trash" || name.startsWith(".")) continue;
-        yield* walk(handle, pathSoFar + "/" + name);
-      } else if (handle.kind === "file" && IMG_RE.test(name)) {
-        scanned++;
-        onProgress?.({ scanned, matched: null });
-        const entry = { name, handle, path: pathSoFar };
-
-        if (!match(entry, filters)) continue;
-
-        // Optional EXIF date range check (do this lazily since it parses a file)
-        if (filters.dateFrom || filters.dateTo) {
+    let entries;
+    try {
+      entries = dir.entries();
+    } catch (e) {
+      // Unreadable directory — skip it silently rather than aborting the whole search
+      return;
+    }
+    try {
+      for await (const [name, handle] of entries) {
+        if (signal?.aborted) return;
+        if (handle.kind === "directory") {
+          if (name === ".pps-trash" || name.startsWith(".")) continue;
           try {
-            const f = await handle.getFile();
-            const meta = await exifr.parse(f, { pick: ["DateTimeOriginal", "CreateDate"] });
-            const d = meta?.DateTimeOriginal || meta?.CreateDate;
-            if (!d) continue;
-            const t = d instanceof Date ? d.getTime() : new Date(d).getTime();
-            if (filters.dateFrom && t < new Date(filters.dateFrom).getTime()) continue;
-            if (filters.dateTo && t > new Date(filters.dateTo).getTime() + 86400000) continue;
-            entry.exifDate = d;
-          } catch {
-            continue; // skip files where EXIF fails
+            yield* walk(handle, pathSoFar + "/" + name);
+          } catch { /* skip unreadable subdir */ }
+        } else if (handle.kind === "file" && IMG_RE.test(name)) {
+          scanned++;
+          onProgress?.({ scanned, matched: null });
+          const entry = { name, handle, path: pathSoFar };
+
+          if (!match(entry, filters)) continue;
+
+          // Optional EXIF date range check (do this lazily since it parses a file)
+          if (filters.dateFrom || filters.dateTo) {
+            try {
+              const f = await handle.getFile();
+              const meta = await exifr.parse(f, { pick: ["DateTimeOriginal", "CreateDate"] });
+              const d = meta?.DateTimeOriginal || meta?.CreateDate;
+              if (!d) continue;
+              const t = d instanceof Date ? d.getTime() : new Date(d).getTime();
+              if (filters.dateFrom && t < new Date(filters.dateFrom).getTime()) continue;
+              if (filters.dateTo && t > new Date(filters.dateTo).getTime() + 86400000) continue;
+              entry.exifDate = d;
+            } catch {
+              continue; // skip files where EXIF fails
+            }
           }
+          yield entry;
         }
-        yield entry;
       }
+    } catch {
+      // Iteration aborted (permission or filesystem issue) — end this branch quietly
+      return;
     }
   }
   yield* walk(rootHandle, rootPath);
