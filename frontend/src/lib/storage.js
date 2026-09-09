@@ -12,10 +12,14 @@ const DEFAULT_SETTINGS = {
   theme: "dark", // "dark" | "light"
   // Startup behavior (Feb 2026 – Iter 11)
   autoReopenLast: true, // show the "Reopen last session?" toast on launch
-  // Per-bar category memory (Feb 2026 – Iter 12): remembers which category
-  // each palette bar was showing last time. Values are category ids or null.
+  // Per-bar category memory (Feb 2026 – Iter 12)
   foldersCatId: null,
   tagsCatId: null,
+  // Workflow (Feb 2026 – Iter 14)
+  autoAdvanceOnStore: true, // after storing a single photo, advance to the next in the filmstrip
+  // Watermark (Feb 2026 – Iter 15)
+  watermarkEnabled: false,
+  watermarkText: "© Your Studio",
 };
 
 const DEFAULT_STATE = {

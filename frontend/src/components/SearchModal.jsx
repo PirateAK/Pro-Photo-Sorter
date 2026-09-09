@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { X, Search, FolderOpen, Play, Save, Star, Trash2, RotateCcw } from "lucide-react";
+import { X, Search, FolderOpen, Play, Save, Star, Trash2, RotateCcw, FileText } from "lucide-react";
 import { pickDirectory } from "../lib/fsapi";
 import { searchPhotos } from "../lib/photoSearch";
 import { toast } from "sonner";
@@ -21,8 +21,9 @@ function persistSaved(arr) {
  *   destRoot, destRootName (default search root)
  *   categories (for building the token multi-select)
  *   onLoadResults(matches[]) — matches will populate the filmstrip in batch mode
+ *   onLoadResultsToSheet(matches[]) — Iter 14: load matches, then immediately open Contact Sheet
  */
-export default function SearchModal({ open, onClose, destRoot, destRootName, categories, ratings = {}, onLoadResults }) {
+export default function SearchModal({ open, onClose, destRoot, destRootName, categories, ratings = {}, onLoadResults, onLoadResultsToSheet }) {
   const [searchRoot, setSearchRoot] = useState(null); // { handle, name }
   const [folderTokens, setFolderTokens] = useState([]);
   const [filenameTokens, setFilenameTokens] = useState([]);
@@ -119,6 +120,21 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
   };
 
   const cancelSearch = () => { abortRef.current?.abort(); setScanning(false); };
+
+  const stopAndLoadPartial = () => {
+    abortRef.current?.abort();
+    setScanning(false);
+    // Give React a tick to flush the final onProgress update, then load whatever
+    // we've accumulated so far into the filmstrip.
+    setTimeout(() => {
+      if (results.length === 0) {
+        toast.info("No matches yet — nothing to load");
+        return;
+      }
+      onLoadResults(results, `${searchRoot?.name || "Search results"} (partial)`);
+      onClose();
+    }, 30);
+  };
 
   const loadIntoFilmstrip = () => {
     if (results.length === 0) return;
@@ -377,11 +393,20 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
           </button>
           <div className="flex items-center gap-2">
             {scanning ? (
-              <button onClick={cancelSearch}
-                      className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
-                      data-testid="search-cancel">
-                <X size={12} /> Cancel scan
-              </button>
+              <>
+                <button onClick={stopAndLoadPartial}
+                        className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90 text-xs font-semibold flex items-center gap-1"
+                        data-testid="search-stop-load"
+                        title="Abort the scan and load what's found so far into the filmstrip">
+                  <Play size={12} /> Stop & Load {results.length > 0 ? results.length : ""}
+                </button>
+                <button onClick={cancelSearch}
+                        className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+                        data-testid="search-cancel"
+                        title="Abort the scan and discard results">
+                  <X size={12} /> Cancel
+                </button>
+              </>
             ) : (
               <button onClick={runSearch}
                       className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90 text-xs font-semibold flex items-center gap-1"
@@ -394,6 +419,15 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
                     data-testid="search-load">
               <Play size={12} /> Load {results.length > 0 ? results.length : ""} into filmstrip
             </button>
+            {onLoadResultsToSheet && (
+              <button onClick={() => { onLoadResultsToSheet(results, searchRoot?.name || "Search results"); onClose(); }}
+                      disabled={scanning || results.length === 0}
+                      className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40"
+                      data-testid="search-to-sheet"
+                      title="Load results and open Contact Sheet">
+                <FileText size={12} /> Sheet
+              </button>
+            )}
           </div>
         </div>
       </div>

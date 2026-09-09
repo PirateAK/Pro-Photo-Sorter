@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon } from "lucide-react";
+import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
 import { toast } from "sonner";
@@ -97,6 +97,29 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
           <section>
             <div className="flex items-start justify-between gap-4">
               <div>
+                <h3 className="font-heading font-semibold text-sm mb-1">Workflow</h3>
+                <p className="text-xs text-dim">
+                  When enabled, storing a single photo automatically advances to the next photo in
+                  the filmstrip — great for rapid single-photo sorting sessions.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0">
+                <input
+                  type="checkbox"
+                  checked={local.autoAdvanceOnStore !== false}
+                  onChange={(e) => setLocal({ ...local, autoAdvanceOnStore: e.target.checked })}
+                  className="w-4 h-4 accent-primary-earth cursor-pointer"
+                  data-testid="auto-advance-toggle"
+                />
+                <span className="text-xs">Auto-advance after Store</span>
+              </label>
+            </div>
+          </section>
+
+          {/* Startup toast */}
+          <section>
+            <div className="flex items-start justify-between gap-4">
+              <div>
                 <h3 className="font-heading font-semibold text-sm mb-1">Startup</h3>
                 <p className="text-xs text-dim">
                   When enabled, the app offers to reopen your last-used source and destination
@@ -145,6 +168,51 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
                   <MoveRight size={12} /> Move
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* Watermark */}
+          <section>
+            <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-1">
+              <Type size={13} className="text-primary-earth" /> Watermark on Store
+            </h3>
+            <p className="text-xs text-dim mb-3">
+              When enabled, every stored JPG / PNG / WebP is baked with your text in the
+              bottom-right corner. White with a soft shadow so it stays readable on any background.
+              Auto-sized to the photo (~1.6% of the long edge). Originals on your source drive are
+              never touched.
+            </p>
+
+            <div className="pane rounded p-3 bg-app space-y-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={local.watermarkEnabled === true}
+                  onChange={(e) => setLocal({ ...local, watermarkEnabled: e.target.checked })}
+                  className="w-4 h-4 accent-primary-earth cursor-pointer"
+                  data-testid="watermark-toggle"
+                />
+                <span className="text-xs">Bake watermark into stored photos</span>
+              </label>
+
+              <div>
+                <div className="text-[11px] text-dim mb-1">Watermark text (bottom-right, plain)</div>
+                <input
+                  type="text"
+                  value={local.watermarkText ?? ""}
+                  onChange={(e) => setLocal({ ...local, watermarkText: e.target.value })}
+                  placeholder="© 2026 Kurt's Studio"
+                  disabled={local.watermarkEnabled !== true}
+                  className="w-full bg-surface border border-app rounded px-2 py-1.5 text-sm focus-ring disabled:opacity-40"
+                  data-testid="watermark-text"
+                />
+              </div>
+
+              {local.watermarkEnabled === true && (local.watermarkText || "").trim().length === 0 && (
+                <div className="text-[11px] text-amber-500">
+                  Enter some text — an empty watermark disables the stamp.
+                </div>
+              )}
             </div>
           </section>
 

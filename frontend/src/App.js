@@ -39,12 +39,14 @@ import {
   listImagesInDir,
   getOrCreateSubdir,
   copyFileTo,
+  writeBlobTo,
   removeEntry,
 } from "@/lib/fsapi";
 import { loadState, saveState, uid } from "@/lib/storage";
 import { renderTemplate } from "@/lib/template";
 import { autoAnalyzeFile } from "@/lib/autoTone";
 import { computeAutoRating } from "@/lib/focusScore";
+import { writeWithWatermark, canWatermark } from "@/lib/watermark";
 import BatchRenameModal from "@/components/BatchRenameModal";
 import ContactSheetModal from "@/components/ContactSheetModal";
 import ComparisonView from "@/components/ComparisonView";
@@ -813,7 +815,14 @@ export default function App() {
       const anchorPath = destSelected?.path || destRootName;
       try {
         const targetDir = await getOrCreateSubdir(anchor, folderParts);
-        const writtenName = await copyFileTo(img.handle, targetDir, fileName);
+        const wmEnabled = settings.watermarkEnabled === true && (settings.watermarkText || "").trim().length > 0;
+        let writtenName;
+        if (wmEnabled && canWatermark(img.name)) {
+          const blob = await writeWithWatermark(img.handle, settings.watermarkText.trim());
+          writtenName = await writeBlobTo(blob, targetDir, fileName);
+        } else {
+          writtenName = await copyFileTo(img.handle, targetDir, fileName);
+        }
         stored++;
         const targetPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
         setJustStored((cur) => ({ ...cur, [targetPath]: (cur[targetPath] || 0) + 1 }));
@@ -864,6 +873,10 @@ export default function App() {
       if (afterAction === "move") bumpStat("moved", stored);
       else if (afterAction === "delete") { bumpStat("stored", stored); bumpStat("deleted", stored); }
       else bumpStat("stored", stored);
+      // Auto-advance on single-photo store (Iter 14): move to next photo in filmstrip
+      if (!isBatch && settings.autoAdvanceOnStore !== false && removedFromFilmstrip.length === 0) {
+        setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
+      }
       if (removedFromFilmstrip.length > 0) {
         const removedSet = new Set(removedFromFilmstrip);
         setImages((imgs) => imgs.filter((im) => !removedSet.has(im.name)));
@@ -2012,6 +2025,11 @@ export default function App() {
         categories={categories}
         ratings={ratings}
         onLoadResults={loadSearchResults}
+        onLoadResultsToSheet={(matches, rootName) => {
+          loadSearchResults(matches, rootName);
+          // Slight delay so filmstrip state updates before opening the sheet
+          setTimeout(() => setShowContact(true), 80);
+        }}
       />
 
       <CullMode
