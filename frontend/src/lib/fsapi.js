@@ -76,6 +76,17 @@ export async function copyFileTo(sourceHandle, destDirHandle, destName) {
   return uniqueName;
 }
 
+// Write an arbitrary Blob (e.g. a watermarked canvas export) to a directory,
+// keeping the same unique-name behaviour as copyFileTo.
+export async function writeBlobTo(blob, destDirHandle, destName) {
+  const uniqueName = await findUniqueName(destDirHandle, destName);
+  const newHandle = await destDirHandle.getFileHandle(uniqueName, { create: true });
+  const writable = await newHandle.createWritable();
+  await writable.write(blob);
+  await writable.close();
+  return uniqueName;
+}
+
 async function findUniqueName(dirHandle, name) {
   const dot = name.lastIndexOf(".");
   const base = dot > 0 ? name.slice(0, dot) : name;
