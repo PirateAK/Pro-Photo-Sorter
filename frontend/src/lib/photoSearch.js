@@ -65,9 +65,14 @@ function match(entry, filters) {
     if (logic === "any" && hits.length === 0) return false;
   }
 
-  // Star rating heuristic (only matches if photographer baked _starN_ into filename)
+  // Star rating: prefer persisted rating from `ratings` map (destination-key),
+  // fall back to _starN_ heuristic in filename.
   if (minStars > 0) {
-    if (parseStarsFromName(entry.name) < minStars) return false;
+    const destKey = `${entry.path}/${entry.name}`;
+    const persisted = filters.ratings?.[destKey] || 0;
+    const heur = parseStarsFromName(entry.name);
+    const effective = Math.max(persisted, heur);
+    if (effective < minStars) return false;
   }
 
   // Date range check happens lazily upstream because it needs to parse EXIF

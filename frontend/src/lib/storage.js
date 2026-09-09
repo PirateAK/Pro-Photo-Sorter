@@ -10,6 +10,8 @@ const DEFAULT_SETTINGS = {
   batchAfterAction: "keep", // "keep" | "move" | "delete" - fate of source after batch Store
   // Theme (Feb 2026 – Iter 8)
   theme: "dark", // "dark" | "light"
+  // Startup behavior (Feb 2026 – Iter 11)
+  autoReopenLast: true, // show the "Reopen last session?" toast on launch
 };
 
 const DEFAULT_STATE = {

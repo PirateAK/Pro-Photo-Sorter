@@ -22,7 +22,7 @@ function persistSaved(arr) {
  *   categories (for building the token multi-select)
  *   onLoadResults(matches[]) — matches will populate the filmstrip in batch mode
  */
-export default function SearchModal({ open, onClose, destRoot, destRootName, categories, onLoadResults }) {
+export default function SearchModal({ open, onClose, destRoot, destRootName, categories, ratings = {}, onLoadResults }) {
   const [searchRoot, setSearchRoot] = useState(null); // { handle, name }
   const [folderTokens, setFolderTokens] = useState([]);
   const [filenameTokens, setFilenameTokens] = useState([]);
@@ -86,6 +86,7 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
       folderTokens, filenameTokens, logic, minStars,
       dateFrom: dateFrom || null, dateTo: dateTo || null,
       text: text || "",
+      ratings, // Iter 11: allow searchPhotos to also match by persisted destination-keyed ratings
     };
     const found = [];
     try {
