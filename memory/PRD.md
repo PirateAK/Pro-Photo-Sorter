@@ -84,6 +84,9 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### Iteration 13 additions (2026-02, Filmstrip loading state)
+- ✅ **Loading indicator during folder scan**: Added `loadingImages` boolean state. When user selects a source folder, filmstrip immediately clears and shows "Loading images from selected folder…". After scan completes, message flips to actual results ("No images in this folder." only if truly empty). Small UX polish that removes the confusing pre-scan "no images" flash.
+
 ### Iteration 12 additions (2026-02, Per-Bar Category Memory)
 - ✅ **Per-Bar Category Memory**: Added `foldersCatId` and `tagsCatId` to `DEFAULT_SETTINGS`. On mount, both palette bars restore their previously-chosen category from `settings`. Changing either bar's dropdown persists via wrapped setters (`setFoldersCatId` / `setTagsCatId`) that update settings. Deleted-category safety: sync effect uses raw setters to avoid double-persist loops.
 - Verified: setting FOLDERS bar to "Rating" and reloading → bar restores to "Rating" with its icons. FILENAME bar independently keeps its own last choice.

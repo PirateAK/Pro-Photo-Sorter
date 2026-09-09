@@ -118,6 +118,7 @@ export default function App() {
   const [currentSourceFolder, setCurrentSourceFolder] = useState(null); // handle
   const [currentSourcePath, setCurrentSourcePath] = useState("");
   const [images, setImages] = useState([]);
+  const [loadingImages, setLoadingImages] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [exif, setExif] = useState(null);
@@ -384,6 +385,8 @@ export default function App() {
     setSelectedIdx(0);
     setBatchSelected(new Set());
     setCompareMode(1); // reset compare view on folder change
+    setImages([]); // clear previous while we scan
+    setLoadingImages(true);
     try {
       const imgs = await listImagesInDir(node.handle);
       setImages(imgs);
@@ -391,6 +394,8 @@ export default function App() {
     } catch (e) {
       setImages([]);
       toast.error("Could not read folder");
+    } finally {
+      setLoadingImages(false);
     }
   }, []);
 
@@ -1865,7 +1870,11 @@ export default function App() {
         )}
         {images.length === 0 ? (
           <div className="text-dim text-xs italic">
-            {currentSourceFolder ? "No images in this folder." : "Select a folder on the left."}
+            {loadingImages
+              ? "Loading images from selected folder…"
+              : currentSourceFolder
+                ? "No images in this folder."
+                : "Select a folder on the left."}
           </div>
         ) : (
           (() => {
