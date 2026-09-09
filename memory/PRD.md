@@ -84,6 +84,14 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### Iteration 10 additions (2026-02, Photo Search)
+- ✅ **New Photo Search feature**: recursive filesystem search over sorted photos with these filters — folder tokens (multi-select), filename tokens (multi-select), ANY/ALL logic toggle, EXIF date range, min-stars (heuristic from filename `_star3_`), free-text substring. All configured in a new `SearchModal` opened via a Search button in the toolbar.
+- ✅ **Live results streaming**: `photoSearch.searchPhotos()` is an async generator that yields matches as it walks the directory tree, so the modal updates a running count during scan. Cancel-mid-scan supported via AbortController.
+- ✅ **Results → filmstrip integration**: "Load N into filmstrip" replaces the current filmstrip with matches, auto-enters batch mode with everything selected, and shows a "🔍 N results in [folder]" indicator. Users can then Store/Move/Re-tag with all existing batch tools.
+- ✅ **Saved searches**: Persisted in `localStorage['pps.savedSearches.v1']` (max 20). Named queries can be loaded with one click, deleted individually.
+- ✅ **Exit search mode**: dedicated button clears filmstrip and returns to normal sorting workflow. Delete is disabled while in search mode (parent handles unknown per FSA API).
+- Files added: `lib/photoSearch.js`, `components/SearchModal.jsx`
+
 ### Iteration 9 additions (2026-02, Palette split + Startup reopen)
 - ✅ **Two-row Icon Palette**: The single palette bar (dropdown + folder/tag toggle) is replaced with two independent stacked bars: **FOLDERS** and **FILENAME**. Each bar has its own category dropdown (`palette-folders-category-select`, `palette-filename-category-select`) and its own icon slider. Clicking/dragging an icon in the top bar goes to the Folders overlay row; the bottom bar goes to the Filename row. Removes the old `paletteTarget` state and the folder/tag toggle icons.
 - ✅ **Startup "Reopen last session?" toast**: On app load, checks IndexedDB recents; if any exist, offers a single Reopen button that reacquires permission and loads both source + destination in one click. 600ms delay before toast to avoid sonner hydration races.
