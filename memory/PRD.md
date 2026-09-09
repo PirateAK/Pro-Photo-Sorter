@@ -84,6 +84,10 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### Iteration 12 additions (2026-02, Per-Bar Category Memory)
+- ✅ **Per-Bar Category Memory**: Added `foldersCatId` and `tagsCatId` to `DEFAULT_SETTINGS`. On mount, both palette bars restore their previously-chosen category from `settings`. Changing either bar's dropdown persists via wrapped setters (`setFoldersCatId` / `setTagsCatId`) that update settings. Deleted-category safety: sync effect uses raw setters to avoid double-persist loops.
+- Verified: setting FOLDERS bar to "Rating" and reloading → bar restores to "Rating" with its icons. FILENAME bar independently keeps its own last choice.
+
 ### Iteration 11 additions (2026-02, Trash + Cull + Rating persist + Auto-Reopen toggle)
 - ✅ **Empty Trash button**: Toolbar shows `Trash (N)` in danger color when `.pps-trash` inside the current source has files. Click → confirm → deletes all trash files and removes the folder. Live-refreshed when images list changes.
 - ✅ **Cull Mode**: New full-screen `CullMode` component + `Cull` toolbar button. Filters to unrated photos by default; keys `1`–`5` rate + auto-advance, `0` clear, `Space`/`→` skip, `←` back, `Esc` exit. Shows a live progress counter and star buttons in the footer.

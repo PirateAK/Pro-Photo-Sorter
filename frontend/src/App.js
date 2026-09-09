@@ -91,8 +91,26 @@ function baseName(name) {
 export default function App() {
   const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides } = usePersistedState();
   const { categories, settings, ratings, looks = [], exifOverrides = {} } = state;
-  const [foldersCatId, setFoldersCatId] = useState(categories[0]?.id || null);
-  const [tagsCatId, setTagsCatId] = useState(categories[0]?.id || null);
+  // Per-bar category memory (Iter 12) — init from settings, fallback to first category
+  const [foldersCatId, setFoldersCatIdRaw] = useState(() =>
+    (settings.foldersCatId && categories.find((c) => c.id === settings.foldersCatId))
+      ? settings.foldersCatId
+      : (categories[0]?.id || null)
+  );
+  const [tagsCatId, setTagsCatIdRaw] = useState(() =>
+    (settings.tagsCatId && categories.find((c) => c.id === settings.tagsCatId))
+      ? settings.tagsCatId
+      : (categories[0]?.id || null)
+  );
+  // Wrappers persist the choice to settings so it survives reloads
+  const setFoldersCatId = useCallback((id) => {
+    setFoldersCatIdRaw(id);
+    setSettings({ ...settings, foldersCatId: id });
+  }, [settings, setSettings]);
+  const setTagsCatId = useCallback((id) => {
+    setTagsCatIdRaw(id);
+    setSettings({ ...settings, tagsCatId: id });
+  }, [settings, setSettings]);
 
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
@@ -1153,10 +1171,10 @@ export default function App() {
   // Sync category selections if categories change (deleted, etc.)
   useEffect(() => {
     if (!categories.find((c) => c.id === foldersCatId)) {
-      setFoldersCatId(categories[0]?.id || null);
+      setFoldersCatIdRaw(categories[0]?.id || null);
     }
     if (!categories.find((c) => c.id === tagsCatId)) {
-      setTagsCatId(categories[0]?.id || null);
+      setTagsCatIdRaw(categories[0]?.id || null);
     }
   }, [categories, foldersCatId, tagsCatId]);
 
