@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -51,6 +51,7 @@ import ComparisonView from "@/components/ComparisonView";
 import SessionStats from "@/components/SessionStats";
 import RecentFoldersDropdown from "@/components/RecentFoldersDropdown";
 import SearchModal from "@/components/SearchModal";
+import CullMode from "@/components/CullMode";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 
 function usePersistedState() {
@@ -148,6 +149,7 @@ export default function App() {
   const [showRename, setShowRename] = useState(false);
   const [showContact, setShowContact] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [showCull, setShowCull] = useState(false);
   const [searchMode, setSearchMode] = useState(false); // true when filmstrip holds search results
   const [compareMode, setCompareMode] = useState(1); // 1 = single, 2/3 = split panes
   const [autoRating, setAutoRating] = useState(false); // in-progress flag
@@ -222,6 +224,8 @@ export default function App() {
   useEffect(() => {
     if (startupPromptShown.current) return;
     startupPromptShown.current = true;
+    // Respect user preference: skip toast entirely if disabled (Iter 11)
+    if (settings.autoReopenLast === false) return;
     // Small delay so sonner's Toaster is fully hydrated and the toast doesn't
     // get dropped on very fast page loads.
     const timer = setTimeout(async () => {
@@ -567,6 +571,48 @@ export default function App() {
     }
   };
 
+  // Trash counter (Iter 11): count files inside .pps-trash of the current source
+  // so the toolbar can show "Trash (N)" and offer one-click empty.
+  const [trashCount, setTrashCount] = useState(0);
+  const refreshTrashCount = useCallback(async () => {
+    if (!currentSourceFolder) { setTrashCount(0); return; }
+    try {
+      const trash = await currentSourceFolder.getDirectoryHandle(TRASH_DIR, { create: false });
+      let n = 0;
+      // eslint-disable-next-line no-unused-vars
+      for await (const [_name, _h] of trash.entries()) n++;
+      setTrashCount(n);
+    } catch {
+      setTrashCount(0);
+    }
+  }, [currentSourceFolder]);
+  useEffect(() => { refreshTrashCount(); }, [refreshTrashCount, images.length]);
+
+  const emptyTrash = async () => {
+    if (!currentSourceFolder || trashCount === 0) return;
+    const ok = window.confirm(
+      `Permanently delete ${trashCount} file${trashCount > 1 ? "s" : ""} from .pps-trash?\n\n` +
+      `This cannot be undone.`
+    );
+    if (!ok) return;
+    try {
+      const trash = await currentSourceFolder.getDirectoryHandle(TRASH_DIR, { create: false });
+      const names = [];
+      for await (const [name, h] of trash.entries()) {
+        if (h.kind === "file") names.push(name);
+      }
+      for (const nm of names) {
+        try { await removeEntry(trash, nm); } catch { /* ignore */ }
+      }
+      // Also remove the .pps-trash folder itself if it's now empty
+      try { await removeEntry(currentSourceFolder, TRASH_DIR); } catch { /* ignore */ }
+      setTrashCount(0);
+      toast.success(`Emptied trash (${names.length} files)`);
+    } catch (e) {
+      toast.error("Empty trash failed", { description: e.message });
+    }
+  };
+
   const removeCurrentFromView = () => {
     if (!currentImage) return;
     // "Remove" = drop from the working list (does not touch disk)
@@ -748,6 +794,12 @@ export default function App() {
         stored++;
         const targetPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
         setJustStored((cur) => ({ ...cur, [targetPath]: (cur[targetPath] || 0) + 1 }));
+        // Iter 11: mirror the rating under the destination key so search's
+        // min-stars filter finds it. Uses ratings[`${targetPath}/${writtenName}`].
+        if (stars > 0) {
+          const destKey = `${targetPath}/${writtenName}`;
+          setRatings((cur) => ({ ...cur, [destKey]: stars }));
+        }
         undoEntries.push({
           type: "store",
           sourceName: img.name,
@@ -1481,6 +1533,27 @@ export default function App() {
             >
               <Search size={12} /> Search
             </button>
+            <button
+              onClick={() => {
+                if (images.length === 0) { toast.error("Load photos first"); return; }
+                setShowCull(true);
+              }}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+              data-testid="open-cull"
+              title="Cull Mode — rapid-fire rating with 1-5 keys"
+            >
+              <Zap size={12} /> Cull
+            </button>
+            {trashCount > 0 && (
+              <button
+                onClick={emptyTrash}
+                className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-[color:var(--danger)] text-[color:var(--danger)] text-xs flex items-center gap-1"
+                data-testid="empty-trash-btn"
+                title={`Permanently delete ${trashCount} file${trashCount > 1 ? "s" : ""} from .pps-trash`}
+              >
+                <Trash2 size={12} /> Trash ({trashCount})
+              </button>
+            )}
             {searchMode && (
               <button
                 onClick={exitSearchMode}
@@ -1910,7 +1983,21 @@ export default function App() {
         destRoot={destRoot}
         destRootName={destRootName}
         categories={categories}
+        ratings={ratings}
         onLoadResults={loadSearchResults}
+      />
+
+      <CullMode
+        open={showCull}
+        onClose={() => setShowCull(false)}
+        images={images}
+        ratings={ratings}
+        ratingKeyFor={(im) => `${currentSourcePath}/${im.name}`}
+        onRate={(im, stars) => {
+          const key = `${currentSourcePath}/${im.name}`;
+          setRatings((cur) => ({ ...cur, [key]: stars }));
+          if (stars > 0) bumpStat("rated");
+        }}
       />
 
       {showHelp && (

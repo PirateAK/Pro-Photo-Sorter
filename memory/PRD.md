@@ -84,6 +84,13 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### Iteration 11 additions (2026-02, Trash + Cull + Rating persist + Auto-Reopen toggle)
+- ✅ **Empty Trash button**: Toolbar shows `Trash (N)` in danger color when `.pps-trash` inside the current source has files. Click → confirm → deletes all trash files and removes the folder. Live-refreshed when images list changes.
+- ✅ **Cull Mode**: New full-screen `CullMode` component + `Cull` toolbar button. Filters to unrated photos by default; keys `1`–`5` rate + auto-advance, `0` clear, `Space`/`→` skip, `←` back, `Esc` exit. Shows a live progress counter and star buttons in the footer.
+- ✅ **Persisted ratings across sort→search**: When `storeCurrent` writes a file to destination, it also mirrors the rating under the destination key (`{targetPath}/{writtenName}`). `photoSearch.match` now checks both persisted ratings and the `_starN_` filename heuristic — search's Min Stars filter is finally reliable.
+- ✅ **Auto-Reopen toggle**: New Settings → Startup section with a checkbox for "Reopen last folders on launch" (default on). Persisted in `settings.autoReopenLast`. Startup toast effect returns early if disabled.
+- Files added: `components/CullMode.jsx`
+
 ### Iteration 10 additions (2026-02, Photo Search)
 - ✅ **New Photo Search feature**: recursive filesystem search over sorted photos with these filters — folder tokens (multi-select), filename tokens (multi-select), ANY/ALL logic toggle, EXIF date range, min-stars (heuristic from filename `_star3_`), free-text substring. All configured in a new `SearchModal` opened via a Search button in the toolbar.
 - ✅ **Live results streaming**: `photoSearch.searchPhotos()` is an async generator that yields matches as it walks the directory tree, so the modal updates a running count during scan. Cancel-mid-scan supported via AbortController.

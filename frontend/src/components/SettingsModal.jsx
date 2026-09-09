@@ -93,6 +93,29 @@ export default function SettingsModal({ open, onClose, settings, onChange }) {
             </div>
           </section>
 
+          {/* Startup */}
+          <section>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1">Startup</h3>
+                <p className="text-xs text-dim">
+                  When enabled, the app offers to reopen your last-used source and destination
+                  folders each time you launch it. Disable if you share the app with friends.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0" data-testid="auto-reopen-toggle-label">
+                <input
+                  type="checkbox"
+                  checked={local.autoReopenLast !== false}
+                  onChange={(e) => setLocal({ ...local, autoReopenLast: e.target.checked })}
+                  className="w-4 h-4 accent-primary-earth cursor-pointer"
+                  data-testid="auto-reopen-toggle"
+                />
+                <span className="text-xs">Reopen last folders on launch</span>
+              </label>
+            </div>
+          </section>
+
           {/* Move / Copy toggle */}
           <section>
             <div className="flex items-start justify-between gap-4">
