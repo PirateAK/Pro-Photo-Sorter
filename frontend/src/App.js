@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -50,6 +50,7 @@ import ContactSheetModal from "@/components/ContactSheetModal";
 import ComparisonView from "@/components/ComparisonView";
 import SessionStats from "@/components/SessionStats";
 import RecentFoldersDropdown from "@/components/RecentFoldersDropdown";
+import SearchModal from "@/components/SearchModal";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 
 function usePersistedState() {
@@ -146,6 +147,8 @@ export default function App() {
   const [showEditor, setShowEditor] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [showContact, setShowContact] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchMode, setSearchMode] = useState(false); // true when filmstrip holds search results
   const [compareMode, setCompareMode] = useState(1); // 1 = single, 2/3 = split panes
   const [autoRating, setAutoRating] = useState(false); // in-progress flag
 
@@ -178,6 +181,38 @@ export default function App() {
   const toggleTheme = () => {
     const next = (settings.theme || "dark") === "dark" ? "light" : "dark";
     setSettings({ ...settings, theme: next });
+  };
+
+  // Load results from Search modal into the filmstrip.
+  // Puts app into a virtual "search mode" — filmstrip holds results (each with .handle
+  // and a .path back to the original destination folder). Store/re-tag work; delete
+  // is disabled in search mode (parent handle unknown).
+  const loadSearchResults = (matches, rootName) => {
+    if (!matches || matches.length === 0) return;
+    // Map to image-like entries the filmstrip already understands
+    const asImages = matches.map((m) => ({ name: m.name, handle: m.handle, __searchPath: m.path }));
+    setImages(asImages);
+    setSelectedIdx(0);
+    setAppliedByImage({});
+    setSearchMode(true);
+    setCurrentSourceFolder(null); // disables Delete
+    setSourceRootName(`🔍 ${matches.length} results in ${rootName}`);
+    setCurrentSourcePath("search");
+    // Auto-enter batch mode with all selected
+    setBatchMode(true);
+    setBatchSelected(new Set(asImages.map((i) => i.name)));
+    toast.info(`${matches.length} photo${matches.length !== 1 ? "s" : ""} loaded`, {
+      description: "Batch mode ON — all selected. Deselect any you don't want, then Store/Move/Re-tag as usual.",
+    });
+  };
+
+  const exitSearchMode = () => {
+    setSearchMode(false);
+    setImages([]);
+    setBatchMode(false);
+    setBatchSelected(new Set());
+    setSourceRootName(sourceRoot?.name || "Not connected");
+    setCurrentSourcePath("");
   };
 
   // On startup, offer to reopen the last-used source + destination folders (Iter 9).
@@ -1439,6 +1474,24 @@ export default function App() {
               </div>
             )}
             <button
+              onClick={() => setShowSearch(true)}
+              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+              data-testid="open-search"
+              title="Search sorted photos"
+            >
+              <Search size={12} /> Search
+            </button>
+            {searchMode && (
+              <button
+                onClick={exitSearchMode}
+                className="px-2.5 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs flex items-center gap-1"
+                data-testid="exit-search-mode"
+                title="Exit search mode and clear the filmstrip"
+              >
+                <XIcon size={12} /> Exit search
+              </button>
+            )}
+            <button
               onClick={toggleTheme}
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
               data-testid="toggle-theme"
@@ -1849,6 +1902,15 @@ export default function App() {
         sourcePath={currentSourcePath}
         sourceDirHandle={currentSourceFolder}
         destDirHandle={destSelected?.handle || destRoot}
+      />
+
+      <SearchModal
+        open={showSearch}
+        onClose={() => setShowSearch(false)}
+        destRoot={destRoot}
+        destRootName={destRootName}
+        categories={categories}
+        onLoadResults={loadSearchResults}
       />
 
       {showHelp && (
