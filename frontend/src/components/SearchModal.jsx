@@ -64,7 +64,9 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
 
   const changeRoot = async () => {
     try {
-      const h = await pickDirectory({ id: "pps-search-root", startIn: searchRoot?.handle });
+      // Search is read-only — request read permission only so read-only drives
+      // (network shares, mounted read-only volumes) don't fail with "cannot write".
+      const h = await pickDirectory({ id: "pps-search-root", startIn: searchRoot?.handle, mode: "read" });
       setSearchRoot({ handle: h, name: h.name });
     } catch (e) {
       if (e?.name !== "AbortError") toast.error(e.message || "Couldn't pick folder");
@@ -102,7 +104,15 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
         description: `Scanned in ${searchRoot.name}`,
       });
     } catch (e) {
-      if (e.name !== "AbortError") toast.error("Search error: " + e.message);
+      if (e.name !== "AbortError") {
+        const msg = (e.message || "").toLowerCase();
+        const isReadOnly = msg.includes("write") || msg.includes("modified") || msg.includes("state of the underlying");
+        toast.error(isReadOnly ? "Cannot read that folder" : "Search error", {
+          description: isReadOnly
+            ? "The folder may be on a read-only drive, network share, or one you don't have permission to browse. Try picking a different Search root."
+            : e.message,
+        });
+      }
     } finally {
       setScanning(false);
     }
