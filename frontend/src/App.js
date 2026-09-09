@@ -91,8 +91,26 @@ function baseName(name) {
 export default function App() {
   const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides } = usePersistedState();
   const { categories, settings, ratings, looks = [], exifOverrides = {} } = state;
-  const [foldersCatId, setFoldersCatId] = useState(categories[0]?.id || null);
-  const [tagsCatId, setTagsCatId] = useState(categories[0]?.id || null);
+  // Per-bar category memory (Iter 12) — init from settings, fallback to first category
+  const [foldersCatId, setFoldersCatIdRaw] = useState(() =>
+    (settings.foldersCatId && categories.find((c) => c.id === settings.foldersCatId))
+      ? settings.foldersCatId
+      : (categories[0]?.id || null)
+  );
+  const [tagsCatId, setTagsCatIdRaw] = useState(() =>
+    (settings.tagsCatId && categories.find((c) => c.id === settings.tagsCatId))
+      ? settings.tagsCatId
+      : (categories[0]?.id || null)
+  );
+  // Wrappers persist the choice to settings so it survives reloads
+  const setFoldersCatId = useCallback((id) => {
+    setFoldersCatIdRaw(id);
+    setSettings({ ...settings, foldersCatId: id });
+  }, [settings, setSettings]);
+  const setTagsCatId = useCallback((id) => {
+    setTagsCatIdRaw(id);
+    setSettings({ ...settings, tagsCatId: id });
+  }, [settings, setSettings]);
 
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
@@ -100,6 +118,7 @@ export default function App() {
   const [currentSourceFolder, setCurrentSourceFolder] = useState(null); // handle
   const [currentSourcePath, setCurrentSourcePath] = useState("");
   const [images, setImages] = useState([]);
+  const [loadingImages, setLoadingImages] = useState(false);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [exif, setExif] = useState(null);
@@ -366,6 +385,8 @@ export default function App() {
     setSelectedIdx(0);
     setBatchSelected(new Set());
     setCompareMode(1); // reset compare view on folder change
+    setImages([]); // clear previous while we scan
+    setLoadingImages(true);
     try {
       const imgs = await listImagesInDir(node.handle);
       setImages(imgs);
@@ -373,6 +394,8 @@ export default function App() {
     } catch (e) {
       setImages([]);
       toast.error("Could not read folder");
+    } finally {
+      setLoadingImages(false);
     }
   }, []);
 
@@ -1153,10 +1176,10 @@ export default function App() {
   // Sync category selections if categories change (deleted, etc.)
   useEffect(() => {
     if (!categories.find((c) => c.id === foldersCatId)) {
-      setFoldersCatId(categories[0]?.id || null);
+      setFoldersCatIdRaw(categories[0]?.id || null);
     }
     if (!categories.find((c) => c.id === tagsCatId)) {
-      setTagsCatId(categories[0]?.id || null);
+      setTagsCatIdRaw(categories[0]?.id || null);
     }
   }, [categories, foldersCatId, tagsCatId]);
 
@@ -1847,7 +1870,11 @@ export default function App() {
         )}
         {images.length === 0 ? (
           <div className="text-dim text-xs italic">
-            {currentSourceFolder ? "No images in this folder." : "Select a folder on the left."}
+            {loadingImages
+              ? "Loading images from selected folder…"
+              : currentSourceFolder
+                ? "No images in this folder."
+                : "Select a folder on the left."}
           </div>
         ) : (
           (() => {

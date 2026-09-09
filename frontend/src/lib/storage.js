@@ -12,6 +12,10 @@ const DEFAULT_SETTINGS = {
   theme: "dark", // "dark" | "light"
   // Startup behavior (Feb 2026 – Iter 11)
   autoReopenLast: true, // show the "Reopen last session?" toast on launch
+  // Per-bar category memory (Feb 2026 – Iter 12): remembers which category
+  // each palette bar was showing last time. Values are category ids or null.
+  foldersCatId: null,
+  tagsCatId: null,
 };
 
 const DEFAULT_STATE = {
