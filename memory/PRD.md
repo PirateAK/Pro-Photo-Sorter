@@ -151,6 +151,22 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 
 
 ## Backlog / Future Enhancements
+
+### Captured 2026-02 (mid-session, awaiting return)
+**Watermark polish — two-stage plan:**
+- **Stage 1 (fast, ~1 session)**: Corner picker in Settings — Top-Left / Top-Right / Bottom-Left / Bottom-Right radio (bottom-right stays default) + opacity slider (30/60/90/solid). Persist as `settings.watermarkCorner` and `settings.watermarkOpacity`. Update `writeWithWatermark(sourceHandle, text, { corner, opacity })` to compute x/y from corner + apply alpha to fillStyle.
+- **Stage 2 (larger)**: Live preview panel inside the Settings watermark section — renders a downsized thumbnail of the currently-viewed photo (fallback: a sample gradient) with the stamp overlaid. Draggable stamp; position saved as `{ xPct, yPct }` so it lands correctly on any aspect ratio. Corner presets remain as one-click shortcuts.
+- **Recommendation**: Ship Stage 1 first — user reports 90% of the ask is "just pick a different corner". Stage 2 is nicer-to-have.
+
+**User documentation package (do this right before v1.0 tag, not before):**
+- `USER_GUIDE.md` — full manual auto-generated from the codebase. Sections: Getting Started in 5 Minutes, File Trees, Filmstrip, Icon Palette (Folders + Filename rows), Store / Batch / Move / Delete flow, Watermark, Search, Cull Mode, Contact Sheet, Auto-Rate, Batch Rename, Themes, Recent Folders, Settings reference, Keyboard Shortcuts cheat sheet, Troubleshooting FAQ, Glossary. Include `[insert screenshot: xxx]` markers for user to fill in.
+- `QUICK_START.md` — one-page printable cheat sheet (keyboard shortcuts + core flow).
+- Optional in-app "?" Help panel — same content rendered inside a modal so customers don't need to open a file.
+- Convert Markdown → PDF or HTML for shipping via `md-to-pdf` or similar (one command).
+- Short marketing blurb + feature list for distribution page.
+- **Timing rationale**: Docs freeze the feature surface, so best done right before the v1.0 release tag, not against a moving target.
+
+### Original backlog
 - P1: Direct MOVE (currently only copies — user can delete original manually or use Delete)
 - P1: EXIF-based date grouping filter for filmstrip
 - P2: Custom filename templates (e.g., `{date}-{label1}-{label2}`)
