@@ -1636,6 +1636,8 @@ export default function App() {
                 activeCatId={foldersCatId}
                 onSetCat={setFoldersCatId}
                 onApply={applyIcon}
+                onCategoriesChange={setCategories}
+                onOpenManager={() => setShowCatMgr(true)}
               />
               <div className="h-px bg-app/60" />
               <IconPalette
@@ -1644,6 +1646,8 @@ export default function App() {
                 activeCatId={tagsCatId}
                 onSetCat={setTagsCatId}
                 onApply={applyIcon}
+                onCategoriesChange={setCategories}
+                onOpenManager={() => setShowCatMgr(true)}
               />
             </div>
             <div className="grid grid-cols-2 gap-1 shrink-0">
