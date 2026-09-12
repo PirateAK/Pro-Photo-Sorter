@@ -98,6 +98,14 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Auto-Reopen toggle**: New Settings → Startup section with a checkbox for "Reopen last folders on launch" (default on). Persisted in `settings.autoReopenLast`. Startup toast effect returns early if disabled.
 - Files added: `components/CullMode.jsx`
 
+### Iteration 18 additions (2026-02, Inline tag editing + cross-bar drag)
+- ✅ **Right-click context menu on palette chips**: Instant Rename / Add tag before / Add tag after / Delete / Manage category. Works independently on both FOLDERS and FILENAME rows.
+- ✅ **Right-click on empty palette space**: "Add tag to [category]" + "Manage categories…" — no more opening the big modal just to add one tag.
+- ✅ **Inline label popover**: Plain text input, Enter to save, Escape to cancel. Auto-selects existing label for quick overwrite. New tags default to Lucide `Tag` icon (custom-image icons remain in the full Category Manager per user request).
+- ✅ **Middle-click quick-delete** on any chip with a 5-second Undo toast (same pattern as Trash).
+- ✅ **Cross-bar drag to reorganize categories**: Drag a chip from FOLDERS palette bar onto the FILENAME palette bar (or vice versa) → the item moves from the source bar's currently-selected category into the target bar's currently-selected category. Highlight ring on hover. Same-category drops are a silent no-op. Undo toast on every move. Overlay-drop routing is unaffected because the overlay's `IconRow` stops event propagation before the palette-bar handler sees it.
+- Files touched: `components/IconPalette.jsx` (full rewrite with menu + popover subcomponents + bar-level drop handlers + `sourceCatId` in drag payload), `App.js` (two new props on IconPalette: `onCategoriesChange`, `onOpenManager`).
+
 ### Iteration 17 additions (2026-02, Watermark on Store + Stop & Load Partial Search)
 - ✅ **Watermark on Store**: New Settings section (`watermark-toggle` + `watermark-text`). When enabled, every stored JPG/PNG/WebP has the user's text baked into the bottom-right corner during Store & Batch Store. White text with a soft dark shadow (~1.6% of the long edge), 92% JPEG quality; PNG stays lossless. Non-watermarkable formats (GIF/BMP/HEIC) fall through to the original-bytes copy path so nothing breaks. Originals on the source drive are never modified — only the destination copy is stamped.
 - ✅ **Stop & Load Partial (Search)**: Replaced the single "Cancel scan" button with a two-button footer during scan — primary **Stop & Load N** (aborts the walk and immediately loads whatever's been found so far into the filmstrip, labelling the batch "(partial)") + secondary **Cancel** (aborts and discards results). Lets Captain Kurt bail out of huge tree scans without waiting for the whole walk to finish.
@@ -151,6 +159,22 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 
 
 ## Backlog / Future Enhancements
+
+### Captured 2026-02 (mid-session, awaiting return)
+**Watermark polish — two-stage plan:**
+- **Stage 1 (fast, ~1 session)**: Corner picker in Settings — Top-Left / Top-Right / Bottom-Left / Bottom-Right radio (bottom-right stays default) + opacity slider (30/60/90/solid). Persist as `settings.watermarkCorner` and `settings.watermarkOpacity`. Update `writeWithWatermark(sourceHandle, text, { corner, opacity })` to compute x/y from corner + apply alpha to fillStyle.
+- **Stage 2 (larger)**: Live preview panel inside the Settings watermark section — renders a downsized thumbnail of the currently-viewed photo (fallback: a sample gradient) with the stamp overlaid. Draggable stamp; position saved as `{ xPct, yPct }` so it lands correctly on any aspect ratio. Corner presets remain as one-click shortcuts.
+- **Recommendation**: Ship Stage 1 first — user reports 90% of the ask is "just pick a different corner". Stage 2 is nicer-to-have.
+
+**User documentation package (do this right before v1.0 tag, not before):**
+- `USER_GUIDE.md` — full manual auto-generated from the codebase. Sections: Getting Started in 5 Minutes, File Trees, Filmstrip, Icon Palette (Folders + Filename rows), Store / Batch / Move / Delete flow, Watermark, Search, Cull Mode, Contact Sheet, Auto-Rate, Batch Rename, Themes, Recent Folders, Settings reference, Keyboard Shortcuts cheat sheet, Troubleshooting FAQ, Glossary. Include `[insert screenshot: xxx]` markers for user to fill in.
+- `QUICK_START.md` — one-page printable cheat sheet (keyboard shortcuts + core flow).
+- Optional in-app "?" Help panel — same content rendered inside a modal so customers don't need to open a file.
+- Convert Markdown → PDF or HTML for shipping via `md-to-pdf` or similar (one command).
+- Short marketing blurb + feature list for distribution page.
+- **Timing rationale**: Docs freeze the feature surface, so best done right before the v1.0 release tag, not against a moving target.
+
+### Original backlog
 - P1: Direct MOVE (currently only copies — user can delete original manually or use Delete)
 - P1: EXIF-based date grouping filter for filmstrip
 - P2: Custom filename templates (e.g., `{date}-{label1}-{label2}`)
