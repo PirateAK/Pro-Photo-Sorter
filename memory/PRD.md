@@ -98,13 +98,13 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Auto-Reopen toggle**: New Settings → Startup section with a checkbox for "Reopen last folders on launch" (default on). Persisted in `settings.autoReopenLast`. Startup toast effect returns early if disabled.
 - Files added: `components/CullMode.jsx`
 
-### Iteration 18 additions (2026-02, Inline tag editing via right-click)
+### Iteration 18 additions (2026-02, Inline tag editing + cross-bar drag)
 - ✅ **Right-click context menu on palette chips**: Instant Rename / Add tag before / Add tag after / Delete / Manage category. Works independently on both FOLDERS and FILENAME rows.
 - ✅ **Right-click on empty palette space**: "Add tag to [category]" + "Manage categories…" — no more opening the big modal just to add one tag.
 - ✅ **Inline label popover**: Plain text input, Enter to save, Escape to cancel. Auto-selects existing label for quick overwrite. New tags default to Lucide `Tag` icon (custom-image icons remain in the full Category Manager per user request).
 - ✅ **Middle-click quick-delete** on any chip with a 5-second Undo toast (same pattern as Trash).
-- ✅ **Rename propagates**: overlays already applied to photos in the filmstrip pick up the new label via the shared `id`-keyed state — no re-drag needed.
-- Files touched: `components/IconPalette.jsx` (full rewrite with menu + popover subcomponents), `App.js` (two new props on IconPalette: `onCategoriesChange`, `onOpenManager`).
+- ✅ **Cross-bar drag to reorganize categories**: Drag a chip from FOLDERS palette bar onto the FILENAME palette bar (or vice versa) → the item moves from the source bar's currently-selected category into the target bar's currently-selected category. Highlight ring on hover. Same-category drops are a silent no-op. Undo toast on every move. Overlay-drop routing is unaffected because the overlay's `IconRow` stops event propagation before the palette-bar handler sees it.
+- Files touched: `components/IconPalette.jsx` (full rewrite with menu + popover subcomponents + bar-level drop handlers + `sourceCatId` in drag payload), `App.js` (two new props on IconPalette: `onCategoriesChange`, `onOpenManager`).
 
 ### Iteration 17 additions (2026-02, Watermark on Store + Stop & Load Partial Search)
 - ✅ **Watermark on Store**: New Settings section (`watermark-toggle` + `watermark-text`). When enabled, every stored JPG/PNG/WebP has the user's text baked into the bottom-right corner during Store & Batch Store. White text with a soft dark shadow (~1.6% of the long edge), 92% JPEG quality; PNG stays lossless. Non-watermarkable formats (GIF/BMP/HEIC) fall through to the original-bytes copy path so nothing breaks. Originals on the source drive are never modified — only the destination copy is stamped.

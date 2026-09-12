@@ -30,6 +30,8 @@ export default function IconPalette({
   const [menu, setMenu] = useState(null);
   // Popover state — { x, y, mode: "edit"|"add", targetItem?, insertIndex?, initialLabel }
   const [popover, setPopover] = useState(null);
+  // Drop-hover highlight when receiving a chip from the *other* palette bar
+  const [barDropOver, setBarDropOver] = useState(false);
   const popRef = useRef(null);
 
   // Close menu/popover on outside click, Escape
@@ -132,9 +134,67 @@ export default function IconPalette({
 
   return (
     <div
-      className="flex items-center gap-3 min-w-0"
+      className={`flex items-center gap-3 min-w-0 rounded transition-colors ${barDropOver ? "bg-primary-earth/15 ring-1 ring-primary-earth/50" : ""}`}
       data-testid={`palette-row-${role}`}
       onContextMenu={openEmptyMenu}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-pps-icon")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setBarDropOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        // Only clear when leaving the bar entirely, not when crossing children
+        if (!e.currentTarget.contains(e.relatedTarget)) setBarDropOver(false);
+      }}
+      onDrop={(e) => {
+        setBarDropOver(false);
+        const raw = e.dataTransfer.getData("application/x-pps-icon");
+        if (!raw) return;
+        let parsed;
+        try { parsed = JSON.parse(raw); } catch { return; }
+        const item = parsed?.item;
+        const sourceCatId = parsed?.sourceCatId;
+        if (!item || !sourceCatId || !active || !onCategoriesChange) return;
+        // Same category → do nothing (no reorg needed)
+        if (sourceCatId === active.id) return;
+        e.preventDefault();
+        e.stopPropagation();
+
+        const sourceCat = categories.find((c) => c.id === sourceCatId);
+        const sourceIdx = sourceCat?.items.findIndex((i) => i.id === item.id) ?? -1;
+        // Move: remove from source cat, append to target cat
+        const next = categories.map((c) => {
+          if (c.id === sourceCatId) return { ...c, items: c.items.filter((i) => i.id !== item.id) };
+          if (c.id === active.id) {
+            // Avoid duplicate if by chance it already exists
+            if (c.items.some((i) => i.id === item.id)) return c;
+            return { ...c, items: [...c.items, item] };
+          }
+          return c;
+        });
+        onCategoriesChange(next);
+
+        toast.success(`Moved "${item.label}"`, {
+          description: `${sourceCat?.name || "?"} → ${active.name}`,
+          action: {
+            label: "Undo",
+            onClick: () => {
+              const undo = categories.map((c) => {
+                if (c.id === sourceCatId) {
+                  const arr = [...c.items.filter((i) => i.id !== item.id)];
+                  arr.splice(Math.max(0, sourceIdx), 0, item);
+                  return { ...c, items: arr };
+                }
+                if (c.id === active.id) return { ...c, items: c.items.filter((i) => i.id !== item.id) };
+                return c;
+              });
+              onCategoriesChange(undo);
+            },
+          },
+        });
+      }}
     >
       <div className="flex items-center gap-2 shrink-0">
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-heading text-dim min-w-[68px]">
@@ -168,13 +228,14 @@ export default function IconPalette({
             data-chip="1"
             draggable
             onDragStart={(e) => {
-              // Include the source bar's role so drops always route correctly
-              // (source bar wins over drop location).
+              // Include the source bar's role AND the source category id so:
+              //   - overlay drops route by role (source bar wins over drop location)
+              //   - palette-bar drops can identify cross-category moves
               e.dataTransfer.setData(
                 "application/x-pps-icon",
-                JSON.stringify({ item: it, role: applyRow })
+                JSON.stringify({ item: it, role: applyRow, sourceCatId: active?.id })
               );
-              e.dataTransfer.effectAllowed = "copy";
+              e.dataTransfer.effectAllowed = "copyMove";
             }}
             onClick={() => onApply(it, applyRow)}
             onContextMenu={(e) => openChipMenu(e, it)}
