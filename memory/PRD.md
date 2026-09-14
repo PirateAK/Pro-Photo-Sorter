@@ -160,6 +160,9 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 
 ## Backlog / Future Enhancements
 
+### 🐛 Known bugs (fix first next session)
+- **Image Editor: image cut off on the right in non-fullscreen windows.** Reproduction: pick a photo in the filmstrip → click **Edit** → the image loads clipped on the right edge when the window isn't maximized. Suggests the editor's canvas/container width is calculated from a fixed value or a stale layout measurement rather than the current viewport. Likely fix locations: `components/ImageEditor.jsx` canvas sizing / `useEffect` on window resize; verify the `<canvas>` and its parent both use `max-width: 100%` and re-measure on mount when the window is smaller than the design width. Add a `ResizeObserver` if needed. Reported by Captain Kurt 2026-02.
+
 ### Captured 2026-02 (mid-session, awaiting return)
 **Watermark polish — two-stage plan:**
 - **Stage 1 (fast, ~1 session)**: Corner picker in Settings — Top-Left / Top-Right / Bottom-Left / Bottom-Right radio (bottom-right stays default) + opacity slider (30/60/90/solid). Persist as `settings.watermarkCorner` and `settings.watermarkOpacity`. Update `writeWithWatermark(sourceHandle, text, { corner, opacity })` to compute x/y from corner + apply alpha to fillStyle.
