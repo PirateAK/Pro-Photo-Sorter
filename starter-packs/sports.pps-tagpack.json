@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "kind": "pps-tagpack",
+  "name": "Sports",
+  "description": "Field, court, and rink — action, moments, and people.",
+  "exportedAt": "2026-02-15T00:00:00.000Z",
+  "tags": [
+    { "label": "game", "iconType": "lucide", "iconName": "Trophy" },
+    { "label": "practice", "iconType": "lucide", "iconName": "Zap" },
+    { "label": "warm-up", "iconType": "lucide", "iconName": "Sun" },
+    { "label": "action", "iconType": "lucide", "iconName": "Zap" },
+    { "label": "peak-moment", "iconType": "lucide", "iconName": "Sparkles" },
+    { "label": "celebration", "iconType": "lucide", "iconName": "Award" },
+    { "label": "reaction", "iconType": "lucide", "iconName": "Eye" },
+    { "label": "portrait", "iconType": "lucide", "iconName": "User" },
+    { "label": "team", "iconType": "lucide", "iconName": "Users" },
+    { "label": "coach", "iconType": "lucide", "iconName": "User" },
+    { "label": "fans", "iconType": "lucide", "iconName": "Users" },
+    { "label": "sideline", "iconType": "lucide", "iconName": "Camera" },
+    { "label": "scoreboard", "iconType": "lucide", "iconName": "Trophy" },
+    { "label": "trophy", "iconType": "lucide", "iconName": "Trophy" },
+    { "label": "detail", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "night-game", "iconType": "lucide", "iconName": "Moon" },
+    { "label": "outdoor", "iconType": "lucide", "iconName": "Sun" }
+  ]
+}

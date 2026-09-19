@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "kind": "pps-tagpack",
+  "name": "Real Estate",
+  "description": "Home listings — room-by-room plus exterior and technique tags.",
+  "exportedAt": "2026-02-15T00:00:00.000Z",
+  "tags": [
+    { "label": "exterior-front", "iconType": "lucide", "iconName": "Home" },
+    { "label": "exterior-back", "iconType": "lucide", "iconName": "Home" },
+    { "label": "entry", "iconType": "lucide", "iconName": "Home" },
+    { "label": "living", "iconType": "lucide", "iconName": "Home" },
+    { "label": "kitchen", "iconType": "lucide", "iconName": "Utensils" },
+    { "label": "dining", "iconType": "lucide", "iconName": "Utensils" },
+    { "label": "primary-bedroom", "iconType": "lucide", "iconName": "Bookmark" },
+    { "label": "bedroom", "iconType": "lucide", "iconName": "Bookmark" },
+    { "label": "bathroom", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "office", "iconType": "lucide", "iconName": "Camera" },
+    { "label": "garage", "iconType": "lucide", "iconName": "Car" },
+    { "label": "yard", "iconType": "lucide", "iconName": "Trees" },
+    { "label": "view", "iconType": "lucide", "iconName": "Mountain" },
+    { "label": "aerial", "iconType": "lucide", "iconName": "Plane" },
+    { "label": "twilight", "iconType": "lucide", "iconName": "Moon" },
+    { "label": "detail", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "amenity", "iconType": "lucide", "iconName": "Sparkles" }
+  ]
+}

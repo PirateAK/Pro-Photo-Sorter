@@ -1,6 +1,7 @@
 import React, { useState, useRef } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package } from "lucide-react";
+import JSZip from "jszip";
 import { uid } from "../lib/storage";
 import { toast } from "sonner";
 
@@ -116,6 +117,53 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     let n = 2;
     while (existing.has(`${base} (${n})`)) n++;
     return `${base} (${n})`;
+  };
+
+  // ── Bundle export — every pack as one downloadable .zip ───────────────
+  const bundleExport = async () => {
+    if (categories.length === 0) { toast.error("No packs to bundle"); return; }
+    try {
+      const zip = new JSZip();
+      const stamp = new Date().toISOString().slice(0, 10);
+      for (const cat of categories) {
+        const payload = {
+          formatVersion: 1,
+          kind: "pps-tagpack",
+          name: cat.name,
+          description: "",
+          exportedAt: new Date().toISOString(),
+          tags: cat.items.map((it) => ({
+            label: it.label,
+            iconType: it.iconType || "lucide",
+            iconName: it.iconName || null,
+            iconData: it.iconData || null,
+          })),
+        };
+        const safe = cat.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "pack";
+        zip.file(`${safe}.pps-tagpack.json`, JSON.stringify(payload, null, 2));
+      }
+      // Include a small manifest so future importers can round-trip the whole bundle
+      zip.file("bundle.json", JSON.stringify({
+        formatVersion: 1,
+        kind: "pps-tagpack-bundle",
+        exportedAt: new Date().toISOString(),
+        packs: categories.map((c) => ({ name: c.name, tagCount: c.items.length })),
+      }, null, 2));
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pps-tagpacks_${stamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Bundled ${categories.length} pack${categories.length !== 1 ? "s" : ""}`, {
+        description: `pps-tagpacks_${stamp}.zip`,
+      });
+    } catch (e) {
+      toast.error("Bundle export failed", { description: e.message });
+    }
   };
 
   // ── Export current pack to a downloadable JSON file ────────────────────
@@ -460,11 +508,20 @@ export default function CategoryManager({ open, onClose, categories, onChange })
           </div>
         </div>
 
-        <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim">
-          <div>Tag packs let you swap sets of tags for different photography styles. Drag tags onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
+        <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim gap-3">
+          <div className="flex-1">Tag packs let you swap sets of tags for different photography styles. Drag tags onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
+          <button
+            onClick={bundleExport}
+            disabled={categories.length === 0}
+            className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 shrink-0 disabled:opacity-40"
+            data-testid="bundle-export-btn"
+            title="Save every one of your tag packs as a single .zip file — perfect for backup or moving to another PC"
+          >
+            <Package size={12} /> Bundle all…
+          </button>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] font-medium text-sm"
+            className="px-4 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] font-medium text-sm shrink-0"
             data-testid="category-manager-done"
           >
             Done

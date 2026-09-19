@@ -26,20 +26,29 @@ const DEFAULT_STATE = {
   categories: [
     {
       id: "cat-default-1",
-      name: "Subject",
+      name: "Subjects (Basic)",
       items: [
         { id: "it-1", label: "portrait", iconType: "lucide", iconName: "User" },
         { id: "it-2", label: "landscape", iconType: "lucide", iconName: "Mountain" },
         { id: "it-3", label: "wildlife", iconType: "lucide", iconName: "Bird" },
         { id: "it-4", label: "macro", iconType: "lucide", iconName: "Flower2" },
+        { id: "it-5", label: "action", iconType: "lucide", iconName: "Zap" },
+        { id: "it-6", label: "group", iconType: "lucide", iconName: "Users" },
+        { id: "it-7", label: "closeup", iconType: "lucide", iconName: "Aperture" },
+        { id: "it-8", label: "night", iconType: "lucide", iconName: "Moon" },
       ],
     },
     {
       id: "cat-default-2",
-      name: "Rating",
+      name: "Ratings",
       items: [
-        { id: "it-5", label: "pick", iconType: "lucide", iconName: "Star" },
-        { id: "it-6", label: "keep", iconType: "lucide", iconName: "Heart" },
+        { id: "it-r1", label: "pick", iconType: "lucide", iconName: "Star" },
+        { id: "it-r2", label: "keep", iconType: "lucide", iconName: "Heart" },
+        { id: "it-r3", label: "reject", iconType: "lucide", iconName: "X" },
+        { id: "it-r4", label: "best", iconType: "lucide", iconName: "Trophy" },
+        { id: "it-r5", label: "star3", iconType: "lucide", iconName: "Star" },
+        { id: "it-r6", label: "star4", iconType: "lucide", iconName: "Star" },
+        { id: "it-r7", label: "star5", iconType: "lucide", iconName: "Star" },
       ],
     },
   ],
