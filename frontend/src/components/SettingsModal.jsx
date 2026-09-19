@@ -235,6 +235,32 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                 </div>
               </div>
 
+              {/* Color: Light (white text, dark halo) vs Dark (black text, light halo) */}
+              <div>
+                <div className="text-[11px] text-dim mb-1">Text color</div>
+                <div className="flex rounded overflow-hidden border border-app">
+                  {[
+                    { v: "white", label: "Light", hint: "White text with a soft dark halo — good on darker photos" },
+                    { v: "black", label: "Dark", hint: "Black text with a soft light halo — good on brighter photos" },
+                  ].map((o) => (
+                    <button
+                      key={o.v}
+                      onClick={() => setLocal({ ...local, watermarkColor: o.v })}
+                      disabled={local.watermarkEnabled !== true}
+                      className={`flex-1 px-2 py-1.5 text-xs ${
+                        (local.watermarkColor ?? "white") === o.v
+                          ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                          : "bg-surface hover:bg-surface-hover"
+                      } disabled:opacity-40`}
+                      data-testid={`watermark-color-${o.v}`}
+                      title={o.hint}
+                    >
+                      {o.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Opacity slider */}
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -262,6 +288,7 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                 text={(local.watermarkText || "").trim()}
                 fontSize={local.watermarkFontSize || "medium"}
                 opacity={local.watermarkOpacity ?? 0.9}
+                color={local.watermarkColor || "white"}
                 xPct={local.watermarkXPct ?? 0.98}
                 yPct={local.watermarkYPct ?? 0.98}
                 imageHandle={previewImageHandle}
@@ -511,7 +538,7 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
 // Live preview of the watermark. If a source photo handle is provided we render
 // it downsized; otherwise we fall back to an earth-tone gradient so the drag
 // affordance is still testable without a photo loaded.
-function WatermarkPreview({ enabled, text, fontSize, opacity, xPct, yPct, imageHandle, onPositionChange }) {
+function WatermarkPreview({ enabled, text, fontSize, opacity, color, xPct, yPct, imageHandle, onPositionChange }) {
   const canvasRef = useRef(null);
   const [bg, setBg] = useState(null); // { img, w, h } | null (null → gradient)
   const dragging = useRef(false);
@@ -585,6 +612,7 @@ function WatermarkPreview({ enabled, text, fontSize, opacity, xPct, yPct, imageH
         xPct,
         yPct,
         scale: 3,
+        color,
       });
     }
 
@@ -599,7 +627,7 @@ function WatermarkPreview({ enabled, text, fontSize, opacity, xPct, yPct, imageH
       ctx.stroke();
       ctx.restore();
     }
-  }, [bg, enabled, text, fontSize, opacity, xPct, yPct]);
+  }, [bg, enabled, text, fontSize, opacity, color, xPct, yPct]);
 
   const setFromEvent = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();

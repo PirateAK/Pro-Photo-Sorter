@@ -163,13 +163,15 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
-### Iteration 20 (2026-02, Watermark drag preview + font size + opacity)
+### Iteration 20 (2026-02, Watermark drag preview + font size + opacity + color)
 - ✅ **Font size preset**: Small (~1%) / Medium (~1.6%, default) / Large (~2.4%) of the long edge. Applied consistently in `writeWithWatermark` and the live preview.
 - ✅ **Opacity slider**: 30–100%, step 5. Multiplied into the stamp's fill alpha.
+- ✅ **Text color: Light / Dark** — Light = white text with a soft dark halo (default, good on darker photos); Dark = black text with a soft light halo (good on bright skies / snow / sand). Halo automatically flips for legibility.
 - ✅ **Live drag-to-position preview**: 380×220 canvas inside the Watermark section renders either the currently-viewed photo (if any) or a fallback earth-tone gradient. Drag anywhere on the preview → position saved as `{ watermarkXPct, watermarkYPct }` percentages so it lands correctly on any aspect ratio. Small circle marks the anchor. Reset button snaps back to bottom-right.
+- ✅ **Preview scale=3** so Small/Medium/Large font differences are visible on the tiny preview canvas. Export uses real photo dimensions (scale=1) so the actual output matches the intended fractions.
 - ✅ **Auto text alignment by zone**: The `computeStampGeom` helper picks `textAlign` (left/center/right) and `textBaseline` (top/middle/alphabetic) based on which third of the image the anchor lives in, and nudges the draw point inward by a padding value so the text never kisses the edge. Same math is shared between preview and export so what you see is what gets baked.
 - ✅ Corner presets deliberately omitted — drag preview replaces them per user request.
-- Files touched: `lib/watermark.js` (added `paintWatermark`, `computeStampGeom`, `FONT_SIZE_FRACTION`, expanded options), `components/SettingsModal.jsx` (font-size buttons, opacity slider, new `WatermarkPreview` subcomponent with pointer-drag handling and HiDPI canvas), `App.js` (thread `previewImageHandle` through, pass all watermark options into `writeWithWatermark`).
+- Files touched: `lib/watermark.js` (added `paintWatermark`, `computeStampGeom`, `FONT_SIZE_FRACTION`, expanded options incl. `color` and `scale`), `components/SettingsModal.jsx` (font-size buttons, opacity slider, color picker, new `WatermarkPreview` subcomponent with pointer-drag handling and HiDPI canvas), `App.js` (thread `previewImageHandle` through, pass all watermark options into `writeWithWatermark`).
 
 ### Iteration 19 (2026-02, Image Editor right-clip fix)
 - ✅ **Image Editor no longer clips on the right when opened in a non-maximized window or when the window is resized.** Root cause: `fit()` and the canvas render effect only re-ran on `imgEl` changes, so a stale `getBoundingClientRect()` measurement from before the modal's layout had settled could leave the canvas sized wider than the visible stage. Fix: introduced a `stageTick` counter driven by a `ResizeObserver` on the stage element + a `window.resize` listener + a 30 ms delayed bump on mount. `stageTick` is a dependency of both the `fit()` effect and the render effect, so any layout change now triggers a clean re-fit and re-render.

@@ -57,17 +57,20 @@ export function computeStampGeom({ width, height, fontSize = "medium", xPct = 0.
 
 // Paint the watermark on an existing 2D context. Extracted so previews and
 // exports can share pixel-identical rendering.
-export function paintWatermark(ctx, text, { width, height, fontSize = "medium", opacity = 0.9, xPct = 0.98, yPct = 0.98, scale = 1 }) {
+export function paintWatermark(ctx, text, { width, height, fontSize = "medium", opacity = 0.9, xPct = 0.98, yPct = 0.98, scale = 1, color = "white" }) {
   const { fs, textAlign, textBaseline, drawX, drawY } = computeStampGeom({ width, height, fontSize, xPct, yPct, scale });
+  const isBlack = color === "black";
   ctx.save();
   ctx.font = `600 ${fs}px system-ui, -apple-system, "Segoe UI", Inter, sans-serif`;
   ctx.textAlign = textAlign;
   ctx.textBaseline = textBaseline;
-  ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+  // Contrast halo: dark text gets a light halo, light text gets a dark halo.
+  ctx.shadowColor = isBlack ? "rgba(255, 255, 255, 0.65)" : "rgba(0, 0, 0, 0.6)";
   ctx.shadowBlur = Math.max(4, fs * 0.25);
   ctx.shadowOffsetX = 0;
   ctx.shadowOffsetY = 1;
-  ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, Math.min(1, opacity))})`;
+  const rgb = isBlack ? "0, 0, 0" : "255, 255, 255";
+  ctx.fillStyle = `rgba(${rgb}, ${Math.max(0, Math.min(1, opacity))})`;
   ctx.fillText(text, drawX, drawY);
   ctx.restore();
 }
@@ -95,6 +98,7 @@ export async function writeWithWatermark(sourceHandle, text, opts = {}) {
       opacity: opts.opacity,
       xPct: opts.xPct,
       yPct: opts.yPct,
+      color: opts.color,
     });
 
     const mime = opts.mime || mimeForName(sourceHandle.name || file.name || "");

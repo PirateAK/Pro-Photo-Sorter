@@ -823,6 +823,7 @@ export default function App() {
             opacity: settings.watermarkOpacity ?? 0.9,
             xPct: settings.watermarkXPct ?? 0.98,
             yPct: settings.watermarkYPct ?? 0.98,
+            color: settings.watermarkColor || "white",
           });
           writtenName = await writeBlobTo(blob, targetDir, fileName);
         } else {
