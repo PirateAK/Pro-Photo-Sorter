@@ -163,6 +163,14 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
+### Iteration 22 (2026-02, Version stamp in UI)
+- ✅ **Build stamp visible in the app** — bottom-right of the destination panel footer: `v0.21.0 · 2026-02-15` in dim font-mono. Hovering the stamp reveals a tooltip explaining what it's for so testers know to include it in bug reports.
+- ✅ **`src/buildInfo.json`** — small JSON blob with `version` and `buildDate`. Imported into `App.js` and rendered. Under version control so the fallback is meaningful even before a rebuild.
+- ✅ **Auto-regeneration on every build** — both `run-app.bat` and `pack-app.bat` now include a `node -e ...` one-liner that reads the version from `package.json` and stamps today's ISO date into `buildInfo.json` before `npm run build`. No manual bumping ever.
+- ✅ **Bumped `frontend/package.json` version** from `0.1.0` → `0.21.0` to match the iteration count so what testers see aligns with what we call the release.
+- ✅ **Shipped `run-app.bat` into the workspace** (previously only pack-app.bat was tracked in Emergent) so future updates flow to Kurt via the same push-and-pull cycle.
+- Files touched: `App.js` (import + rendered stamp), `frontend/src/buildInfo.json` (new), `frontend/package.json` (version bump), `run-app.bat` (new in workspace, adds build-info step), `pack-app.bat` (adds build-info step).
+
 ### Iteration 21 (2026-02, Terminology cleanup: Categories → Tags, groundwork for Tag Packs)
 - ✅ **User-visible rename** — pure UI-string swap, zero internal code changes (variable names `categories`, `items`, `setCategories` all preserved for stability, `data-testid`s preserved for test snapshots).
   - Toolbar "Categories" button → **Tags**

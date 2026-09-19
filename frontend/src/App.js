@@ -47,6 +47,7 @@ import { renderTemplate } from "@/lib/template";
 import { autoAnalyzeFile } from "@/lib/autoTone";
 import { computeAutoRating } from "@/lib/focusScore";
 import { writeWithWatermark, canWatermark } from "@/lib/watermark";
+import buildInfo from "./buildInfo.json";
 import BatchRenameModal from "@/components/BatchRenameModal";
 import ContactSheetModal from "@/components/ContactSheetModal";
 import ComparisonView from "@/components/ComparisonView";
@@ -1833,8 +1834,17 @@ export default function App() {
             Choose a destination drive to sort your photos into.
           </div>
         )}
-        <div className="px-3 py-2 border-t border-app text-[10px] text-dim">
-          Built for photographers · <span className="text-primary-earth">Pro Photo Sorter</span>
+        <div className="px-3 py-2 border-t border-app text-[10px] text-dim flex items-center justify-between gap-2">
+          <span>
+            Built for photographers · <span className="text-primary-earth">Pro Photo Sorter</span>
+          </span>
+          <span
+            className="font-mono opacity-70 shrink-0"
+            title={`Version ${buildInfo.version} · Build date ${buildInfo.buildDate}\n\nWhen reporting a bug, please include this so we know which build you're on.`}
+            data-testid="build-stamp"
+          >
+            v{buildInfo.version} · {buildInfo.buildDate}
+          </span>
         </div>
       </div>
 

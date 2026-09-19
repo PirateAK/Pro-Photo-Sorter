@@ -1,9 +1,10 @@
 @echo off
 REM ============================================================
-REM  Pro Photo Sorter — PACKAGE a shippable Windows .exe
-REM  Use this ONLY when you want a fresh redistributable build
-REM  (e.g. before sending a copy to a customer or friend).
-REM  For daily use, run-app.bat is faster and always current.
+REM  Pro Photo Sorter — DAILY DEV RUN
+REM  Pulls latest code, rebuilds React bundle, syncs to electron-shell,
+REM  and launches Electron in dev mode. Use this every time you want to
+REM  test the app with the latest code from GitHub.
+REM  For a shippable installer .exe, use pack-app.bat instead.
 REM ============================================================
 cd /d C:\Pro-Photo-Sorter
 echo === Pulling latest from GitHub ===
@@ -19,19 +20,9 @@ echo === Syncing build into electron-shell ===
 cd ..
 rmdir /s /q electron-shell\build 2>nul
 xcopy /E /I /Y /Q frontend\build electron-shell\build
-echo === Packaging Windows .exe (may take several minutes over satellite) ===
+echo === Launching Pro Photo Sorter ===
 cd electron-shell
-rmdir /s /q dist 2>nul
-call npx electron-builder --win --x64
-if errorlevel 1 goto :err
-echo.
-echo ============================================================
-echo  DONE. Fresh .exe is at:
-echo  C:\Pro-Photo-Sorter\electron-shell\dist\win-unpacked\Pro Photo Sorter.exe
-echo  Installer .exe is at:
-echo  C:\Pro-Photo-Sorter\electron-shell\dist\
-echo ============================================================
-pause
+call npx electron .
 goto :eof
 :err
 echo.
