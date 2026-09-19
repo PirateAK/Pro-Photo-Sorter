@@ -1415,7 +1415,7 @@ export default function App() {
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
               data-testid="open-category-manager"
             >
-              <Layers size={12} /> Categories
+              <Layers size={12} /> Tags
             </button>
             <button
               onClick={toggleBatch}
@@ -1787,7 +1787,7 @@ export default function App() {
               <div className="font-heading text-lg">Pro Photo Sorter</div>
               <p className="text-sm mt-1 max-w-md">
                 Open a source folder on the left, then click a folder to load photos.
-                Choose a destination on the right, drag category icons onto a photo, and press <span className="kbd">S</span> to store.
+                Choose a destination on the right, drag tags onto a photo, and press <span className="kbd">S</span> to store.
               </p>
             </div>
           )}

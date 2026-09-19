@@ -163,6 +163,21 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
+### Iteration 21 (2026-02, Terminology cleanup: Categories → Tags, groundwork for Tag Packs)
+- ✅ **User-visible rename** — pure UI-string swap, zero internal code changes (variable names `categories`, `items`, `setCategories` all preserved for stability, `data-testid`s preserved for test snapshots).
+  - Toolbar "Categories" button → **Tags**
+  - Modal title "Category Manager" → **Tag Manager**
+  - Left-rail placeholder "New list…" → **New tag pack…**
+  - Right-pane "N icons" → **N tags**
+  - Item input "Label (used in filename/folder)…" → **Tag label (used in filename/folder)…**
+  - Empty-state "No icons yet." → **No tags yet.**
+  - Empty pack "Create a category to begin." → **Create a tag pack to begin.**
+  - Right-click menu "Manage category…" / "Manage categories…" → **Manage tag pack…** / **Manage tag packs…**
+  - Empty-bar hint "No icons in this list — right-click to add one, or open Category Manager." → **"No tags in this pack — right-click to add one, or open Tag Manager."**
+  - Footer copy expanded to preview the coming feature: **"Tag packs let you swap sets of tags for different photography styles…"**
+- ✅ Sets up **Tag Packs feature** (v1.1 add-on): export/import `.pps-tagpack.json` files, opinionated starter packs per photography specialty (Wedding, Wildlife, Landscape, Portrait, Rating, Real Estate), share via any file transfer.
+- Files touched: `App.js` (toolbar label + placeholder copy), `components/CategoryManager.jsx` (all user-facing strings), `components/IconPalette.jsx` (context-menu labels + empty-state copy).
+
 ### Iteration 20 (2026-02, Watermark drag preview + font size + opacity + color)
 - ✅ **Font size preset**: Small (~1%) / Medium (~1.6%, default) / Large (~2.4%) of the long edge. Applied consistently in `writeWithWatermark` and the live preview.
 - ✅ **Opacity slider**: 30–100%, step 5. Multiplied into the stamp's fill alpha.
