@@ -1935,7 +1935,7 @@ export default function App() {
               {/* Tidy © badge — shows only when watermark is ON for this photo */}
               {currentImagePath && isWatermarkOnFor(currentImagePath) && (
                 <div
-                  className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-md bg-black/55 backdrop-blur-sm border border-primary-earth/60 text-primary-earth text-[11px] font-mono uppercase tracking-widest shadow-lg z-30 pointer-events-none"
+                  className="absolute top-3 left-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-1 text-primary-earth text-[11px] font-mono uppercase tracking-widest z-30 pointer-events-none"
                   data-testid="watermark-indicator"
                   title="Watermark will be applied to this photo when stored. Right-click the photo to toggle."
                 >
@@ -1957,20 +1957,22 @@ export default function App() {
               {/* Nav buttons */}
               <button
                 onClick={goPrev}
-                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur flex items-center justify-center border border-app"
+                className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth transition-colors"
                 data-testid="nav-prev"
+                title="Previous photo (←)"
               >
-                <ChevronLeft size={18} />
+                <ChevronLeft size={20} strokeWidth={2.5} />
               </button>
               <button
                 onClick={goNext}
-                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/50 hover:bg-black/70 backdrop-blur flex items-center justify-center border border-app"
+                className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth transition-colors"
                 data-testid="nav-next"
+                title="Next photo (→)"
               >
-                <ChevronRight size={18} />
+                <ChevronRight size={20} strokeWidth={2.5} />
               </button>
               {/* Filename */}
-              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/50 backdrop-blur border border-app text-xs font-mono flex items-center gap-2">
+              <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full icon-overlay text-xs font-mono flex items-center gap-2 text-app">
                 <span data-testid="current-image-name">{currentImage.name}</span>
                 <span className="text-dim">·</span>
                 <span className="text-dim">{selectedIdx + 1} / {images.length}</span>

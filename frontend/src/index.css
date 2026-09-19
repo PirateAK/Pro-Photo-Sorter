@@ -227,14 +227,16 @@ input[type="file"].hidden-file {
     border-radius: 3px;
     background: var(--bg-deep);
     border: 1px solid var(--border);
-    color: var(--text-dim);
+    color: var(--text);
     line-height: 1.2;
 }
 
-/* In dark theme, add a translucent black wash so kbd chips stand out against darker surfaces */
+/* In dark theme, use a soft warm background + brighter primary-tinted text so the chip pops on dark surfaces */
 :root .kbd,
 [data-theme="dark"] .kbd {
-    background: rgba(0, 0, 0, 0.35);
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.18);
+    color: #f4e6d0;
 }
 
 button {
