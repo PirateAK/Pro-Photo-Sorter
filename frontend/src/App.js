@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -1854,25 +1854,6 @@ export default function App() {
           <div className="space-y-1" data-testid="resize-row">
             <div className="flex items-center justify-between gap-2">
               <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Resize for print</span>
-              <button
-                onClick={() => currentImage && toggleWatermarkFor(`${currentSourcePath}/${currentImage.name}`)}
-                disabled={!currentImage}
-                className={`px-2 py-0.5 rounded-full text-[10px] font-mono border flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${
-                  currentImage && isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`)
-                    ? "bg-primary-earth/20 border-primary-earth text-primary-earth"
-                    : "bg-app border-app text-dim hover:bg-surface-hover"
-                }`}
-                data-testid="btn-watermark-toggle"
-                title={
-                  currentImage
-                    ? (isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`)
-                        ? "Watermark ON for this photo — click to turn OFF"
-                        : "Watermark OFF for this photo — click to turn ON")
-                    : "Pick a photo first"
-                }
-              >
-                🎨 WM {currentImage && isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`) ? "ON" : "OFF"}
-              </button>
             </div>
             <div className="grid grid-cols-5 gap-1.5">
               {PRINT_SIZES.map((p) => (
@@ -1951,6 +1932,17 @@ export default function App() {
                   });
                 }}
               />
+              {/* Tidy © badge — shows only when watermark is ON for this photo */}
+              {currentImagePath && isWatermarkOnFor(currentImagePath) && (
+                <div
+                  className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-md bg-black/55 backdrop-blur-sm border border-primary-earth/60 text-primary-earth text-[11px] font-mono uppercase tracking-widest shadow-lg z-30 pointer-events-none"
+                  data-testid="watermark-indicator"
+                  title="Watermark will be applied to this photo when stored. Right-click the photo to toggle."
+                >
+                  <Copyright size={12} />
+                  <span>WM</span>
+                </div>
+              )}
               <IconOverlay
                 containerRef={imageAreaRef}
                 folders={currentOverlay.folders}
@@ -1988,6 +1980,51 @@ export default function App() {
                 <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Rate</span>
                 <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
               </div>
+              {/* Watermark toggle bar (sits directly below Rate) */}
+              {(() => {
+                const wmOn = currentImagePath ? isWatermarkOnFor(currentImagePath) : false;
+                return (
+                  <div className="absolute top-14 right-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-2 z-30" data-testid="wm-toggle-bar">
+                    <span className="text-[10px] uppercase tracking-widest text-dim font-heading">WM</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!currentImagePath) return;
+                        const nextOn = !wmOn;
+                        toggleWatermarkFor(currentImagePath);
+                        toast.success(`Watermark ${nextOn ? "ON" : "OFF"} for this photo`, {
+                          description: nextOn
+                            ? "This photo will be stamped when stored"
+                            : "This photo will store without a watermark",
+                        });
+                      }}
+                      role="switch"
+                      aria-checked={wmOn}
+                      data-testid="btn-watermark-toggle"
+                      title={wmOn ? "Watermark ON — click to turn OFF" : "Watermark OFF — click to turn ON"}
+                      className={`relative w-11 h-5 rounded-full transition-colors border ${
+                        wmOn
+                          ? "bg-primary-earth border-primary-earth"
+                          : "bg-app border-app hover:bg-surface-hover"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[color:var(--text-inverse)] shadow transition-transform flex items-center justify-center text-[9px] font-semibold ${
+                          wmOn ? "translate-x-6 text-primary-earth" : "translate-x-0 text-dim"
+                        }`}
+                      >
+                        <Copyright size={10} />
+                      </span>
+                    </button>
+                    <span
+                      className={`text-[10px] font-mono ${wmOn ? "text-primary-earth" : "text-dim"}`}
+                      data-testid="wm-toggle-state"
+                    >
+                      {wmOn ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                );
+              })()}
             </>
             )
           ) : (
