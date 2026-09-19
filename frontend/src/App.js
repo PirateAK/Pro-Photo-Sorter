@@ -47,6 +47,8 @@ import { renderTemplate } from "@/lib/template";
 import { autoAnalyzeFile } from "@/lib/autoTone";
 import { computeAutoRating } from "@/lib/focusScore";
 import { writeWithWatermark, canWatermark } from "@/lib/watermark";
+import { cropAndResize, PRINT_SIZES } from "@/lib/resize";
+import ResizeCropModal from "@/components/ResizeCropModal";
 import buildInfo from "./buildInfo.json";
 import BatchRenameModal from "@/components/BatchRenameModal";
 import ContactSheetModal from "@/components/ContactSheetModal";
@@ -908,6 +910,64 @@ export default function App() {
     }
   };
 
+  // ── Store a print-sized crop of the current image ────────────────────
+  // Opens the crop preview modal; on confirm, crops+resizes+writes to dest
+  // with a size suffix (e.g. "IMG_1234_4x6.jpg"). Watermark honored.
+  const [resizeModal, setResizeModal] = useState({ open: false, printKey: null });
+
+  const openResizeFor = (printKey) => {
+    if (!currentImage) { toast.error("Pick a photo first"); return; }
+    if (!destRoot) { toast.error("Choose a destination drive first"); return; }
+    setResizeModal({ open: true, printKey });
+  };
+
+  const closeResizeModal = () => setResizeModal({ open: false, printKey: null });
+
+  const confirmResizeStore = async ({ centerX, centerY }) => {
+    const { printKey } = resizeModal;
+    closeResizeModal();
+    if (!currentImage || !destRoot || !printKey) return;
+    try {
+      const overlay = getOverlay(appliedByImage, currentImage.name);
+      const folderParts = overlay.folders.map((f) => f.item.label).filter(Boolean);
+      const tagParts = overlay.tags.map((f) => f.item.label).filter(Boolean);
+      const base = currentImage.name.replace(/\.[^.]+$/, "");
+      const baseWithTags = tagParts.length > 0 ? `${base}_${tagParts.join("_")}` : base;
+      const fileName = `${baseWithTags}_${printKey}.jpg`;
+
+      const anchor = destSelected?.handle || destRoot;
+      const anchorPath = destSelected?.path || destRootName;
+      const targetDir = await getOrCreateSubdir(anchor, folderParts);
+
+      const wmEnabled = settings.watermarkEnabled === true && (settings.watermarkText || "").trim().length > 0;
+      const blob = await cropAndResize({
+        sourceHandle: currentImage.handle,
+        printKey,
+        centerX,
+        centerY,
+        watermarkOpts: wmEnabled ? {
+          text: settings.watermarkText.trim(),
+          fontSize: settings.watermarkFontSize || "medium",
+          opacity: settings.watermarkOpacity ?? 0.9,
+          xPct: settings.watermarkXPct ?? 0.98,
+          yPct: settings.watermarkYPct ?? 0.98,
+          color: settings.watermarkColor || "white",
+          fontFamily: settings.watermarkFontFamily || undefined,
+        } : null,
+      });
+      const writtenName = await writeBlobTo(blob, targetDir, fileName);
+      const fullPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
+      setSessionStats((s) => ({ ...s, stored: s.stored + 1 }));
+      setHistory((h) => [
+        { type: "store", op: "keep", entries: [{ destDirHandle: targetDir, destPath: fullPath, destName: writtenName, sourceHandle: currentImage.handle, sourceName: currentImage.name }] },
+        ...h,
+      ]);
+      toast.success(`Stored ${printKey}`, { description: `${fullPath}/${writtenName}` });
+    } catch (e) {
+      toast.error("Resize failed", { description: e.message });
+    }
+  };
+
   const undo = async () => {
     const [last, ...rest] = history;
     if (!last) return;
@@ -1694,6 +1754,22 @@ export default function App() {
             </div>
           </div>
 
+          {/* Row 2b: Print-size resize buttons — auto-center crop + 300 DPI + store */}
+          <div className="grid grid-cols-5 gap-1.5" data-testid="resize-row">
+            {PRINT_SIZES.map((p) => (
+              <button
+                key={p.key}
+                onClick={() => openResizeFor(p.key)}
+                disabled={!currentImage || !destRoot}
+                className="px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-[11px] font-mono flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid={`btn-resize-${p.key}`}
+                title={`Crop & resize to ${p.key} @ 300 DPI (${p.long}×${p.short}px), then store`}
+              >
+                <Save size={11} /> {p.key.replace("x", "×")}
+              </button>
+            ))}
+          </div>
+
           {/* Row 3: destination preview path */}
           {previewPath && (
             <div className="flex items-center gap-2 text-[11px] text-dim font-mono border-t border-app pt-1.5" data-testid="dest-preview-path">
@@ -1959,6 +2035,15 @@ export default function App() {
       </div>
 
       {/* Modals */}
+      <ResizeCropModal
+        open={resizeModal.open}
+        imageHandle={currentImage?.handle || null}
+        imageName={currentImage?.name || ""}
+        printKey={resizeModal.printKey}
+        onCancel={closeResizeModal}
+        onConfirm={confirmResizeStore}
+      />
+
       <CategoryManager
         open={showCatMgr}
         onClose={() => setShowCatMgr(false)}

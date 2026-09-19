@@ -160,6 +160,16 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 
 ## Backlog / Future Enhancements
 
+### 💡 Captured 2026-02 (Kurt's late-night hiccup, before soccer)
+
+**1. Quick watermark toggle on active image** — Right-click on the main viewer (active selection from filmstrip) to **apply** the saved watermark to that photo, or **X to remove** it. Currently the watermark is only baked into stored files via Settings. This feature would let users preview + toggle per-image before storing, and possibly override the global watermark setting per photo. Design open questions: is this a *preview* overlay only (visual, non-destructive) or does it write a watermarked copy immediately? Rec: preview overlay + a "Store with watermark" quick button so it's non-destructive until stored.
+
+**2. Watermark text field: spell-check autocorrect missing** — When typing the watermark text in Settings, browser spell-check underlines misspellings in red but right-clicking doesn't offer "Change to…" suggestions. This is Electron's default behavior — the native Chromium spell-check dictionary needs to be enabled via `session.defaultSession.setSpellCheckerLanguages(...)` in `electron-shell/main.js` plus a right-click context menu implementation via `electron-context-menu` npm package or manual `webContents.on('context-menu')` handler. Small fix, mostly polish. Nice-to-have.
+
+**3. Font choice for watermark** — Add a font dropdown to the Watermark section in Settings. Suggested options: System (default sans), Serif (Georgia/Times), Monospace (Courier), Script/Handwriting (cursive/Brush Script), Bold Display (Impact). Wire into `paintWatermark`'s `ctx.font` string. Small addition — ~10 min.
+
+**4. Aspect-ratio store buttons** — Under the existing **Store** and **Undo** buttons, add a row of quick-crop-and-resize buttons for common print sizes: **4×6 · 5×7 · 8×10 · 10×12** (any other sizes = custom via edit window). Clicking one would auto-center-crop the current photo to that aspect ratio + optionally resize to print pixels (e.g. 300 DPI: 4×6 = 1800×1200), then store. Design questions: (a) auto-center-crop or open a small crop preview first? (b) resize to a target DPI (300?) or keep original resolution and just crop? (c) preserve orientation (portrait vs landscape auto-detect) or force one? Rec: open a tiny "adjust crop" popover with drag-to-position before store, at native resolution (no DPI resize), auto-detect orientation. Medium feature — one focused session.
+
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
