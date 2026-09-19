@@ -929,11 +929,27 @@ export default function App() {
     if (!currentImage || !destRoot || !printKey) return;
     try {
       const overlay = getOverlay(appliedByImage, currentImage.name);
-      const folderParts = overlay.folders.map((f) => f.item.label).filter(Boolean);
-      const tagParts = overlay.tags.map((f) => f.item.label).filter(Boolean);
-      const base = currentImage.name.replace(/\.[^.]+$/, "");
-      const baseWithTags = tagParts.length > 0 ? `${base}_${tagParts.join("_")}` : base;
-      const fileName = `${baseWithTags}_${printKey}.jpg`;
+      // Reuse the same template renderer as storeCurrent so folder path,
+      // token substitution, and filename tags stay identical.
+      const stars = ratings[`${currentSourcePath}/${currentImage.name}`] || 0;
+      let imgExifDate = null;
+      try {
+        const f = await currentImage.handle.getFile();
+        const d = await exifr.parse(f, { pick: ["DateTimeOriginal", "CreateDate"] });
+        imgExifDate = d?.DateTimeOriginal || d?.CreateDate || null;
+      } catch { /* ignore */ }
+      const { folderParts, fileName: templatedName } = renderTemplate(settings.filenameTemplate, {
+        folders: overlay.folders,
+        tags: overlay.tags,
+        originalName: currentImage.name,
+        exifDate: imgExifDate,
+        stars,
+      });
+      // Force output extension to .jpg (canvas exports as JPEG for print)
+      // and append the print-size suffix so multiple prints of the same
+      // photo don't collide.
+      const base = templatedName.replace(/\.[^.]+$/, "");
+      const fileName = `${base}_${printKey}.jpg`;
 
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
