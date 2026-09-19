@@ -231,12 +231,18 @@ input[type="file"].hidden-file {
     line-height: 1.2;
 }
 
-/* In dark theme, use a soft warm background + brighter primary-tinted text so the chip pops on dark surfaces */
-:root .kbd,
+/* Dark theme — warm cream text on a soft white-glass wash */
 [data-theme="dark"] .kbd {
     background: rgba(255, 255, 255, 0.08);
     border-color: rgba(255, 255, 255, 0.18);
     color: #f4e6d0;
+}
+
+/* Light theme — dark warm text on a soft earth wash for clear contrast on any button */
+[data-theme="light"] .kbd {
+    background: rgba(58, 45, 34, 0.08);
+    border-color: rgba(58, 45, 34, 0.25);
+    color: #3a2d22;
 }
 
 button {
