@@ -161,7 +161,11 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ## Backlog / Future Enhancements
 
 ### 🐛 Known bugs (fix first next session)
-- **Image Editor: image cut off on the right in non-fullscreen windows.** Reproduction: pick a photo in the filmstrip → click **Edit** → the image loads clipped on the right edge when the window isn't maximized. Suggests the editor's canvas/container width is calculated from a fixed value or a stale layout measurement rather than the current viewport. Likely fix locations: `components/ImageEditor.jsx` canvas sizing / `useEffect` on window resize; verify the `<canvas>` and its parent both use `max-width: 100%` and re-measure on mount when the window is smaller than the design width. Add a `ResizeObserver` if needed. Reported by Captain Kurt 2026-02.
+_None outstanding._
+
+### Iteration 19 (2026-02, Image Editor right-clip fix)
+- ✅ **Image Editor no longer clips on the right when opened in a non-maximized window or when the window is resized.** Root cause: `fit()` and the canvas render effect only re-ran on `imgEl` changes, so a stale `getBoundingClientRect()` measurement from before the modal's layout had settled could leave the canvas sized wider than the visible stage. Fix: introduced a `stageTick` counter driven by a `ResizeObserver` on the stage element + a `window.resize` listener + a 30 ms delayed bump on mount. `stageTick` is a dependency of both the `fit()` effect and the render effect, so any layout change now triggers a clean re-fit and re-render.
+- Files touched: `components/ImageEditor.jsx` (state, effect adds, dependency updates).
 
 ### Captured 2026-02 (mid-session, awaiting return)
 **Watermark polish — two-stage plan:**
