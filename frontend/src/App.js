@@ -818,7 +818,12 @@ export default function App() {
         const wmEnabled = settings.watermarkEnabled === true && (settings.watermarkText || "").trim().length > 0;
         let writtenName;
         if (wmEnabled && canWatermark(img.name)) {
-          const blob = await writeWithWatermark(img.handle, settings.watermarkText.trim());
+          const blob = await writeWithWatermark(img.handle, settings.watermarkText.trim(), {
+            fontSize: settings.watermarkFontSize || "medium",
+            opacity: settings.watermarkOpacity ?? 0.9,
+            xPct: settings.watermarkXPct ?? 0.98,
+            yPct: settings.watermarkYPct ?? 0.98,
+          });
           writtenName = await writeBlobTo(blob, targetDir, fileName);
         } else {
           writtenName = await copyFileTo(img.handle, targetDir, fileName);
@@ -1955,6 +1960,7 @@ export default function App() {
         onClose={() => setShowSettings(false)}
         settings={settings}
         onChange={setSettings}
+        previewImageHandle={currentImage?.handle || null}
       />
 
       <ImageEditor
