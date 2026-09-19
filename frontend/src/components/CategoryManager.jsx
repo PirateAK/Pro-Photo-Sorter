@@ -51,6 +51,8 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   const [selectedImage, setSelectedImage] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
+  const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
+  const [bundleSelected, setBundleSelected] = useState(new Set());
   const fileRef = useRef(null);
   const importRef = useRef(null);
 
@@ -119,13 +121,21 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     return `${base} (${n})`;
   };
 
-  // ── Bundle export — every pack as one downloadable .zip ───────────────
-  const bundleExport = async () => {
+  // ── Open the bundle picker with everything pre-selected ─────────────
+  const openBundlePicker = () => {
     if (categories.length === 0) { toast.error("No packs to bundle"); return; }
+    setBundleSelected(new Set(categories.map((c) => c.id)));
+    setBundlePickerOpen(true);
+  };
+
+  // ── Bundle export — every SELECTED pack as one downloadable .zip ─────
+  const bundleExport = async (idsToBundle) => {
+    const picked = categories.filter((c) => idsToBundle.has(c.id));
+    if (picked.length === 0) { toast.error("No packs selected"); return; }
     try {
       const zip = new JSZip();
       const stamp = new Date().toISOString().slice(0, 10);
-      for (const cat of categories) {
+      for (const cat of picked) {
         const payload = {
           formatVersion: 1,
           kind: "pps-tagpack",
@@ -142,12 +152,11 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         const safe = cat.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "pack";
         zip.file(`${safe}.pps-tagpack.json`, JSON.stringify(payload, null, 2));
       }
-      // Include a small manifest so future importers can round-trip the whole bundle
       zip.file("bundle.json", JSON.stringify({
         formatVersion: 1,
         kind: "pps-tagpack-bundle",
         exportedAt: new Date().toISOString(),
-        packs: categories.map((c) => ({ name: c.name, tagCount: c.items.length })),
+        packs: picked.map((c) => ({ name: c.name, tagCount: c.items.length })),
       }, null, 2));
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
@@ -158,7 +167,8 @@ export default function CategoryManager({ open, onClose, categories, onChange })
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success(`Bundled ${categories.length} pack${categories.length !== 1 ? "s" : ""}`, {
+      setBundlePickerOpen(false);
+      toast.success(`Bundled ${picked.length} pack${picked.length !== 1 ? "s" : ""}`, {
         description: `pps-tagpacks_${stamp}.zip`,
       });
     } catch (e) {
@@ -511,13 +521,13 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim gap-3">
           <div className="flex-1">Tag packs let you swap sets of tags for different photography styles. Drag tags onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
           <button
-            onClick={bundleExport}
+            onClick={openBundlePicker}
             disabled={categories.length === 0}
             className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 shrink-0 disabled:opacity-40"
             data-testid="bundle-export-btn"
-            title="Save every one of your tag packs as a single .zip file — perfect for backup or moving to another PC"
+            title="Save selected tag packs as a single .zip file — perfect for backup or sharing a curated set"
           >
-            <Package size={12} /> Bundle all…
+            <Package size={12} /> Bundle…
           </button>
           <button
             onClick={onClose}
@@ -527,6 +537,103 @@ export default function CategoryManager({ open, onClose, categories, onChange })
             Done
           </button>
         </div>
+
+        {/* Bundle picker overlay — nested inside the Tag Manager modal */}
+        {bundlePickerOpen && (
+          <div
+            className="absolute inset-0 z-10 bg-black/60 flex items-center justify-center p-6"
+            onClick={() => setBundlePickerOpen(false)}
+            data-testid="bundle-picker-backdrop"
+          >
+            <div
+              className="pane rounded-lg shadow-2xl border border-app w-full max-w-md flex flex-col max-h-full"
+              onClick={(e) => e.stopPropagation()}
+              data-testid="bundle-picker"
+            >
+              <div className="px-4 py-3 border-b border-app flex items-center justify-between">
+                <div>
+                  <h3 className="font-heading font-semibold text-sm flex items-center gap-1">
+                    <Package size={13} className="text-primary-earth" /> Bundle tag packs
+                  </h3>
+                  <p className="text-xs text-dim mt-0.5">Check the packs you want to include in the .zip</p>
+                </div>
+                <button
+                  onClick={() => setBundlePickerOpen(false)}
+                  className="w-7 h-7 rounded hover:bg-surface-hover flex items-center justify-center"
+                  data-testid="bundle-picker-close"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+              <div className="px-4 py-2 border-b border-app flex items-center justify-between text-xs">
+                <span className="text-dim">
+                  {bundleSelected.size} of {categories.length} selected
+                </span>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setBundleSelected(new Set(categories.map((c) => c.id)))}
+                    className="text-primary-earth hover:underline"
+                    data-testid="bundle-select-all"
+                  >
+                    Select all
+                  </button>
+                  <span className="text-dim">·</span>
+                  <button
+                    onClick={() => setBundleSelected(new Set())}
+                    className="text-primary-earth hover:underline"
+                    data-testid="bundle-select-none"
+                  >
+                    Select none
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-auto p-2 space-y-0.5 min-h-0">
+                {categories.map((c) => {
+                  const checked = bundleSelected.has(c.id);
+                  return (
+                    <label
+                      key={c.id}
+                      className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-hover cursor-pointer text-sm"
+                      data-testid={`bundle-check-${c.id}`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        onChange={(e) => {
+                          const next = new Set(bundleSelected);
+                          if (e.target.checked) next.add(c.id); else next.delete(c.id);
+                          setBundleSelected(next);
+                        }}
+                        className="w-4 h-4 accent-primary-earth cursor-pointer"
+                      />
+                      <span className="flex-1 truncate">{c.name}</span>
+                      <span className="text-[10px] text-dim font-mono shrink-0">
+                        {c.items.length} tag{c.items.length !== 1 ? "s" : ""}
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+              <div className="px-4 py-3 border-t border-app flex items-center justify-end gap-2">
+                <button
+                  onClick={() => setBundlePickerOpen(false)}
+                  className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs"
+                  data-testid="bundle-picker-cancel"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => bundleExport(bundleSelected)}
+                  disabled={bundleSelected.size === 0}
+                  className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-semibold flex items-center gap-1 disabled:opacity-40"
+                  data-testid="bundle-picker-confirm"
+                >
+                  <Download size={12} /> Bundle {bundleSelected.size} pack{bundleSelected.size !== 1 ? "s" : ""}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -163,6 +163,12 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
+### Iteration 25 (2026-02, Bundle picker + version 0.24.0 sync)
+- ✅ **Bundle picker** — the old "Bundle all…" button in the Tag Manager footer is now **"Bundle…"** and opens a nested overlay listing every pack with checkboxes. Users can share only the packs they want ("here's my Wedding + Wildlife" instead of "here's everything I have"). Header shows `N of M selected`, Select all / Select none quick links, per-row tag count. Confirm button dynamically labels `Bundle N pack(s)`.
+- ✅ **Version stamp now v0.24.0** in both `frontend/package.json` and `buildInfo.json`, aligning the in-app stamp with the iteration count.
+- ✅ **`run-app.bat` / `pack-app.bat` hardened** with auto `npm install --legacy-peer-deps` step so future dependency additions never fail Kurt's build silently. `--legacy-peer-deps` matches the yarn permissiveness Emergent uses and sidesteps the `react-day-picker` vs `date-fns@4` strict-peer conflict on npm.
+- Files touched: `components/CategoryManager.jsx` (state for picker, `openBundlePicker`, refactored `bundleExport(idsSet)`, overlay JSX), `run-app.bat` + `pack-app.bat` (`--legacy-peer-deps`), `frontend/package.json` + `buildInfo.json` (0.24.0).
+
 ### Iteration 24 (2026-02, Basics + Starter Packs + Bundle Export + Version sync)
 - ✅ **Version bump to 0.23.0** in both `frontend/package.json` and `frontend/src/buildInfo.json`. Kurt still needs to manually bump `electron-shell/package.json` on his PC (that file lives outside the Emergent workspace).
 - ✅ **Polished default packs** in `storage.js` — renamed to **"Subjects (Basic)"** (8 tags: portrait, landscape, wildlife, macro, action, group, closeup, night) and **"Ratings"** (7 tags: pick, keep, reject, best, star3, star4, star5). Fresh installs get a productive starting point.
