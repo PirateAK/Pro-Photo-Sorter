@@ -9,8 +9,11 @@ REM ============================================================
 cd /d C:\Pro-Photo-Sorter
 echo === Pulling latest from GitHub ===
 git pull
-echo === Stamping build info ===
+echo === Ensuring dependencies are installed ===
 cd frontend
+call npm install --no-audit --no-fund --loglevel=error
+if errorlevel 1 goto :err
+echo === Stamping build info ===
 call node -e "const p=require('./package.json'),fs=require('fs');fs.writeFileSync('src/buildInfo.json',JSON.stringify({version:p.version,buildDate:new Date().toISOString().slice(0,10)},null,2)+'\n')"
 echo === Rebuilding React bundle ===
 rmdir /s /q build 2>nul
