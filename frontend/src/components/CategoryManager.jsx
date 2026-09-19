@@ -1,7 +1,8 @@
 import React, { useState, useRef } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil } from "lucide-react";
 import { uid } from "../lib/storage";
+import { toast } from "sonner";
 
 // Curated built-in icons
 const BUILTIN_ICONS = [
@@ -47,7 +48,10 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   const [pickerMode, setPickerMode] = useState("builtin"); // builtin | image
   const [selectedBuiltin, setSelectedBuiltin] = useState("Star");
   const [selectedImage, setSelectedImage] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const fileRef = useRef(null);
+  const importRef = useRef(null);
 
   if (!open) return null;
 
@@ -89,6 +93,87 @@ export default function CategoryManager({ open, onClose, categories, onChange })
       c.id === current.id ? { ...c, items: c.items.filter((it) => it.id !== itemId) } : c
     );
     onChange(next);
+  };
+
+  // ── Rename an existing tag pack ─────────────────────────────────────────
+  const startRename = (cat) => {
+    setRenamingId(cat.id);
+    setRenameDraft(cat.name);
+  };
+  const commitRename = () => {
+    const name = renameDraft.trim();
+    if (!name || !renamingId) { setRenamingId(null); return; }
+    const next = categories.map((c) => (c.id === renamingId ? { ...c, name } : c));
+    onChange(next);
+    setRenamingId(null);
+    toast.success(`Renamed to "${name}"`);
+  };
+
+  // ── Auto-suffix a pack name so import is always non-destructive ────────
+  const uniqueName = (base) => {
+    const existing = new Set(categories.map((c) => c.name));
+    if (!existing.has(base)) return base;
+    let n = 2;
+    while (existing.has(`${base} (${n})`)) n++;
+    return `${base} (${n})`;
+  };
+
+  // ── Export current pack to a downloadable JSON file ────────────────────
+  const exportCurrent = () => {
+    if (!current) return;
+    const payload = {
+      formatVersion: 1,
+      kind: "pps-tagpack",
+      name: current.name,
+      description: "",
+      exportedAt: new Date().toISOString(),
+      tags: current.items.map((it) => ({
+        label: it.label,
+        iconType: it.iconType || "lucide",
+        iconName: it.iconName || null,
+        iconData: it.iconData || null,
+      })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const safe = current.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "tagpack";
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safe}.pps-tagpack.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported "${current.name}"`, { description: `${current.items.length} tag${current.items.length !== 1 ? "s" : ""}` });
+  };
+
+  // ── Import a pack — always adds, auto-suffixes on name collision ──────
+  const importFromFile = async (file) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.kind !== "pps-tagpack" || !Array.isArray(data.tags)) {
+        throw new Error("Not a valid Pro Photo Sorter tag pack file.");
+      }
+      const finalName = uniqueName(String(data.name || "Imported pack").trim() || "Imported pack");
+      const newCat = {
+        id: uid("cat"),
+        name: finalName,
+        items: data.tags.map((t) => ({
+          id: uid("it"),
+          label: String(t.label || "").slice(0, 60),
+          iconType: t.iconType === "image" && t.iconData ? "image" : "lucide",
+          iconName: t.iconName || "Tag",
+          iconData: t.iconType === "image" ? t.iconData : undefined,
+        })).filter((it) => it.label),
+      };
+      onChange([...categories, newCat]);
+      setActiveCat(newCat.id);
+      toast.success(`Imported "${finalName}"`, { description: `${newCat.items.length} tag${newCat.items.length !== 1 ? "s" : ""}` });
+    } catch (e) {
+      toast.error("Import failed", { description: e.message });
+    }
   };
 
   const handleImagePick = (e) => {
@@ -136,34 +221,86 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         <div className="flex-1 flex overflow-hidden">
           {/* Categories column */}
           <div className="w-56 border-r border-app flex flex-col">
-            <div className="p-3 border-b border-app flex gap-2">
-              <input
-                value={newCatName}
-                onChange={(e) => setNewCatName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addCategory()}
-                placeholder="New tag pack…"
-                className="flex-1 bg-app border border-app rounded px-2 py-1 text-sm focus-ring"
-                data-testid="new-category-input"
-              />
-              <button
-                onClick={addCategory}
-                className="w-8 h-8 rounded bg-primary-earth text-[color:var(--text-inverse)] flex items-center justify-center hover:opacity-90"
-                data-testid="add-category-btn"
-              >
-                <Plus size={16} />
-              </button>
+            <div className="p-3 border-b border-app space-y-2">
+              <div className="flex gap-2">
+                <input
+                  value={newCatName}
+                  onChange={(e) => setNewCatName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && addCategory()}
+                  placeholder="New tag pack…"
+                  className="flex-1 bg-app border border-app rounded px-2 py-1 text-sm focus-ring"
+                  data-testid="new-category-input"
+                />
+                <button
+                  onClick={addCategory}
+                  className="w-8 h-8 rounded bg-primary-earth text-[color:var(--text-inverse)] flex items-center justify-center hover:opacity-90"
+                  data-testid="add-category-btn"
+                  title="Create a new empty tag pack"
+                >
+                  <Plus size={16} />
+                </button>
+              </div>
+              <div>
+                <input
+                  ref={importRef}
+                  type="file"
+                  accept=".json,.pps-tagpack.json,application/json"
+                  className="hidden-file"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) importFromFile(f);
+                    e.target.value = ""; // reset so re-picking the same file re-fires
+                  }}
+                  data-testid="import-pack-input"
+                />
+                <button
+                  onClick={() => importRef.current?.click()}
+                  className="w-full px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
+                  data-testid="import-pack-btn"
+                  title="Import a .pps-tagpack.json file — always adds as a new pack"
+                >
+                  <Upload size={12} /> Import pack…
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-auto p-1">
               {categories.map((c) => (
                 <div
                   key={c.id}
-                  onClick={() => setActiveCat(c.id)}
+                  onClick={() => renamingId !== c.id && setActiveCat(c.id)}
                   className={`group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-sm ${
                     activeCat === c.id ? "bg-primary-earth/20 text-primary-earth" : "hover:bg-surface-hover"
                   }`}
                   data-testid={`category-${c.id}`}
                 >
-                  <span className="truncate">{c.name}</span>
+                  {renamingId === c.id ? (
+                    <input
+                      autoFocus
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onBlur={commitRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename();
+                        if (e.key === "Escape") setRenamingId(null);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      className="flex-1 bg-app border border-primary-earth rounded px-1 py-0.5 text-sm focus-ring"
+                      data-testid={`rename-input-${c.id}`}
+                    />
+                  ) : (
+                    <span className="truncate flex-1">{c.name}</span>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      startRename(c);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded hover:bg-surface"
+                    data-testid={`rename-category-${c.id}`}
+                    title="Rename this tag pack"
+                  >
+                    <Pencil size={11} />
+                  </button>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -171,6 +308,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     }}
                     className="opacity-0 group-hover:opacity-100 w-6 h-6 flex items-center justify-center rounded hover:bg-surface"
                     data-testid={`remove-category-${c.id}`}
+                    title="Delete this tag pack"
                   >
                     <Trash2 size={12} />
                   </button>
@@ -183,9 +321,20 @@ export default function CategoryManager({ open, onClose, categories, onChange })
           <div className="flex-1 flex flex-col overflow-hidden">
             {current ? (
               <>
-                <div className="px-4 py-3 border-b border-app">
-                  <h3 className="font-heading font-semibold">{current.name}</h3>
-                  <p className="text-xs text-dim mt-0.5">{current.items.length} tags</p>
+                <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-heading font-semibold truncate">{current.name}</h3>
+                    <p className="text-xs text-dim mt-0.5">{current.items.length} tags</p>
+                  </div>
+                  <button
+                    onClick={exportCurrent}
+                    disabled={current.items.length === 0}
+                    className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 shrink-0"
+                    data-testid="export-pack-btn"
+                    title="Save this tag pack as a .pps-tagpack.json file you can share"
+                  >
+                    <Download size={12} /> Export pack
+                  </button>
                 </div>
 
                 {/* Add item */}

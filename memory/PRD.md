@@ -163,6 +163,13 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
+### Iteration 23 (2026-02, Tag Packs v1.1 groundwork — Import / Export / Rename)
+- ✅ **Export pack**: Button in the Tag Manager's right-pane header. Serializes the current pack to `<packname>.pps-tagpack.json` and triggers a download via a temporary `<a download>` link. Format: `{ formatVersion: 1, kind: "pps-tagpack", name, description, exportedAt, tags: [{label, iconType, iconName, iconData}] }`. Custom image icons embed as base64 so packs are fully self-contained files that can be emailed / thumb-drived to friends.
+- ✅ **Import pack**: Button below "New tag pack…" in the left rail. Opens a native file picker (`accept=".json,.pps-tagpack.json,application/json"`). Validates `kind === "pps-tagpack"` and `Array.isArray(tags)` before importing. **Always adds** — never merges, never replaces — auto-suffixes on name collision (`Wildlife` → `Wildlife (2)` → `Wildlife (3)`) so no existing pack is ever destroyed. Toast confirms with name + tag count.
+- ✅ **Rename pack**: Pencil icon appears on hover in the left rail next to the trash icon. Click to enter inline edit mode — Enter saves, Escape cancels, blur commits. Great for tidying up imported packs (e.g. renaming `Wildlife (2)` → `Wildlife-Alaska`).
+- ✅ Complete lifecycle now lives entirely inside Tag Manager: **Create · Add/Edit tags · Rename · Delete · Export · Import**. No new modals, no new screens.
+- Files touched: `components/CategoryManager.jsx` (import/export/rename handlers, new left-rail Import button + import file input, right-pane Export button, click-to-rename inline input with save/cancel, unique-name helper). Icon imports expanded: `Download`, `Upload`, `Pencil`.
+
 ### Iteration 22 (2026-02, Version stamp in UI)
 - ✅ **Build stamp visible in the app** — bottom-right of the destination panel footer: `v0.21.0 · 2026-02-15` in dim font-mono. Hovering the stamp reveals a tooltip explaining what it's for so testers know to include it in bug reports.
 - ✅ **`src/buildInfo.json`** — small JSON blob with `version` and `buildDate`. Imported into `App.js` and rendered. Under version control so the fallback is meaningful even before a rebuild.
