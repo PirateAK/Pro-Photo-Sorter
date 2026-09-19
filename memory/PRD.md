@@ -270,3 +270,37 @@ _None outstanding._
 - P2: Star rating widget separate from category icons
 - P2: Multi-monitor / detachable viewer window
 - P3: Cloud sync of category presets across machines
+
+
+### Iteration 26 — v1.0.0 ship prep (2026-02-15)
+
+**Ship candidate — everything below is what a new tester gets in one clean package.**
+
+- ✅ **Documentation bundle**
+  - `USER_GUIDE.md` — full feature manual (~350 lines): layout, file trees, filmstrip, tag packs, sorting flow, star ratings, cull mode, image editor, watermarks, resize-to-print, batch actions, search, recent folders, drive/space info, settings, keyboard shortcuts, bug-reporting.
+  - `QUICK_START.md` — ten-minute install + first-use walkthrough.
+  - `CHANGELOG.md` — per-version history from v0.10.0 (MVP) → v1.0.0.
+  - `README.md` — refreshed with feature highlights, repo layout, install path.
+- ✅ **Version bump** — `frontend/package.json` 0.25.0 → 1.0.0; `buildInfo.json` stamped. In-app stamp now reads `v1.0.0 · 2026-02-15` in the destination footer.
+- ✅ **Full file-tree upgrade** (delivered here):
+  - New **DrivesPanel** modal — click 🖴 next to either Open button. Shows every drive with letter, volume label, total capacity, free space, and a used-percentage bar (color-shifts to amber at 75%, red at 90%).
+  - **System-free-space chip** at the bottom of both source and destination panels, auto-refreshes every 60 s.
+  - **Per-folder image count on hover** in both file trees — lazily counted when the mouse enters a node, cached for the session.
+  - Everything degrades to hidden/graceful when `window.electronAPI` is absent (browser dev mode).
+- ✅ **NSIS Windows installer** — `pack-app.bat` now bakes the icon in, copies preload/main.js/package.json from `electron-additions/` into `electron-shell/`, and produces `Pro Photo Sorter Setup 1.0.0.exe` via electron-builder.
+- ✅ **App icon** — a 512×512 folder+camera earth-tone PNG at `electron-additions/icon.png`, wired into `webPreferences.icon` and the NSIS installer.
+- ✅ **`electron-additions/`** directory — canonical home for the four files Kurt must have in `electron-shell/`: `main.js` (spellcheck + IPC drives bridge), `preload.js` (contextBridge exposing `window.electronAPI.listDrives`), `icon.png`, `package.json` (electron-builder config).
+- ✅ **Updated ELECTRON-SETUP.md** — one copy-paste block that syncs all four files into `electron-shell/` and runs `npm install`.
+- ✅ **run-app.bat & pack-app.bat** now auto-sync `electron-additions/` → `electron-shell/` on every launch/build, so Kurt never has to manually re-paste after a git pull.
+
+Files touched:
+- New: `frontend/src/lib/electronBridge.js`, `frontend/src/components/DrivesPanel.jsx`, `USER_GUIDE.md`, `QUICK_START.md`, `CHANGELOG.md`, `electron-additions/{main.js,preload.js,icon.png,package.json}`.
+- Updated: `frontend/src/App.js` (drives button + free-space chip + DrivesPanel modal), `frontend/src/components/TreeNode.jsx` (per-folder image count on hover), `frontend/src/buildInfo.json`, `frontend/package.json`, `README.md`, `ELECTRON-SETUP.md`, `run-app.bat`, `pack-app.bat`.
+
+### Roadmap (post-v1.0)
+
+- **P1 · Multi-Source Roots** — open several source folders stacked in the UI.
+- **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
+- **P2 · Per-folder disk size** — needs the folder-path bridge; app currently shows image count on hover instead.
+- **P2 · First-Run Welcome Modal** and **In-App Starter-Pack Browser** — nicer onboarding for testers.
+- **P3 · AI Auto-Tagging** — offline TensorFlow.js/MobileNet scan that suggests category icons per photo.

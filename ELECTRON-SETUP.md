@@ -1,81 +1,104 @@
-# Electron Setup — Spell-Check Right-Click Menu
+# Electron Setup — v1.0.0
 
-The React inputs now have `spellCheck={true}` on the watermark text field
-and the tag popover, so **Chromium underlines misspellings in red while you type**.
-To also see a right-click menu with suggestions ("Change to 'MuskegMan'…"),
-you need to enable Electron's built-in spellchecker in `electron-shell/main.js`.
+The desktop shell (`C:\Pro-Photo-Sorter\electron-shell\`) has two files that
+live outside the repo's normal sync path: `main.js` and `package.json`. This
+guide is a **one-time paste-in** to bring your shell up to v1.0.0.
 
-## One-time paste-in on Kurt's PC
+Everything you need is in `electron-additions\` inside the repo. You have
+four items to copy over:
 
-Open `C:\Pro-Photo-Sorter\electron-shell\main.js` in Notepad and:
+| Copy from                              | Copy to (create if missing)                     |
+| -------------------------------------- | ----------------------------------------------- |
+| `electron-additions\main.js`           | `electron-shell\main.js`                        |
+| `electron-additions\preload.js`        | `electron-shell\preload.js`                     |
+| `electron-additions\icon.png`          | `electron-shell\icon.png`                       |
+| `electron-additions\package.json`      | `electron-shell\package.json`                   |
 
-### 1) Enable the spellchecker in the BrowserWindow
+## Fastest path — one copy-paste block
 
-Find where `new BrowserWindow({...})` is called (usually near the top of the file).
-Inside its `webPreferences`, add `spellcheck: true` if it's not already there:
+Open **Command Prompt** and paste this. It copies every file into place
+and then installs the Electron toolchain:
 
-```js
-win = new BrowserWindow({
-  width: 1400,
-  height: 900,
-  webPreferences: {
-    contextIsolation: true,
-    nodeIntegration: false,
-    spellcheck: true,       // ← add this line
-    // ...anything else you already have here
-  },
-});
+```cmd
+cd /d C:\Pro-Photo-Sorter
+copy /Y electron-additions\main.js         electron-shell\main.js
+copy /Y electron-additions\preload.js      electron-shell\preload.js
+copy /Y electron-additions\icon.png        electron-shell\icon.png
+copy /Y electron-additions\package.json    electron-shell\package.json
+cd electron-shell
+call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
 ```
 
-### 2) Handle the right-click menu
+That's it. Now double-click **`run-app.bat`** to launch, or **`pack-app.bat`**
+to build the installer.
 
-Anywhere in `main.js` (usually right after the BrowserWindow is created), add:
+## What each file does
 
-```js
-const { Menu, MenuItem } = require('electron');
+### `main.js`
+The Electron entry point. Owns the window, the menu, the spellcheck
+right-click menu, and the IPC handler `pps:list-drives` that powers the
+"System Drives" panel in the app.
 
-win.webContents.on('context-menu', (event, params) => {
-  const menu = new Menu();
+### `preload.js`
+A tiny bridge — the only thing that runs both in Node and in the
+renderer. It safely exposes `window.electronAPI.listDrives()` to React so
+the app can query drive info without loosening the Chromium sandbox.
 
-  // Spelling suggestions
-  for (const suggestion of params.dictionarySuggestions) {
-    menu.append(new MenuItem({
-      label: suggestion,
-      click: () => win.webContents.replaceMisspelling(suggestion),
-    }));
-  }
+### `icon.png`
+The app icon. `electron-builder` uses this for the installer, taskbar,
+Start Menu, and desktop shortcut.
 
-  if (params.misspelledWord) {
-    if (params.dictionarySuggestions.length > 0) {
-      menu.append(new MenuItem({ type: 'separator' }));
-    }
-    menu.append(new MenuItem({
-      label: 'Add to dictionary',
-      click: () => win.webContents.session.addWordToSpellCheckerDictionary(params.misspelledWord),
-    }));
-    menu.append(new MenuItem({ type: 'separator' }));
-  }
+### `package.json`
+Tells `electron-builder` how to build the redistributable installer
+(target: NSIS, icon path, product name, shortcuts). Also pins Electron
+and electron-builder versions.
 
-  // Standard clipboard actions
-  if (params.editFlags.canCut)   menu.append(new MenuItem({ role: 'cut' }));
-  if (params.editFlags.canCopy)  menu.append(new MenuItem({ role: 'copy' }));
-  if (params.editFlags.canPaste) menu.append(new MenuItem({ role: 'paste' }));
+## Verifying it worked
 
-  if (menu.items.length > 0) menu.popup();
-});
+After launching, right-click the Watermark text field or a Tag rename
+input — you should see spelling suggestions plus Cut/Copy/Paste.
+
+Click the **🖴 Drives** button next to either **Open** button (source
+or destination panel). A modal should list every disk on your system
+with free/used/total bars. If it's empty or errors out, see below.
+
+## Troubleshooting
+
+**Drives panel shows "Drive info is only available inside the desktop app":**
+You're running in a plain browser (yarn start) instead of Electron. Use
+`run-app.bat`.
+
+**Drives panel says "No drives reported" inside Electron:**
+PowerShell may be locked down on this machine. Open a Command Prompt
+and run:
+
+```cmd
+powershell -NoProfile -ExecutionPolicy Bypass -Command "Get-CimInstance Win32_LogicalDisk"
 ```
 
-Save the file, close any running Pro Photo Sorter windows, then double-click `run-app.bat`
-again. Right-click on the Watermark text or a Tag rename input — you'll now see
-spelling suggestions plus Cut/Copy/Paste.
+If that fails, share the error text — we'll swap the backend to `wmic`.
+
+**`npm install` in `electron-shell` fails with peer conflicts:**
+Always use `--legacy-peer-deps`:
+
+```cmd
+cd /d C:\Pro-Photo-Sorter\electron-shell
+call npm install --legacy-peer-deps --no-audit --no-fund
+```
+
+**Installer build fails on `pack-app.bat`:**
+Scroll up in the terminal for the red error. Most commonly it's the icon
+not being found — make sure `electron-shell\icon.png` exists and is a
+valid PNG. On satellite links, `electron-builder` can also time out
+downloading its NSIS helper the very first time — just re-run.
 
 ## Notes
 
-- No `npm install` needed — this uses Electron's built-in Chromium spellchecker.
-- Default dictionary is en-US. Kurt can add words to the personal dictionary via
-  the "Add to dictionary" option and they'll persist across sessions.
-- The React `onContextMenu` handler on the main photo image (for "toggle watermark
-  for this photo") still works — that handler runs first and calls
-  `event.preventDefault()`, so Electron's context-menu event doesn't fire on
-  the image. The spellcheck menu only appears where we didn't preempt it —
-  i.e. inside text inputs, which is exactly what we want.
+- No `emergentintegrations` or cloud services involved. Everything is
+  local.
+- The default spellcheck dictionary is en-US. Add words via the
+  "Add to dictionary" right-click option; they persist across sessions.
+- The React `onContextMenu` handler on the main photo image (for the
+  per-photo watermark toggle) runs first and calls `preventDefault()`,
+  so Electron's spellcheck menu only appears in text inputs — exactly
+  what we want.

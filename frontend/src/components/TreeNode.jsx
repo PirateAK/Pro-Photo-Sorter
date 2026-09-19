@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useMemo, createElement } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef, createElement } from "react";
 import { ChevronRight, ChevronDown, Folder, FolderOpen, HardDrive, FolderPlus, Pencil, Trash2 } from "lucide-react";
-import { listChildren } from "../lib/fsapi";
+import { listChildren, isImageName } from "../lib/fsapi";
 
 function TreeNode(props) {
   const {
@@ -15,7 +15,24 @@ function TreeNode(props) {
   const [open, setOpen] = useState(depth === 0);
   const [children, setChildren] = useState(null);
   const [loading, setLoading] = useState(false);
+  // Per-folder image count, lazily counted on hover. null = not counted yet.
+  const [imgCount, setImgCount] = useState(null);
+  const countedRef = useRef(false);
   const isSelected = selectedPath === path;
+
+  const countImages = useCallback(async () => {
+    if (countedRef.current) return;
+    countedRef.current = true;
+    try {
+      let n = 0;
+      for await (const [name, handle] of node.handle.entries()) {
+        if (handle.kind === "file" && isImageName(name)) n++;
+      }
+      setImgCount(n);
+    } catch {
+      countedRef.current = false; // allow retry
+    }
+  }, [node.handle]);
 
   const badgeCount = justStored?.[path] || 0;
   const branchHasStore = useMemo(() => {
@@ -69,6 +86,7 @@ function TreeNode(props) {
       <div
         data-testid={`tree-node-${path}`}
         onClick={() => onSelectFolder(node, path)}
+        onMouseEnter={countImages}
         className={`group flex items-center gap-1 py-1 pr-1 rounded cursor-pointer text-sm transition-colors ${
           isSelected ? "bg-primary-earth/20 text-primary-earth" : "hover:bg-surface-hover text-app"
         }`}
@@ -124,6 +142,16 @@ function TreeNode(props) {
               </>
             )}
           </div>
+        )}
+
+        {imgCount !== null && imgCount > 0 && (
+          <span
+            className="shrink-0 px-1 py-0.5 rounded text-[10px] font-mono text-dim opacity-0 group-hover:opacity-100 transition-opacity"
+            data-testid={`tree-imgcount-${path}`}
+            title={`${imgCount} image${imgCount !== 1 ? "s" : ""} in this folder`}
+          >
+            {imgCount}
+          </span>
         )}
 
         {badgeCount > 0 && (
