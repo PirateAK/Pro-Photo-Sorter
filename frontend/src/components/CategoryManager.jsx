@@ -122,7 +122,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         <div className="flex items-center justify-between px-5 py-3 border-b border-app">
           <div className="flex items-center gap-2">
             <Palette size={18} className="text-primary-earth" />
-            <h2 className="font-heading font-semibold text-lg">Category Manager</h2>
+            <h2 className="font-heading font-semibold text-lg">Tag Manager</h2>
           </div>
           <button
             onClick={onClose}
@@ -141,7 +141,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 value={newCatName}
                 onChange={(e) => setNewCatName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && addCategory()}
-                placeholder="New list…"
+                placeholder="New tag pack…"
                 className="flex-1 bg-app border border-app rounded px-2 py-1 text-sm focus-ring"
                 data-testid="new-category-input"
               />
@@ -185,7 +185,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
               <>
                 <div className="px-4 py-3 border-b border-app">
                   <h3 className="font-heading font-semibold">{current.name}</h3>
-                  <p className="text-xs text-dim mt-0.5">{current.items.length} icons</p>
+                  <p className="text-xs text-dim mt-0.5">{current.items.length} tags</p>
                 </div>
 
                 {/* Add item */}
@@ -255,7 +255,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                       value={newItemLabel}
                       onChange={(e) => setNewItemLabel(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && addItem()}
-                      placeholder="Label (used in filename/folder)…"
+                      placeholder="Tag label (used in filename/folder)…"
                       className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
                       data-testid="new-item-label"
                     />
@@ -272,7 +272,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 {/* Items grid */}
                 <div className="flex-1 overflow-auto p-4">
                   {current.items.length === 0 ? (
-                    <div className="text-center text-dim text-sm py-10">No icons yet. Add one above.</div>
+                    <div className="text-center text-dim text-sm py-10">No tags yet. Add one above.</div>
                   ) : (
                     <div className="grid grid-cols-4 gap-3">
                       {current.items.map((it) => (
@@ -305,14 +305,14 @@ export default function CategoryManager({ open, onClose, categories, onChange })
               </>
             ) : (
               <div className="flex-1 flex items-center justify-center text-dim">
-                Create a category to begin.
+                Create a tag pack to begin.
               </div>
             )}
           </div>
         </div>
 
         <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim">
-          <div>Drag icons onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
+          <div>Tag packs let you swap sets of tags for different photography styles. Drag tags onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] font-medium text-sm"

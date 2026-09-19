@@ -219,7 +219,7 @@ export default function IconPalette({
       <div className="flex items-center gap-1 overflow-x-auto min-w-0 flex-1">
         {(!active || active.items.length === 0) && (
           <span className="text-xs text-dim italic">
-            No icons in this list — right-click to add one, or open Category Manager.
+            No tags in this pack — right-click to add one, or open Tag Manager.
           </span>
         )}
         {active?.items.map((it) => (
@@ -330,17 +330,17 @@ function ContextMenu({ x, y, mode, item, categoryName, role, onRename, onAddBefo
           <div className="h-px bg-app/60 my-1" />
           <Row icon={Trash2} label="Delete" onClick={onDelete} danger />
           <div className="h-px bg-app/60 my-1" />
-          <Row icon={Settings2} label="Manage category…" onClick={onManage} />
+          <Row icon={Settings2} label="Manage tag pack…" onClick={onManage} />
         </>
       )}
       {mode === "empty" && (
         <>
           <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-dim font-heading truncate">
-            {categoryName || "Category"}
+            {categoryName || "Tag pack"}
           </div>
           <Row icon={Plus} label={`Add tag to "${categoryName}"`} onClick={onAddEnd} />
           <div className="h-px bg-app/60 my-1" />
-          <Row icon={Settings2} label="Manage categories…" onClick={onManage} />
+          <Row icon={Settings2} label="Manage tag packs…" onClick={onManage} />
         </>
       )}
     </div>
@@ -402,7 +402,7 @@ const LabelPopover = React.forwardRef(function LabelPopover({ x, y, mode, initia
       </div>
       <div className="text-[10px] text-dim mt-2">
         New tags get a default icon. To choose a custom icon or upload an image,
-        open the Category Manager.
+        open the Tag Manager.
       </div>
     </div>
   );
