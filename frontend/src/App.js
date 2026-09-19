@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -57,7 +57,9 @@ import SessionStats from "@/components/SessionStats";
 import RecentFoldersDropdown from "@/components/RecentFoldersDropdown";
 import SearchModal from "@/components/SearchModal";
 import CullMode from "@/components/CullMode";
+import DrivesPanel from "@/components/DrivesPanel";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
+import { isElectron, totalFreeBytes, formatBytes } from "@/lib/electronBridge";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -201,6 +203,9 @@ export default function App() {
   const [showContact, setShowContact] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showCull, setShowCull] = useState(false);
+  const [showDrives, setShowDrives] = useState(false);
+  // Total free space across all drives (bytes). null = not-yet-read / unavailable.
+  const [totalFree, setTotalFree] = useState(null);
   const [searchMode, setSearchMode] = useState(false); // true when filmstrip holds search results
   const [compareMode, setCompareMode] = useState(1); // 1 = single, 2/3 = split panes
   const [autoRating, setAutoRating] = useState(false); // in-progress flag
@@ -350,6 +355,32 @@ export default function App() {
       target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
   }, [selectedIdx, currentImage]);
+
+  // Poll total-free-space every 60s while the app is open (Electron only).
+  // Also refreshes when the user opens the Drives panel or picks a new folder.
+  useEffect(() => {
+    if (!isElectron()) return;
+    let cancelled = false;
+    const tick = async () => {
+      try {
+        const bytes = await totalFreeBytes();
+        if (!cancelled) setTotalFree(bytes);
+      } catch {
+        /* ignore */
+      }
+    };
+    tick();
+    const id = setInterval(tick, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, []);
+
+  const refreshFreeSpace = useCallback(async () => {
+    if (!isElectron()) return;
+    try {
+      const bytes = await totalFreeBytes();
+      setTotalFree(bytes);
+    } catch { /* ignore */ }
+  }, []);
 
   const pickSource = async () => {
     try {
@@ -1365,6 +1396,14 @@ export default function App() {
             >
               <FolderOpen size={12} /> Open
             </button>
+            <button
+              onClick={() => { setShowDrives(true); refreshFreeSpace(); }}
+              className="w-6 h-6 rounded flex items-center justify-center text-dim hover:text-primary-earth hover:bg-app"
+              data-testid="source-drives-btn"
+              title="Show drives & free space"
+            >
+              <HardDrive size={13} />
+            </button>
             <RecentFoldersDropdown kind="source" onPick={pickRecentSource} />
           </div>
         </div>
@@ -1379,6 +1418,19 @@ export default function App() {
         ) : (
           <div className="flex-1 flex items-center justify-center p-6 text-center text-dim text-xs">
             Click <strong className="text-primary-earth">Open</strong> to browse a source folder.
+          </div>
+        )}
+        {totalFree !== null && (
+          <div
+            className="px-3 py-1.5 border-t border-app text-[10px] text-dim font-mono flex items-center justify-between gap-2 shrink-0"
+            data-testid="source-freespace-chip"
+            title="Total free space across all drives on this system"
+          >
+            <span className="flex items-center gap-1">
+              <HardDrive size={10} className="text-primary-earth" />
+              System free
+            </span>
+            <span className="text-app">{formatBytes(totalFree)}</span>
           </div>
         )}
       </div>
@@ -1968,6 +2020,14 @@ export default function App() {
             >
               <FolderOpen size={12} /> Open
             </button>
+            <button
+              onClick={() => { setShowDrives(true); refreshFreeSpace(); }}
+              className="w-6 h-6 rounded flex items-center justify-center text-dim hover:text-primary-earth hover:bg-app"
+              data-testid="dest-drives-btn"
+              title="Show drives & free space"
+            >
+              <HardDrive size={13} />
+            </button>
             <RecentFoldersDropdown kind="dest" onPick={pickRecentDest} />
           </div>
         </div>
@@ -1988,6 +2048,19 @@ export default function App() {
         ) : (
           <div className="flex-1 flex items-center justify-center p-6 text-center text-dim text-xs">
             Choose a destination drive to sort your photos into.
+          </div>
+        )}
+        {totalFree !== null && (
+          <div
+            className="px-3 py-1.5 border-t border-app text-[10px] text-dim font-mono flex items-center justify-between gap-2 shrink-0"
+            data-testid="dest-freespace-chip"
+            title="Total free space across all drives on this system"
+          >
+            <span className="flex items-center gap-1">
+              <HardDrive size={10} className="text-primary-earth" />
+              System free
+            </span>
+            <span className="text-app">{formatBytes(totalFree)}</span>
           </div>
         )}
         <div className="px-3 py-2 border-t border-app text-[10px] text-dim flex items-center justify-between gap-2">
@@ -2230,6 +2303,8 @@ export default function App() {
           if (stars > 0) bumpStat("rated");
         }}
       />
+
+      <DrivesPanel open={showDrives} onClose={() => setShowDrives(false)} />
 
       {showHelp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-6" data-testid="help-modal">

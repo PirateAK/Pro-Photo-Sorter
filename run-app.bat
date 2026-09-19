@@ -9,7 +9,7 @@ REM ============================================================
 cd /d C:\Pro-Photo-Sorter
 echo === Pulling latest from GitHub ===
 git pull
-echo === Ensuring dependencies are installed ===
+echo === Ensuring dependencies are installed (frontend) ===
 cd frontend
 call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
 if errorlevel 1 goto :err
@@ -23,8 +23,16 @@ echo === Syncing build into electron-shell ===
 cd ..
 rmdir /s /q electron-shell\build 2>nul
 xcopy /E /I /Y /Q frontend\build electron-shell\build
-echo === Launching Pro Photo Sorter ===
+echo === Ensuring latest Electron files (main.js, preload.js, icon, package.json) ===
+copy /Y electron-additions\main.js         electron-shell\main.js         >nul
+copy /Y electron-additions\preload.js      electron-shell\preload.js      >nul
+copy /Y electron-additions\icon.png        electron-shell\icon.png        >nul
+copy /Y electron-additions\package.json    electron-shell\package.json    >nul
+echo === Ensuring dependencies are installed (electron-shell) ===
 cd electron-shell
+call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
+if errorlevel 1 goto :err
+echo === Launching Pro Photo Sorter ===
 call npx electron .
 goto :eof
 :err
