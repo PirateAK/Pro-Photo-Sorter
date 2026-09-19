@@ -381,6 +381,9 @@ const LabelPopover = React.forwardRef(function LabelPopover({ x, y, mode, initia
           if (e.key === "Escape") { e.preventDefault(); onCancel(); }
         }}
         placeholder={mode === "edit" ? "" : "e.g. ceremony"}
+        spellCheck={true}
+        autoCorrect="on"
+        autoCapitalize="off"
         className="w-full bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
         data-testid={`palette-${role}-popover-input`}
       />

@@ -137,6 +137,33 @@ export default function App() {
   // Stored as: appliedByImage[name] = { folders: [icons], tags: [icons] }
   // (Legacy migration from array format handled in getOverlay.)
   const [appliedByImage, setAppliedByImage] = useState({});
+
+  // ── Per-image watermark override ──────────────────────────────────────
+  // Keyed by full image path ("sourcePath/imageName"). Undefined = use the
+  // global settings.watermarkEnabled. true = force on, false = force off.
+  const [watermarkOverrides, setWatermarkOverrides] = useState({});
+
+  const globalWatermarkOn = () =>
+    settings.watermarkEnabled === true && (settings.watermarkText || "").trim().length > 0;
+
+  const isWatermarkOnFor = (imgPath) => {
+    const ov = watermarkOverrides[imgPath];
+    if (ov !== undefined) return ov;
+    return globalWatermarkOn();
+  };
+
+  const toggleWatermarkFor = (imgPath, forced = null) => {
+    if (!imgPath) return;
+    const globalOn = globalWatermarkOn();
+    const currentEffective = isWatermarkOnFor(imgPath);
+    const nextEffective = forced !== null ? forced : !currentEffective;
+    setWatermarkOverrides((cur) => {
+      const next = { ...cur };
+      if (nextEffective === globalOn) delete next[imgPath];
+      else next[imgPath] = nextEffective;
+      return next;
+    });
+  };
   const currentImage = images[selectedIdx] || null;
   const currentOverlay = currentImage
     ? (() => {
@@ -818,7 +845,7 @@ export default function App() {
       const anchorPath = destSelected?.path || destRootName;
       try {
         const targetDir = await getOrCreateSubdir(anchor, folderParts);
-        const wmEnabled = settings.watermarkEnabled === true && (settings.watermarkText || "").trim().length > 0;
+        const wmEnabled = isWatermarkOnFor(imgPath);
         let writtenName;
         if (wmEnabled && canWatermark(img.name)) {
           const blob = await writeWithWatermark(img.handle, settings.watermarkText.trim(), {
@@ -827,6 +854,7 @@ export default function App() {
             xPct: settings.watermarkXPct ?? 0.98,
             yPct: settings.watermarkYPct ?? 0.98,
             color: settings.watermarkColor || "white",
+            fontFamily: settings.watermarkFontFamily || "sans",
           });
           writtenName = await writeBlobTo(blob, targetDir, fileName);
         } else {
@@ -955,7 +983,7 @@ export default function App() {
       const anchorPath = destSelected?.path || destRootName;
       const targetDir = await getOrCreateSubdir(anchor, folderParts);
 
-      const wmEnabled = settings.watermarkEnabled === true && (settings.watermarkText || "").trim().length > 0;
+      const wmEnabled = isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`);
       const blob = await cropAndResize({
         sourceHandle: currentImage.handle,
         printKey,
@@ -1771,19 +1799,43 @@ export default function App() {
           </div>
 
           {/* Row 2b: Print-size resize buttons — auto-center crop + 300 DPI + store */}
-          <div className="grid grid-cols-5 gap-1.5" data-testid="resize-row">
-            {PRINT_SIZES.map((p) => (
+          <div className="space-y-1" data-testid="resize-row">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Resize for print</span>
               <button
-                key={p.key}
-                onClick={() => openResizeFor(p.key)}
-                disabled={!currentImage || !destRoot}
-                className="px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-[11px] font-mono flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                data-testid={`btn-resize-${p.key}`}
-                title={`Crop & resize to ${p.key} @ 300 DPI (${p.long}×${p.short}px), then store`}
+                onClick={() => currentImage && toggleWatermarkFor(`${currentSourcePath}/${currentImage.name}`)}
+                disabled={!currentImage}
+                className={`px-2 py-0.5 rounded-full text-[10px] font-mono border flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed ${
+                  currentImage && isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`)
+                    ? "bg-primary-earth/20 border-primary-earth text-primary-earth"
+                    : "bg-app border-app text-dim hover:bg-surface-hover"
+                }`}
+                data-testid="btn-watermark-toggle"
+                title={
+                  currentImage
+                    ? (isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`)
+                        ? "Watermark ON for this photo — click to turn OFF"
+                        : "Watermark OFF for this photo — click to turn ON")
+                    : "Pick a photo first"
+                }
               >
-                <Save size={11} /> {p.key.replace("x", "×")}
+                🎨 WM {currentImage && isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`) ? "ON" : "OFF"}
               </button>
-            ))}
+            </div>
+            <div className="grid grid-cols-5 gap-1.5">
+              {PRINT_SIZES.map((p) => (
+                <button
+                  key={p.key}
+                  onClick={() => openResizeFor(p.key)}
+                  disabled={!currentImage || !destRoot}
+                  className="px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-[11px] font-mono flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                  data-testid={`btn-resize-${p.key}`}
+                  title={`Crop & resize to ${p.key} @ 300 DPI (${p.long}×${p.short}px), then store`}
+                >
+                  <Save size={11} /> {p.key.replace("x", "×")}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Row 3: destination preview path */}
@@ -1834,6 +1886,18 @@ export default function App() {
                 alt={currentImage.name}
                 className="max-h-full max-w-full object-contain rounded shadow-2xl"
                 draggable={false}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  if (!currentImage) return;
+                  const imgPath = `${currentSourcePath}/${currentImage.name}`;
+                  const nextOn = !isWatermarkOnFor(imgPath);
+                  toggleWatermarkFor(imgPath);
+                  toast.success(`Watermark ${nextOn ? "ON" : "OFF"} for this photo`, {
+                    description: nextOn
+                      ? "This photo will be stamped when stored"
+                      : "This photo will store without a watermark",
+                  });
+                }}
               />
               <IconOverlay
                 containerRef={imageAreaRef}

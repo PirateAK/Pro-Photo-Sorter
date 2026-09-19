@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
-import { paintWatermark } from "../lib/watermark";
+import { paintWatermark, WATERMARK_FONTS } from "../lib/watermark";
 import { toast } from "sonner";
 
 export default function SettingsModal({ open, onClose, settings, onChange, previewImageHandle }) {
@@ -203,6 +203,9 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                   onChange={(e) => setLocal({ ...local, watermarkText: e.target.value })}
                   placeholder="© 2026 MuskegMan Photography"
                   disabled={local.watermarkEnabled !== true}
+                  spellCheck={true}
+                  autoCorrect="on"
+                  autoCapitalize="on"
                   className="w-full bg-surface border border-app rounded px-2 py-1.5 text-sm focus-ring disabled:opacity-40"
                   data-testid="watermark-text"
                 />
@@ -261,6 +264,22 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                 </div>
               </div>
 
+              {/* Font family */}
+              <div>
+                <div className="text-[11px] text-dim mb-1">Font</div>
+                <select
+                  value={local.watermarkFontFamily || "sans"}
+                  onChange={(e) => setLocal({ ...local, watermarkFontFamily: e.target.value })}
+                  disabled={local.watermarkEnabled !== true}
+                  className="w-full bg-surface border border-app rounded px-2 py-1.5 text-sm focus-ring disabled:opacity-40"
+                  data-testid="watermark-font-family"
+                >
+                  {WATERMARK_FONTS.map((f) => (
+                    <option key={f.key} value={f.key}>{f.label}</option>
+                  ))}
+                </select>
+              </div>
+
               {/* Opacity slider */}
               <div>
                 <div className="flex items-center justify-between mb-1">
@@ -289,6 +308,7 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                 fontSize={local.watermarkFontSize || "medium"}
                 opacity={local.watermarkOpacity ?? 0.9}
                 color={local.watermarkColor || "white"}
+                fontFamily={local.watermarkFontFamily || "sans"}
                 xPct={local.watermarkXPct ?? 0.98}
                 yPct={local.watermarkYPct ?? 0.98}
                 imageHandle={previewImageHandle}
@@ -538,7 +558,7 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
 // Live preview of the watermark. If a source photo handle is provided we render
 // it downsized; otherwise we fall back to an earth-tone gradient so the drag
 // affordance is still testable without a photo loaded.
-function WatermarkPreview({ enabled, text, fontSize, opacity, color, xPct, yPct, imageHandle, onPositionChange }) {
+function WatermarkPreview({ enabled, text, fontSize, opacity, color, fontFamily, xPct, yPct, imageHandle, onPositionChange }) {
   const canvasRef = useRef(null);
   const [bg, setBg] = useState(null); // { img, w, h } | null (null → gradient)
   const dragging = useRef(false);
@@ -613,6 +633,7 @@ function WatermarkPreview({ enabled, text, fontSize, opacity, color, xPct, yPct,
         yPct,
         scale: 3,
         color,
+        fontFamily,
       });
     }
 
@@ -627,7 +648,7 @@ function WatermarkPreview({ enabled, text, fontSize, opacity, color, xPct, yPct,
       ctx.stroke();
       ctx.restore();
     }
-  }, [bg, enabled, text, fontSize, opacity, color, xPct, yPct]);
+  }, [bg, enabled, text, fontSize, opacity, color, fontFamily, xPct, yPct]);
 
   const setFromEvent = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
