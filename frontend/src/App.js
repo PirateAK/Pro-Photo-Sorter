@@ -1935,7 +1935,7 @@ export default function App() {
               {/* Tidy © badge — shows only when watermark is ON for this photo */}
               {currentImagePath && isWatermarkOnFor(currentImagePath) && (
                 <div
-                  className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 rounded-md bg-black/55 backdrop-blur-sm border border-primary-earth/60 text-primary-earth text-[11px] font-mono uppercase tracking-widest shadow-lg z-30 pointer-events-none"
+                  className="absolute top-3 left-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-1 text-primary-earth text-[11px] font-mono uppercase tracking-widest z-30 pointer-events-none"
                   data-testid="watermark-indicator"
                   title="Watermark will be applied to this photo when stored. Right-click the photo to toggle."
                 >
