@@ -26,9 +26,9 @@ export const FONT_SIZE_FRACTION = {
 // Compute { fs, padding, textAlign, textBaseline, drawX, drawY } from options
 // and canvas dimensions. Shared by writeWithWatermark and any live preview so
 // they render identically.
-export function computeStampGeom({ width, height, fontSize = "medium", xPct = 0.98, yPct = 0.98 }) {
+export function computeStampGeom({ width, height, fontSize = "medium", xPct = 0.98, yPct = 0.98, scale = 1 }) {
   const frac = FONT_SIZE_FRACTION[fontSize] ?? FONT_SIZE_FRACTION.medium;
-  const fs = Math.max(10, Math.round(Math.max(width, height) * frac));
+  const fs = Math.max(8, Math.round(Math.max(width, height) * frac * scale));
   const padding = Math.round(fs * 0.9);
 
   const x = Math.round(xPct * width);
@@ -57,8 +57,8 @@ export function computeStampGeom({ width, height, fontSize = "medium", xPct = 0.
 
 // Paint the watermark on an existing 2D context. Extracted so previews and
 // exports can share pixel-identical rendering.
-export function paintWatermark(ctx, text, { width, height, fontSize = "medium", opacity = 0.9, xPct = 0.98, yPct = 0.98 }) {
-  const { fs, textAlign, textBaseline, drawX, drawY } = computeStampGeom({ width, height, fontSize, xPct, yPct });
+export function paintWatermark(ctx, text, { width, height, fontSize = "medium", opacity = 0.9, xPct = 0.98, yPct = 0.98, scale = 1 }) {
+  const { fs, textAlign, textBaseline, drawX, drawY } = computeStampGeom({ width, height, fontSize, xPct, yPct, scale });
   ctx.save();
   ctx.font = `600 ${fs}px system-ui, -apple-system, "Segoe UI", Inter, sans-serif`;
   ctx.textAlign = textAlign;

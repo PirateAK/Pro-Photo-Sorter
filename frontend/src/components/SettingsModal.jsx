@@ -573,7 +573,9 @@ function WatermarkPreview({ enabled, text, fontSize, opacity, xPct, yPct, imageH
     }
 
     // Paint watermark at current position — pass the CSS-space dimensions so
-    // the stamp uses the same math as the export path.
+    // the stamp uses the same math as the export path. Preview uses scale:3
+    // so the Small/Medium/Large differences are clearly visible on the tiny
+    // canvas (real export uses scale:1 with true photo dimensions).
     if (enabled && text) {
       paintWatermark(ctx, text, {
         width: CSS_W,
@@ -582,6 +584,7 @@ function WatermarkPreview({ enabled, text, fontSize, opacity, xPct, yPct, imageH
         opacity,
         xPct,
         yPct,
+        scale: 3,
       });
     }
 
