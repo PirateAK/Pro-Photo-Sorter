@@ -1,6 +1,6 @@
 {
   "name": "pro-photo-sorter",
-  "version": "1.0.0",
+  "version": "1.0.5",
   "description": "Offline photo sorter for Windows",
   "main": "main.js",
   "author": "Captain Kurt",

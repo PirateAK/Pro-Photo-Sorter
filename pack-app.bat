@@ -27,6 +27,8 @@ copy /Y electron-additions\main.js         electron-shell\main.js         >nul
 copy /Y electron-additions\preload.js      electron-shell\preload.js      >nul
 copy /Y electron-additions\icon.png        electron-shell\icon.png        >nul
 copy /Y electron-additions\package.json    electron-shell\package.json    >nul
+echo === Syncing installer version from frontend/package.json ===
+call node -e "const fs=require('fs');const fv=require('./frontend/package.json').version;const p=require('./electron-shell/package.json');p.version=fv;fs.writeFileSync('./electron-shell/package.json',JSON.stringify(p,null,2)+'\n');console.log('electron-shell version -> '+fv)"
 echo === Ensuring dependencies are installed (electron-shell) ===
 cd electron-shell
 call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
