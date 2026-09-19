@@ -57,11 +57,26 @@ export function computeStampGeom({ width, height, fontSize = "medium", xPct = 0.
 
 // Paint the watermark on an existing 2D context. Extracted so previews and
 // exports can share pixel-identical rendering.
-export function paintWatermark(ctx, text, { width, height, fontSize = "medium", opacity = 0.9, xPct = 0.98, yPct = 0.98, scale = 1, color = "white" }) {
+// Font family presets for the watermark. `stack` is a CSS/canvas font-family
+// string; label is what shows in Settings.
+export const WATERMARK_FONTS = [
+  { key: "sans",     label: "System (Sans)",  stack: 'system-ui, -apple-system, "Segoe UI", Inter, sans-serif' },
+  { key: "serif",    label: "Serif",          stack: 'Georgia, "Times New Roman", serif' },
+  { key: "mono",     label: "Monospace",      stack: '"Courier New", Courier, monospace' },
+  { key: "script",   label: "Script",         stack: '"Brush Script MT", "Segoe Script", cursive' },
+  { key: "display",  label: "Display (Bold)", stack: 'Impact, "Arial Black", sans-serif' },
+];
+
+export function fontStackFor(key) {
+  return (WATERMARK_FONTS.find((f) => f.key === key) || WATERMARK_FONTS[0]).stack;
+}
+
+export function paintWatermark(ctx, text, { width, height, fontSize = "medium", opacity = 0.9, xPct = 0.98, yPct = 0.98, scale = 1, color = "white", fontFamily = "sans" }) {
   const { fs, textAlign, textBaseline, drawX, drawY } = computeStampGeom({ width, height, fontSize, xPct, yPct, scale });
   const isBlack = color === "black";
+  const stack = fontStackFor(fontFamily);
   ctx.save();
-  ctx.font = `600 ${fs}px system-ui, -apple-system, "Segoe UI", Inter, sans-serif`;
+  ctx.font = `600 ${fs}px ${stack}`;
   ctx.textAlign = textAlign;
   ctx.textBaseline = textBaseline;
   // Contrast halo: dark text gets a light halo, light text gets a dark halo.
@@ -99,6 +114,7 @@ export async function writeWithWatermark(sourceHandle, text, opts = {}) {
       xPct: opts.xPct,
       yPct: opts.yPct,
       color: opts.color,
+      fontFamily: opts.fontFamily,
     });
 
     const mime = opts.mime || mimeForName(sourceHandle.name || file.name || "");

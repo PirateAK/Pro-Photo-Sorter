@@ -173,6 +173,15 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
+### Iteration 26 (2026-02, Resize-for-Print + Watermark Font + Quick WM Toggle + Spellcheck)
+- ✅ **Print-size resize buttons** (row under Store/Undo): **4×6 · 5×7 · 8×10 · 10×12 · 16×20** — click a size, a Crop Preview modal opens with the image + a draggable aspect-locked crop box + rule-of-thirds guides. Auto-centered by default, drag to reposition, **Store** confirms → 300 DPI print-ready JPEG (e.g. 4×6 → 1800×1200 px). Filename gets a `_4x6.jpg` suffix so multiple prints of the same photo don't collide. Same folder/filename template as regular Store, honors watermark per-image override.
+- ✅ **Watermark font family** picker in Settings: System (Sans) · Serif · Monospace · Script · Display (Bold). Applied consistently in preview, export, and resize paths.
+- ✅ **Per-image watermark toggle**: 🎨 WM ON/OFF pill above the resize row shows the current photo's effective state; click flips it. Right-click on the main image also toggles with a toast confirmation. Uses a `watermarkOverrides` state keyed by full image path — undefined = follow global setting, `true/false` = override. Both storeCurrent and storeResized honor the per-image override.
+- ✅ **Spellcheck** on the watermark text field + the inline tag popover input: `spellCheck={true}` + `autoCorrect="on"` — Chromium's underline appears while typing.
+- ✅ **`ELECTRON-SETUP.md`** — one-time paste-in for `electron-shell/main.js` so right-click on an underlined word shows the "Change to 'X'" suggestions menu (Electron built-in, no npm dep).
+- ✅ **Version bump to 0.25.0** (frontend + buildInfo). Kurt's manual step: also bump `electron-shell/package.json` to 0.25.0.
+- Files touched: `lib/watermark.js` (WATERMARK_FONTS, fontStackFor, fontFamily option), `lib/resize.js` (new — cropAndResize, PRINT_SIZES, targetDimsFor, cropBoxFor), `components/ResizeCropModal.jsx` (new — draggable crop preview), `components/SettingsModal.jsx` (font dropdown, spellCheck), `components/IconPalette.jsx` (spellCheck on popover), `App.js` (watermarkOverrides state + helpers, storeResized handler, resize button row + WM toggle pill, right-click on main image), `frontend/package.json` + `buildInfo.json` (0.25.0), new `ELECTRON-SETUP.md`.
+
 ### Iteration 25 (2026-02, Bundle picker + version 0.24.0 sync)
 - ✅ **Bundle picker** — the old "Bundle all…" button in the Tag Manager footer is now **"Bundle…"** and opens a nested overlay listing every pack with checkboxes. Users can share only the packs they want ("here's my Wedding + Wildlife" instead of "here's everything I have"). Header shows `N of M selected`, Select all / Select none quick links, per-row tag count. Confirm button dynamically labels `Bundle N pack(s)`.
 - ✅ **Version stamp now v0.24.0** in both `frontend/package.json` and `buildInfo.json`, aligning the in-app stamp with the iteration count.
