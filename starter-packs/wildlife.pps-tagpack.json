@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "pps-tagpack",
+  "name": "Wildlife",
+  "description": "Alaska-first wildlife shooting. Species, behavior, and setting tags.",
+  "exportedAt": "2026-02-15T00:00:00.000Z",
+  "tags": [
+    { "label": "bear", "iconType": "lucide", "iconName": "PawPrint" },
+    { "label": "moose", "iconType": "lucide", "iconName": "Trees" },
+    { "label": "eagle", "iconType": "lucide", "iconName": "Bird" },
+    { "label": "salmon", "iconType": "lucide", "iconName": "Fish" },
+    { "label": "deer", "iconType": "lucide", "iconName": "Trees" },
+    { "label": "wolf", "iconType": "lucide", "iconName": "PawPrint" },
+    { "label": "whale", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "otter", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "seal", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "bird", "iconType": "lucide", "iconName": "Bird" },
+    { "label": "mammal", "iconType": "lucide", "iconName": "PawPrint" },
+    { "label": "tracks", "iconType": "lucide", "iconName": "Compass" },
+    { "label": "portrait", "iconType": "lucide", "iconName": "Camera" },
+    { "label": "behavior", "iconType": "lucide", "iconName": "Zap" },
+    { "label": "habitat", "iconType": "lucide", "iconName": "Mountain" },
+    { "label": "close-up", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "in-flight", "iconType": "lucide", "iconName": "Bird" },
+    { "label": "feeding", "iconType": "lucide", "iconName": "Utensils" }
+  ]
+}

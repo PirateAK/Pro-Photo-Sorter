@@ -163,6 +163,21 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 ### 🐛 Known bugs (fix first next session)
 _None outstanding._
 
+### Iteration 24 (2026-02, Basics + Starter Packs + Bundle Export + Version sync)
+- ✅ **Version bump to 0.23.0** in both `frontend/package.json` and `frontend/src/buildInfo.json`. Kurt still needs to manually bump `electron-shell/package.json` on his PC (that file lives outside the Emergent workspace).
+- ✅ **Polished default packs** in `storage.js` — renamed to **"Subjects (Basic)"** (8 tags: portrait, landscape, wildlife, macro, action, group, closeup, night) and **"Ratings"** (7 tags: pick, keep, reject, best, star3, star4, star5). Fresh installs get a productive starting point.
+- ✅ **6 starter packs** shipped as distribution files in `/app/starter-packs/`:
+  - `wedding.pps-tagpack.json` (18 tags — ceremony, reception, portraits, details)
+  - `wildlife.pps-tagpack.json` (18 tags — Alaska-first: bear, moose, eagle, salmon, whale, otter, wolf, seal + behavior)
+  - `landscape.pps-tagpack.json` (18 tags — golden hour, mountains, water, aurora, aerial)
+  - `portrait.pps-tagpack.json` (17 tags — headshot, family, studio, natural light, senior)
+  - `real-estate.pps-tagpack.json` (17 tags — room-by-room + exterior + aerial + twilight)
+  - `sports.pps-tagpack.json` (17 tags — game, action, peak moment, celebration, team)
+  - `README.md` explains how to import and share
+- ✅ **Bundle Export** — new "Bundle all…" button in Tag Manager footer. Uses `jszip` (added via `yarn add jszip`) to package every user pack into a single `pps-tagpacks_YYYY-MM-DD.zip` — perfect for full-setup backups or moving to another PC. Zip includes a `bundle.json` manifest with pack names and tag counts.
+- Files touched: `frontend/package.json` (version + jszip dep), `frontend/src/buildInfo.json` (version), `frontend/src/lib/storage.js` (default pack contents), `frontend/src/components/CategoryManager.jsx` (bundle export + button), 6 new pack JSON files + README in `/app/starter-packs/`.
+- **Note for Kurt**: On your PC, edit `C:\Pro-Photo-Sorter\electron-shell\package.json` and change `"version": "1.0.0"` → `"version": "0.23.0"` so the installer file name matches the in-app stamp.
+
 ### Iteration 23 (2026-02, Tag Packs v1.1 groundwork — Import / Export / Rename)
 - ✅ **Export pack**: Button in the Tag Manager's right-pane header. Serializes the current pack to `<packname>.pps-tagpack.json` and triggers a download via a temporary `<a download>` link. Format: `{ formatVersion: 1, kind: "pps-tagpack", name, description, exportedAt, tags: [{label, iconType, iconName, iconData}] }`. Custom image icons embed as base64 so packs are fully self-contained files that can be emailed / thumb-drived to friends.
 - ✅ **Import pack**: Button below "New tag pack…" in the left rail. Opens a native file picker (`accept=".json,.pps-tagpack.json,application/json"`). Validates `kind === "pps-tagpack"` and `Array.isArray(tags)` before importing. **Always adds** — never merges, never replaces — auto-suffixes on name collision (`Wildlife` → `Wildlife (2)` → `Wildlife (3)`) so no existing pack is ever destroyed. Toast confirms with name + tag count.

@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "pps-tagpack",
+  "name": "Wedding",
+  "description": "Ceremony, reception, and the moments between. Curated for wedding photographers.",
+  "exportedAt": "2026-02-15T00:00:00.000Z",
+  "tags": [
+    { "label": "getting-ready", "iconType": "lucide", "iconName": "Sparkles" },
+    { "label": "first-look", "iconType": "lucide", "iconName": "Eye" },
+    { "label": "ceremony", "iconType": "lucide", "iconName": "Church" },
+    { "label": "rings", "iconType": "lucide", "iconName": "Circle" },
+    { "label": "vows", "iconType": "lucide", "iconName": "Heart" },
+    { "label": "kiss", "iconType": "lucide", "iconName": "Heart" },
+    { "label": "recessional", "iconType": "lucide", "iconName": "ArrowRight" },
+    { "label": "portraits", "iconType": "lucide", "iconName": "User" },
+    { "label": "bridal-party", "iconType": "lucide", "iconName": "Users" },
+    { "label": "family", "iconType": "lucide", "iconName": "Users" },
+    { "label": "details", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "reception", "iconType": "lucide", "iconName": "Utensils" },
+    { "label": "toasts", "iconType": "lucide", "iconName": "Wine" },
+    { "label": "cake", "iconType": "lucide", "iconName": "CakeSlice" },
+    { "label": "first-dance", "iconType": "lucide", "iconName": "Music" },
+    { "label": "dancing", "iconType": "lucide", "iconName": "Music" },
+    { "label": "candid", "iconType": "lucide", "iconName": "Camera" },
+    { "label": "exit", "iconType": "lucide", "iconName": "Sparkles" }
+  ]
+}

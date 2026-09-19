@@ -1,0 +1,27 @@
+{
+  "formatVersion": 1,
+  "kind": "pps-tagpack",
+  "name": "Landscape",
+  "description": "Wide-open work. Time of day, subject, and technique.",
+  "exportedAt": "2026-02-15T00:00:00.000Z",
+  "tags": [
+    { "label": "sunrise", "iconType": "lucide", "iconName": "Sunrise" },
+    { "label": "sunset", "iconType": "lucide", "iconName": "Sunset" },
+    { "label": "blue-hour", "iconType": "lucide", "iconName": "Moon" },
+    { "label": "golden-hour", "iconType": "lucide", "iconName": "Sun" },
+    { "label": "mountains", "iconType": "lucide", "iconName": "Mountain" },
+    { "label": "water", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "forest", "iconType": "lucide", "iconName": "Trees" },
+    { "label": "sky", "iconType": "lucide", "iconName": "Cloud" },
+    { "label": "clouds", "iconType": "lucide", "iconName": "CloudRain" },
+    { "label": "aurora", "iconType": "lucide", "iconName": "Sparkles" },
+    { "label": "waterfall", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "seascape", "iconType": "lucide", "iconName": "Waves" },
+    { "label": "desert", "iconType": "lucide", "iconName": "Sun" },
+    { "label": "snow", "iconType": "lucide", "iconName": "Snowflake" },
+    { "label": "aerial", "iconType": "lucide", "iconName": "Plane" },
+    { "label": "panorama", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "long-exposure", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "storm", "iconType": "lucide", "iconName": "CloudRain" }
+  ]
+}

@@ -1,0 +1,26 @@
+{
+  "formatVersion": 1,
+  "kind": "pps-tagpack",
+  "name": "Portrait",
+  "description": "Studio and location portraits — pose, light, and setting.",
+  "exportedAt": "2026-02-15T00:00:00.000Z",
+  "tags": [
+    { "label": "headshot", "iconType": "lucide", "iconName": "User" },
+    { "label": "3-quarter", "iconType": "lucide", "iconName": "User" },
+    { "label": "full-body", "iconType": "lucide", "iconName": "User" },
+    { "label": "couple", "iconType": "lucide", "iconName": "Users" },
+    { "label": "family", "iconType": "lucide", "iconName": "Users" },
+    { "label": "kids", "iconType": "lucide", "iconName": "Baby" },
+    { "label": "pet", "iconType": "lucide", "iconName": "Dog" },
+    { "label": "studio", "iconType": "lucide", "iconName": "Camera" },
+    { "label": "outdoor", "iconType": "lucide", "iconName": "Trees" },
+    { "label": "candid", "iconType": "lucide", "iconName": "Aperture" },
+    { "label": "posed", "iconType": "lucide", "iconName": "User" },
+    { "label": "natural-light", "iconType": "lucide", "iconName": "Sun" },
+    { "label": "strobe", "iconType": "lucide", "iconName": "Zap" },
+    { "label": "ring-light", "iconType": "lucide", "iconName": "Circle" },
+    { "label": "black-white", "iconType": "lucide", "iconName": "Contrast" },
+    { "label": "senior", "iconType": "lucide", "iconName": "Award" },
+    { "label": "boudoir", "iconType": "lucide", "iconName": "Heart" }
+  ]
+}
