@@ -46,6 +46,12 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
   const cropDrag = useRef(null);
   const workBmpRef = useRef(null); // sharpened bitmap cache
   const lastSharpVal = useRef(-1);
+  // Bumps whenever the stage's actual size changes (window resize, initial
+  // layout settle-in, DevTools toggle, etc.). Forces both the fit() effect
+  // and the render effect to re-run against the latest stage dimensions,
+  // preventing the right-side clip when the editor opens in a non-maximized
+  // window before layout has fully settled.
+  const [stageTick, setStageTick] = useState(0);
 
   // Load image when modal opens
   useEffect(() => {
@@ -173,7 +179,28 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
   useEffect(() => {
     if (imgEl) fit();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [imgEl]);
+  }, [imgEl, stageTick]);
+
+  // Watch for stage size changes (window resize, layout settle, DevTools, etc.)
+  // and bump stageTick so both fit() and the render effect re-run.
+  useEffect(() => {
+    if (!open) return;
+    const bump = () => setStageTick((t) => t + 1);
+    window.addEventListener("resize", bump);
+    let ro;
+    if (typeof ResizeObserver !== "undefined" && stageRef.current) {
+      ro = new ResizeObserver(bump);
+      ro.observe(stageRef.current);
+    }
+    // Also run one delayed bump after the modal mounts so the initial
+    // getBoundingClientRect() sees the fully-settled layout.
+    const t = setTimeout(bump, 30);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("resize", bump);
+      ro?.disconnect();
+    };
+  }, [open]);
 
   // Sharpen (convolution) - build once per sharpness change
   const buildSharpBitmap = useCallback(async (amount) => {
@@ -342,7 +369,7 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     })();
 
     return () => { cancelled = true; };
-  }, [imgEl, zoom, pan, brightness, contrast, saturation, sharpness, rotation, angle, crop, buildSharpBitmap, buildFilterString, peeking, angleGrid]);
+  }, [imgEl, zoom, pan, brightness, contrast, saturation, sharpness, rotation, angle, crop, buildSharpBitmap, buildFilterString, peeking, angleGrid, stageTick]);
 
   // Wheel to zoom
   const onWheel = (e) => {
