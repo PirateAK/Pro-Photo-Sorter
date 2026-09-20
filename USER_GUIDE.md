@@ -115,12 +115,46 @@ Two tag bars sit between the viewer and the filmstrip:
 Click the **Tags** button in the toolbar to open the Tag Manager:
 
 - **Add pack** / **Rename pack** / **Delete pack**
-- **Add tag** inside a pack (choose icon, label, color)
-- **Right-click a tag** to rename or delete inline
-- **Drag a tag** between packs to reorganize
-- **Import pack** (`.pps-tagpack.json`) or **Export pack** to share
+- **Add tag** inside either list (Folder or Filename), choose icon and label
+- **Paste…** button on each list — paste one label per line and click "Add all" to
+  bulk-create tags in seconds
+- **Right-click a tag** in the palette bar to rename or delete inline
+- **Drag a tag** between the Folder and Filename sections in Tag Manager to reassign it
+- **Drag a tag** between packs (in the palette bars) to reorganize
+- **Import pack** (`.pps-tagpack.json`) or **Export pack** to share as JSON
+- **Import text list** (`.pps-taglist.txt`) — plain-text format below, one or more
+  packs per file
+- **Export as text** — turns any pack into a shareable `.pps-taglist.txt`
 - **Export bundle** (`.zip`) to package every pack in one archive
-- **Import bundle** (`.zip`) to restore an entire library
+
+### Text-list format (`.pps-taglist.txt`)
+
+Author packs in Notepad and share them as `.txt`. Format:
+
+```
+# Wedding                  ← pack name, line starts with #
+Ceremony                   ← folder tags, one per line
+Reception
+Portraits
+
+Bride                      ← BLANK line → filename tags start here
+Groom
+First-Kiss
+
+# Wildlife                 ← another # starts the next pack
+Mammals
+Birds
+Reptiles
+
+Portrait
+Action
+Flying
+
+// lines that start with // are comments and get ignored
+```
+
+Every imported tag gets the default `Tag` icon — you can promote any of them to
+a specific Lucide icon in the Tag Manager later.
 
 Starter packs (`landscape`, `wedding`, `portrait`, `wildlife`, `sports`,
 `real-estate`) live in `starter-packs/` inside the app folder. You can also
