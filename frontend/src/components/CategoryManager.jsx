@@ -1,9 +1,10 @@
 import React, { useState, useRef } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste } from "lucide-react";
 import JSZip from "jszip";
 import { uid } from "../lib/storage";
 import { totalCount } from "../lib/tags";
+import { parseTagList, serializePack as serializePackText } from "../lib/tagpackText";
 import { toast } from "sonner";
 
 // Curated built-in icons
@@ -58,6 +59,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   const folderFileRef = useRef(null);
   const filenameFileRef = useRef(null);
   const importRef = useRef(null);
+  const importTextRef = useRef(null);
 
   if (!open) return null;
 
@@ -241,6 +243,73 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     });
   };
 
+  // ── Export current pack as a plain-text .pps-taglist.txt file ─────────
+  const exportCurrentAsText = () => {
+    if (!current) return;
+    const text = serializePackText(current);
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    const safe = current.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "tagpack";
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${safe}.pps-taglist.txt`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Exported "${current.name}" as text`, {
+      description: `${safe}.pps-taglist.txt — plain-text list, easy to share`,
+    });
+  };
+
+  // ── Import one-or-many packs from a plain-text .txt list ──────────────
+  const importFromTextFile = async (file) => {
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const parsed = parseTagList(text); // array of { name, folderItems, filenameItems }
+      // Give every pack a unique name & fresh id, then append
+      const newCats = parsed.map((p) => ({
+        id: uid("cat"),
+        name: uniqueName(p.name),
+        folderItems: p.folderItems,
+        filenameItems: p.filenameItems,
+      }));
+      onChange([...categories, ...newCats]);
+      setActiveCat(newCats[0].id);
+      const total = newCats.reduce((n, c) => n + (c.folderItems.length + c.filenameItems.length), 0);
+      toast.success(
+        `Imported ${newCats.length} pack${newCats.length !== 1 ? "s" : ""}`,
+        { description: `${total} tags total — every tag got the default icon (edit any time).` }
+      );
+    } catch (e) {
+      toast.error("Text list import failed", { description: e.message });
+    }
+  };
+
+  // ── Bulk-paste multiple tag labels (one per line) into a specific list
+  //    of the current pack. Called by the ListSection's Paste popover.
+  const bulkAddLabels = (listKey, rawText) => {
+    if (!current) return 0;
+    const labels = rawText
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !/^\s*\/\//.test(l))
+      .slice(0, 200); // sanity cap
+    if (labels.length === 0) return 0;
+    const newItems = labels.map((label) => ({
+      id: uid("it"),
+      label: label.slice(0, 60),
+      iconType: "lucide",
+      iconName: listKey === "folderItems" ? "Folder" : "Tag",
+    }));
+    const next = categories.map((c) =>
+      c.id === current.id ? { ...c, [listKey]: [...(c[listKey] || []), ...newItems] } : c
+    );
+    onChange(next);
+    return newItems.length;
+  };
+
   // ── Import a pack — always adds, auto-suffixes on name collision.
   // Supports v2 (folderTags + filenameTags) and legacy v1 (single `tags` list).
   const importFromFile = async (file) => {
@@ -348,7 +417,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   <Plus size={16} />
                 </button>
               </div>
-              <div>
+              <div className="space-y-1">
                 <input
                   ref={importRef}
                   type="file"
@@ -368,6 +437,26 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   title="Import a .pps-tagpack.json file — always adds as a new pack"
                 >
                   <Upload size={12} /> Import pack…
+                </button>
+                <input
+                  ref={importTextRef}
+                  type="file"
+                  accept=".txt,.pps-taglist.txt,text/plain"
+                  className="hidden-file"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) importFromTextFile(f);
+                    e.target.value = "";
+                  }}
+                  data-testid="import-textlist-input"
+                />
+                <button
+                  onClick={() => importTextRef.current?.click()}
+                  className="w-full px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
+                  data-testid="import-textlist-btn"
+                  title="Import a plain-text list (.pps-taglist.txt) — one or more packs in a single file"
+                >
+                  <FileText size={12} /> Import text list…
                 </button>
               </div>
             </div>
@@ -436,15 +525,26 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                       {(current.folderItems?.length || 0)} folder tags · {(current.filenameItems?.length || 0)} filename tags
                     </p>
                   </div>
-                  <button
-                    onClick={exportCurrent}
-                    disabled={totalCount(current) === 0}
-                    className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 shrink-0"
-                    data-testid="export-pack-btn"
-                    title="Save this tag pack as a .pps-tagpack.json file you can share"
-                  >
-                    <Download size={12} /> Export pack
-                  </button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={exportCurrent}
+                      disabled={totalCount(current) === 0}
+                      className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40"
+                      data-testid="export-pack-btn"
+                      title="Save this tag pack as a .pps-tagpack.json file you can share"
+                    >
+                      <Download size={12} /> Export pack
+                    </button>
+                    <button
+                      onClick={exportCurrentAsText}
+                      disabled={totalCount(current) === 0}
+                      className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40"
+                      data-testid="export-pack-text-btn"
+                      title="Save this pack as a plain-text .pps-taglist.txt list — easy to edit and share"
+                    >
+                      <FileText size={12} /> Export as text
+                    </button>
+                  </div>
                 </div>
 
                 {/* Two-section paired list editor */}
@@ -462,6 +562,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onRemove={(id) => removeItem("folderItems", id)}
                     onImagePick={(e) => handleImagePick("folderItems", e)}
                     onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "folderItems", itemId)}
+                    onBulkPaste={(text) => bulkAddLabels("folderItems", text)}
                   />
                   <div className="h-px bg-app/60 mx-4" />
                   <ListSection
@@ -477,6 +578,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onRemove={(id) => removeItem("filenameItems", id)}
                     onImagePick={(e) => handleImagePick("filenameItems", e)}
                     onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "filenameItems", itemId)}
+                    onBulkPaste={(text) => bulkAddLabels("filenameItems", text)}
                   />
                 </div>
               </>
@@ -617,8 +719,10 @@ export default function CategoryManager({ open, onClose, categories, onChange })
  *  Supports drag-and-drop MOVE of tags in/out via `onMoveIn(fromKey, itemId)`.
  *  Drop data type: "application/x-pps-tagmgr" carrying { fromKey, itemId }.
  */
-function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick, onMoveIn }) {
+function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick, onMoveIn, onBulkPaste }) {
   const [dropOver, setDropOver] = React.useState(false);
+  const [pasteOpen, setPasteOpen] = React.useState(false);
+  const [pasteText, setPasteText] = React.useState("");
   return (
     <div
       className={`border-b border-app/40 last:border-b-0 transition-colors ${dropOver ? "bg-primary-earth/10 ring-1 ring-primary-earth/50" : ""}`}
@@ -742,7 +846,74 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
           >
             <Save size={14} /> Add
           </button>
+          <button
+            onClick={() => { setPasteText(""); setPasteOpen(true); }}
+            className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-sm flex items-center gap-1"
+            data-testid={`${listKey}-paste-btn`}
+            title="Paste a list of labels — one per line — and add them all at once"
+          >
+            <ClipboardPaste size={14} /> Paste…
+          </button>
         </div>
+
+        {pasteOpen && (
+          <div className="mt-2 pane rounded border border-primary-earth/40 p-3 space-y-2" data-testid={`${listKey}-paste-popover`}>
+            <div className="text-[10px] uppercase tracking-widest font-heading text-dim">
+              Bulk add — one label per line
+            </div>
+            <textarea
+              autoFocus
+              value={pasteText}
+              onChange={(e) => setPasteText(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") { e.preventDefault(); setPasteOpen(false); }
+                if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                  e.preventDefault();
+                  const n = onBulkPaste?.(pasteText) || 0;
+                  if (n > 0) {
+                    toast.success(`Added ${n} ${listLabel.toLowerCase()}`);
+                    setPasteOpen(false);
+                    setPasteText("");
+                  } else {
+                    toast.error("No labels found — one label per line");
+                  }
+                }
+              }}
+              placeholder={`Ceremony\nReception\nPortraits\nDetails\n\n(one per line, lines starting with // are ignored)`}
+              className="w-full bg-app border border-app rounded px-2 py-1.5 text-sm font-mono focus-ring min-h-[7rem]"
+              spellCheck={true}
+              data-testid={`${listKey}-paste-textarea`}
+            />
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-[10px] text-dim">Ctrl+Enter to add all, Esc to cancel</span>
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setPasteOpen(false)}
+                  className="px-2 py-1 rounded bg-app border border-app hover:bg-surface-hover text-xs"
+                  data-testid={`${listKey}-paste-cancel`}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    const n = onBulkPaste?.(pasteText) || 0;
+                    if (n > 0) {
+                      toast.success(`Added ${n} ${listLabel.toLowerCase()}`);
+                      setPasteOpen(false);
+                      setPasteText("");
+                    } else {
+                      toast.error("No labels found — one label per line");
+                    }
+                  }}
+                  className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-semibold flex items-center gap-1"
+                  data-testid={`${listKey}-paste-confirm`}
+                >
+                  <Plus size={12} /> Add all
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Tag grid */}
