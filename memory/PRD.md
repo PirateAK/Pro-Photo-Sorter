@@ -314,6 +314,85 @@ Files touched:
 ### Waiting on tester feedback
 Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, not bugs". Any bug reports that come back should be triaged against the current v1.1.0 build; enhancement requests go into the on-deck list above.
 
+---
+
+### v2 Ideas Bin (post-v1.2, longer-term)
+
+**Kurt's v2 additions, captured 2026-02-15 while chatting between sessions:**
+
+#### 🏷️ Third "Tags" bar — Lightroom-style keyword database (P1 for v2)
+
+Add a **third palette row** below the existing Folders and Filename bars,
+labeled simply **Tags**. Unlike the other two, these tags do NOT modify the
+file path or filename — they attach as *metadata* to each photo for fast
+search, filtering, and Lightroom-style keyword workflows.
+
+Design notes:
+- Extend the paired-list Tag Pack model to a **triple-list model**:
+  `folderItems` + `filenameItems` + `metadataItems`. One pack still drives all
+  three bars.
+- Storage: keep a `photoTags` map in localStorage keyed by full photo path,
+  each value an array of tag IDs. Cheap and instant.
+- Search Modal already has the scaffold for tag filtering — extend to filter
+  by metadata tags too (with a "match ANY / match ALL" toggle).
+- Pairs perfectly with the **XMP Sidecar export** feature (already P1) — write
+  these tags into each photo's `.xmp` so they round-trip with Lightroom /
+  Bridge / Capture One.
+- UI: the third row visually distinguished (maybe a subtle background tint or
+  a "META" role icon) so users don't confuse it with the path-shaping bars.
+- Text-list format extended with a third section: `# Wedding` → folder tags,
+  blank, filename tags, blank, metadata tags. Backward-compatible with v1
+  two-section files (no third section = empty metadata list).
+
+Effort estimate: **2–3 days** — data model extension, third IconPalette row,
+Search Modal filter expansion, Tag Manager third section, XMP export coupling.
+
+#### 📷 Wireless camera import — pull from camera to filmstrip (P2 for v2)
+
+Let the user connect their WiFi/Bluetooth-enabled camera and have photos
+appear in the filmstrip as they're shot or on demand — no card-to-reader
+round trip.
+
+Feasible approaches (research needed at build time):
+
+- **A · FTP-server-in-app** (most universal for pro cameras). Many current
+  bodies — Canon R5/R6/1DX III, Sony A1/A7/A9, Nikon Z8/Z9, Fujifilm GFX —
+  support "FTP push" mode where the camera uploads new shots to an FTP
+  target. Pro Photo Sorter runs a small local FTP server (Node has
+  `ftp-srv` package, ~200 lines to embed), presents credentials and an IP
+  to enter into the camera, and streams incoming shots straight into the
+  active source folder. Highest coverage across brands.
+
+- **B · Watch-folder mode** (simplest fallback). User points their
+  vendor's WiFi app (Canon Camera Connect, Sony Imaging Edge Mobile, etc.)
+  to save to a Windows folder. Pro Photo Sorter watches that folder and
+  auto-imports to the filmstrip on new file arrival. Zero protocol work,
+  but requires the vendor app to already be set up.
+
+- **C · Vendor SDKs** (per-brand deep integration). Canon EDSDK, Nikon
+  SDK, Sony Camera Remote SDK. Powerful (remote shutter, live view,
+  settings) but heavyweight, per-brand, and Kurt wouldn't need most of it.
+  Skip unless a specific tester requests remote control.
+
+Design notes:
+- Bluetooth is impractical for image transfer (single-photo transfers over
+  BLE are 30-60 seconds per image). Keep it for camera wake/pairing signals
+  only.
+- Would need an in-app **Camera Connect** modal walking the user through
+  their brand's WiFi setup with copy-paste-ready IP + credentials — Kurt's
+  strength is user-facing docs, this is right up his alley.
+- Ship with brand-specific setup guides: Canon, Sony, Nikon, Fujifilm.
+- Filmstrip should distinguish "just landed from camera" photos with a
+  small camera-icon badge so the photographer knows they're fresh.
+
+Effort estimate: **1 week** for approach A (FTP-in-app) + brand docs.
+Approach B is **1–2 days** and could ship earlier as a stopgap.
+
+Ordering hint: **Ship B first as a v1.3 "watch folder"**, then A as the
+headline v2 feature. That way the least-effort win lands soon and the
+big-name feature has time to bake.
+
+
 
 
 ### Iteration 27 — v1.1.0-dev · Paired-list Tag Packs (2026-02-15)
