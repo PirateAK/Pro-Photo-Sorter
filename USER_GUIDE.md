@@ -269,6 +269,7 @@ The gear icon opens Settings:
 | `Ctrl+B`           | Open Batch modal                                |
 | `Ctrl+E`           | Open Image Editor                               |
 | `Ctrl+Shift+W`     | Toggle watermark for this photo                 |
+| `F1` / `?`         | Toggle this Help window                         |
 | `Esc`              | Close any modal / exit Cull Mode                |
 
 ## Reporting Bugs
