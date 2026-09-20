@@ -399,7 +399,11 @@ export default function App() {
       toast.success(`Loaded source: ${h.name}`);
       try { await addRecent("source", h, h.name); } catch { /* ignore */ }
     } catch (e) {
-      if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
+      if (e?.name === "AbortError") return; // user cancelled
+      // Show longer-duration toast for the "stuck picker" / "system dir" errors
+      // so the user has time to read the recovery instructions.
+      const isSystemErr = e?.name === "SystemDirectoryBlockedError" || e?.name === "PickerStuckError" || e?.name === "PickerBusyError";
+      toast.error(e.message || "Failed to open folder", isSystemErr ? { duration: 12000 } : undefined);
     }
   };
   const pickDest = async () => {
@@ -417,7 +421,9 @@ export default function App() {
       toast.success(`Loaded destination: ${h.name}`);
       try { await addRecent("dest", h, h.name); } catch { /* ignore */ }
     } catch (e) {
-      if (e?.name !== "AbortError") toast.error(e.message || "Failed to open folder");
+      if (e?.name === "AbortError") return;
+      const isSystemErr = e?.name === "SystemDirectoryBlockedError" || e?.name === "PickerStuckError" || e?.name === "PickerBusyError";
+      toast.error(e.message || "Failed to open folder", isSystemErr ? { duration: 12000 } : undefined);
     }
   };
 

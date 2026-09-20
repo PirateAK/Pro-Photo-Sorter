@@ -81,6 +81,28 @@ Both panels behave the same way:
   that received photos in your current session, so you can see at a glance
   where your work is going.
 
+### System folders you can't pick
+
+Windows / Chromium blocks a handful of sensitive locations from the folder
+picker for security reasons. If you try one, you'll see an error message
+naming the block. These are:
+
+- `C:\` (the drive root itself)
+- `C:\Windows` and its subfolders
+- `C:\Program Files`, `C:\Program Files (x86)`
+- Sometimes `C:\Users` root (before you drill into your own user folder)
+
+**Pick a subfolder instead**, e.g.:
+
+- `C:\Users\YourName\Pictures` ✓
+- `C:\Users\YourName\Desktop\WeddingShoot` ✓
+- `D:\Photos`, `E:\Backup` — non-system drives work at any level ✓
+- Any folder you created yourself ✓
+
+If you accidentally try to pick a blocked folder and the picker gets stuck,
+**close the app and reopen it** — Chromium's internal picker flag doesn't
+reset until the app restarts.
+
 ## The Filmstrip
 
 The strip along the bottom shows thumbnails of every image in the currently
