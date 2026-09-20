@@ -1,8 +1,9 @@
 import React, { useState, useRef } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon } from "lucide-react";
 import JSZip from "jszip";
 import { uid } from "../lib/storage";
+import { totalCount } from "../lib/tags";
 import { toast } from "sonner";
 
 // Curated built-in icons
@@ -45,15 +46,17 @@ export { IconPreview };
 export default function CategoryManager({ open, onClose, categories, onChange }) {
   const [activeCat, setActiveCat] = useState(categories[0]?.id || null);
   const [newCatName, setNewCatName] = useState("");
-  const [newItemLabel, setNewItemLabel] = useState("");
-  const [pickerMode, setPickerMode] = useState("builtin"); // builtin | image
-  const [selectedBuiltin, setSelectedBuiltin] = useState("Star");
-  const [selectedImage, setSelectedImage] = useState(null);
+  // Two independent add-form drafts — one per list
+  const [drafts, setDrafts] = useState({
+    folderItems: { label: "", pickerMode: "builtin", selectedBuiltin: "Folder", selectedImage: null },
+    filenameItems: { label: "", pickerMode: "builtin", selectedBuiltin: "Tag", selectedImage: null },
+  });
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
   const [bundleSelected, setBundleSelected] = useState(new Set());
-  const fileRef = useRef(null);
+  const folderFileRef = useRef(null);
+  const filenameFileRef = useRef(null);
   const importRef = useRef(null);
 
   if (!open) return null;
@@ -63,7 +66,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   const addCategory = () => {
     const name = newCatName.trim();
     if (!name) return;
-    const cat = { id: uid("cat"), name, items: [] };
+    const cat = { id: uid("cat"), name, folderItems: [], filenameItems: [] };
     onChange([...categories, cat]);
     setActiveCat(cat.id);
     setNewCatName("");
@@ -75,25 +78,29 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     if (activeCat === id) setActiveCat(next[0]?.id || null);
   };
 
-  const addItem = () => {
+  // Add a tag to one specific list of the current pack
+  const addItem = (listKey) => {
     if (!current) return;
-    const label = newItemLabel.trim();
+    const d = drafts[listKey];
+    const label = d.label.trim();
     if (!label) return;
     const item =
-      pickerMode === "image" && selectedImage
-        ? { id: uid("it"), label, iconType: "image", iconData: selectedImage }
-        : { id: uid("it"), label, iconType: "lucide", iconName: selectedBuiltin };
+      d.pickerMode === "image" && d.selectedImage
+        ? { id: uid("it"), label, iconType: "image", iconData: d.selectedImage }
+        : { id: uid("it"), label, iconType: "lucide", iconName: d.selectedBuiltin };
     const next = categories.map((c) =>
-      c.id === current.id ? { ...c, items: [...c.items, item] } : c
+      c.id === current.id ? { ...c, [listKey]: [...(c[listKey] || []), item] } : c
     );
     onChange(next);
-    setNewItemLabel("");
-    setSelectedImage(null);
+    setDrafts((cur) => ({
+      ...cur,
+      [listKey]: { ...cur[listKey], label: "", selectedImage: null },
+    }));
   };
 
-  const removeItem = (itemId) => {
+  const removeItem = (listKey, itemId) => {
     const next = categories.map((c) =>
-      c.id === current.id ? { ...c, items: c.items.filter((it) => it.id !== itemId) } : c
+      c.id === current.id ? { ...c, [listKey]: (c[listKey] || []).filter((it) => it.id !== itemId) } : c
     );
     onChange(next);
   };
@@ -128,6 +135,25 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     setBundlePickerOpen(true);
   };
 
+  // Serialize a pack to the v1.1 export format (both lists included).
+  const serializePack = (cat) => {
+    const mapTag = (it) => ({
+      label: it.label,
+      iconType: it.iconType || "lucide",
+      iconName: it.iconName || null,
+      iconData: it.iconData || null,
+    });
+    return {
+      formatVersion: 2,
+      kind: "pps-tagpack",
+      name: cat.name,
+      description: "",
+      exportedAt: new Date().toISOString(),
+      folderTags: (cat.folderItems || []).map(mapTag),
+      filenameTags: (cat.filenameItems || []).map(mapTag),
+    };
+  };
+
   // ── Bundle export — every SELECTED pack as one downloadable .zip ─────
   const bundleExport = async (idsToBundle) => {
     const picked = categories.filter((c) => idsToBundle.has(c.id));
@@ -136,27 +162,19 @@ export default function CategoryManager({ open, onClose, categories, onChange })
       const zip = new JSZip();
       const stamp = new Date().toISOString().slice(0, 10);
       for (const cat of picked) {
-        const payload = {
-          formatVersion: 1,
-          kind: "pps-tagpack",
-          name: cat.name,
-          description: "",
-          exportedAt: new Date().toISOString(),
-          tags: cat.items.map((it) => ({
-            label: it.label,
-            iconType: it.iconType || "lucide",
-            iconName: it.iconName || null,
-            iconData: it.iconData || null,
-          })),
-        };
+        const payload = serializePack(cat);
         const safe = cat.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "pack";
         zip.file(`${safe}.pps-tagpack.json`, JSON.stringify(payload, null, 2));
       }
       zip.file("bundle.json", JSON.stringify({
-        formatVersion: 1,
+        formatVersion: 2,
         kind: "pps-tagpack-bundle",
         exportedAt: new Date().toISOString(),
-        packs: picked.map((c) => ({ name: c.name, tagCount: c.items.length })),
+        packs: picked.map((c) => ({
+          name: c.name,
+          folderTagCount: c.folderItems?.length || 0,
+          filenameTagCount: c.filenameItems?.length || 0,
+        })),
       }, null, 2));
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
@@ -179,19 +197,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   // ── Export current pack to a downloadable JSON file ────────────────────
   const exportCurrent = () => {
     if (!current) return;
-    const payload = {
-      formatVersion: 1,
-      kind: "pps-tagpack",
-      name: current.name,
-      description: "",
-      exportedAt: new Date().toISOString(),
-      tags: current.items.map((it) => ({
-        label: it.label,
-        iconType: it.iconType || "lucide",
-        iconName: it.iconName || null,
-        iconData: it.iconData || null,
-      })),
-    };
+    const payload = serializePack(current);
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const safe = current.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "tagpack";
@@ -202,39 +208,53 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Exported "${current.name}"`, { description: `${current.items.length} tag${current.items.length !== 1 ? "s" : ""}` });
+    toast.success(`Exported "${current.name}"`, {
+      description: `${current.folderItems?.length || 0} folder + ${current.filenameItems?.length || 0} filename tags`,
+    });
   };
 
-  // ── Import a pack — always adds, auto-suffixes on name collision ──────
+  // ── Import a pack — always adds, auto-suffixes on name collision.
+  // Supports v2 (folderTags + filenameTags) and legacy v1 (single `tags` list).
   const importFromFile = async (file) => {
     if (!file) return;
     try {
       const text = await file.text();
       const data = JSON.parse(text);
-      if (data.kind !== "pps-tagpack" || !Array.isArray(data.tags)) {
+      if (data.kind !== "pps-tagpack") {
         throw new Error("Not a valid Pro Photo Sorter tag pack file.");
       }
+      const mapIn = (t) => ({
+        id: uid("it"),
+        label: String(t.label || "").slice(0, 60),
+        iconType: t.iconType === "image" && t.iconData ? "image" : "lucide",
+        iconName: t.iconName || "Tag",
+        iconData: t.iconType === "image" ? t.iconData : undefined,
+      });
+      const filterValid = (arr) => arr.filter((it) => it.label);
+      let folderItems = [];
+      let filenameItems = [];
+      if (Array.isArray(data.folderTags) || Array.isArray(data.filenameTags)) {
+        folderItems = filterValid((data.folderTags || []).map(mapIn));
+        filenameItems = filterValid((data.filenameTags || []).map(mapIn));
+      } else if (Array.isArray(data.tags)) {
+        // Legacy v1 format — all tags become folder tags (user can move any to filename later)
+        folderItems = filterValid(data.tags.map(mapIn));
+      } else {
+        throw new Error("Tag pack file has no tags to import.");
+      }
       const finalName = uniqueName(String(data.name || "Imported pack").trim() || "Imported pack");
-      const newCat = {
-        id: uid("cat"),
-        name: finalName,
-        items: data.tags.map((t) => ({
-          id: uid("it"),
-          label: String(t.label || "").slice(0, 60),
-          iconType: t.iconType === "image" && t.iconData ? "image" : "lucide",
-          iconName: t.iconName || "Tag",
-          iconData: t.iconType === "image" ? t.iconData : undefined,
-        })).filter((it) => it.label),
-      };
+      const newCat = { id: uid("cat"), name: finalName, folderItems, filenameItems };
       onChange([...categories, newCat]);
       setActiveCat(newCat.id);
-      toast.success(`Imported "${finalName}"`, { description: `${newCat.items.length} tag${newCat.items.length !== 1 ? "s" : ""}` });
+      toast.success(`Imported "${finalName}"`, {
+        description: `${folderItems.length} folder + ${filenameItems.length} filename tags`,
+      });
     } catch (e) {
       toast.error("Import failed", { description: e.message });
     }
   };
 
-  const handleImagePick = (e) => {
+  const handleImagePick = (listKey, e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     const reader = new FileReader();
@@ -246,12 +266,14 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         canvas.width = 64;
         canvas.height = 64;
         const ctx = canvas.getContext("2d");
-        // cover
         const r = Math.max(64 / img.width, 64 / img.height);
         const w = img.width * r;
         const h = img.height * r;
         ctx.drawImage(img, (64 - w) / 2, (64 - h) / 2, w, h);
-        setSelectedImage(canvas.toDataURL("image/png"));
+        setDrafts((cur) => ({
+          ...cur,
+          [listKey]: { ...cur[listKey], selectedImage: canvas.toDataURL("image/png") },
+        }));
       };
       img.src = reader.result;
     };
@@ -382,11 +404,13 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-2">
                   <div className="min-w-0">
                     <h3 className="font-heading font-semibold truncate">{current.name}</h3>
-                    <p className="text-xs text-dim mt-0.5">{current.items.length} tags</p>
+                    <p className="text-xs text-dim mt-0.5">
+                      {(current.folderItems?.length || 0)} folder tags · {(current.filenameItems?.length || 0)} filename tags
+                    </p>
                   </div>
                   <button
                     onClick={exportCurrent}
-                    disabled={current.items.length === 0}
+                    disabled={totalCount(current) === 0}
                     className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 disabled:opacity-40 shrink-0"
                     data-testid="export-pack-btn"
                     title="Save this tag pack as a .pps-tagpack.json file you can share"
@@ -395,119 +419,35 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   </button>
                 </div>
 
-                {/* Add item */}
-                <div className="px-4 py-3 border-b border-app space-y-3 bg-app">
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setPickerMode("builtin")}
-                      className={`px-3 py-1 rounded text-xs font-medium ${
-                        pickerMode === "builtin" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-surface text-dim"
-                      }`}
-                      data-testid="mode-builtin"
-                    >
-                      Built-in Icons
-                    </button>
-                    <button
-                      onClick={() => setPickerMode("image")}
-                      className={`px-3 py-1 rounded text-xs font-medium ${
-                        pickerMode === "image" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-surface text-dim"
-                      }`}
-                      data-testid="mode-image"
-                    >
-                      Custom Image
-                    </button>
-                  </div>
-
-                  {pickerMode === "builtin" ? (
-                    <div className="grid grid-cols-12 gap-1 max-h-32 overflow-auto pane rounded p-2">
-                      {BUILTIN_ICONS.map((n) => (
-                        <button
-                          key={n}
-                          onClick={() => setSelectedBuiltin(n)}
-                          className={`w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover ${
-                            selectedBuiltin === n ? "bg-primary-earth/30 text-primary-earth" : "text-app"
-                          }`}
-                          title={n}
-                          data-testid={`icon-${n}`}
-                        >
-                          <BuiltinIcon name={n} size={16} />
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-3">
-                      <div className="w-16 h-16 rounded border border-app bg-surface flex items-center justify-center overflow-hidden">
-                        {selectedImage ? (
-                          <img src={selectedImage} alt="preview" className="w-full h-full object-cover" />
-                        ) : (
-                          <ImageIcon size={20} className="text-dim" />
-                        )}
-                      </div>
-                      <div>
-                        <input ref={fileRef} type="file" accept="image/*" className="hidden-file" onChange={handleImagePick} data-testid="custom-image-input" />
-                        <button
-                          onClick={() => fileRef.current?.click()}
-                          className="px-3 py-1.5 rounded bg-surface hover:bg-surface-hover text-sm border border-app"
-                          data-testid="pick-image-btn"
-                        >
-                          Choose image…
-                        </button>
-                        <p className="text-[10px] text-dim mt-1">Auto cropped to 64×64</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="flex gap-2">
-                    <input
-                      value={newItemLabel}
-                      onChange={(e) => setNewItemLabel(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && addItem()}
-                      placeholder="Tag label (used in filename/folder)…"
-                      className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
-                      data-testid="new-item-label"
-                    />
-                    <button
-                      onClick={addItem}
-                      className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium hover:opacity-90 flex items-center gap-1"
-                      data-testid="add-item-btn"
-                    >
-                      <Save size={14} /> Add
-                    </button>
-                  </div>
-                </div>
-
-                {/* Items grid */}
-                <div className="flex-1 overflow-auto p-4">
-                  {current.items.length === 0 ? (
-                    <div className="text-center text-dim text-sm py-10">No tags yet. Add one above.</div>
-                  ) : (
-                    <div className="grid grid-cols-4 gap-3">
-                      {current.items.map((it) => (
-                        <div
-                          key={it.id}
-                          className="pane rounded p-3 flex items-center gap-2 group"
-                          data-testid={`category-item-${it.id}`}
-                        >
-                          <div className="w-10 h-10 rounded bg-app border border-app flex items-center justify-center text-primary-earth shrink-0">
-                            <IconPreview item={it} size={22} />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{it.label}</div>
-                            <div className="text-[10px] text-dim">
-                              {it.iconType === "image" ? "custom" : it.iconName}
-                            </div>
-                          </div>
-                          <button
-                            onClick={() => removeItem(it.id)}
-                            className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-danger-earth"
-                            data-testid={`remove-item-${it.id}`}
-                          >
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                {/* Two-section paired list editor */}
+                <div className="flex-1 overflow-auto">
+                  <ListSection
+                    listKey="folderItems"
+                    listLabel="Folder path tags"
+                    ListIcon={FolderTree}
+                    helpText="Dropped onto the Folders bar → build the destination folder path (joined by /)."
+                    items={current.folderItems || []}
+                    draft={drafts.folderItems}
+                    setDraft={(patch) => setDrafts((cur) => ({ ...cur, folderItems: { ...cur.folderItems, ...patch } }))}
+                    fileRef={folderFileRef}
+                    onAdd={() => addItem("folderItems")}
+                    onRemove={(id) => removeItem("folderItems", id)}
+                    onImagePick={(e) => handleImagePick("folderItems", e)}
+                  />
+                  <div className="h-px bg-app/60 mx-4" />
+                  <ListSection
+                    listKey="filenameItems"
+                    listLabel="Filename tags"
+                    ListIcon={TagIcon}
+                    helpText="Dropped onto the Filename bar → appended to the destination filename (joined by _)."
+                    items={current.filenameItems || []}
+                    draft={drafts.filenameItems}
+                    setDraft={(patch) => setDrafts((cur) => ({ ...cur, filenameItems: { ...cur.filenameItems, ...patch } }))}
+                    fileRef={filenameFileRef}
+                    onAdd={() => addItem("filenameItems")}
+                    onRemove={(id) => removeItem("filenameItems", id)}
+                    onImagePick={(e) => handleImagePick("filenameItems", e)}
+                  />
                 </div>
               </>
             ) : (
@@ -519,7 +459,11 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         </div>
 
         <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim gap-3">
-          <div className="flex-1">Tag packs let you swap sets of tags for different photography styles. Drag tags onto the <span className="text-primary-earth">Folders</span> row (nested subfolders joined by /) or the <span className="text-primary-earth">Filename</span> row (joined by _).</div>
+          <div className="flex-1">
+            Each pack holds two lists: <span className="text-primary-earth">Folder path tags</span> shape the destination
+            folder tree, <span className="text-primary-earth">Filename tags</span> shape the final filename. Pick a pack
+            from the Folders bar and both rows fill together.
+          </div>
           <button
             onClick={openBundlePicker}
             disabled={categories.length === 0}
@@ -608,7 +552,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                       />
                       <span className="flex-1 truncate">{c.name}</span>
                       <span className="text-[10px] text-dim font-mono shrink-0">
-                        {c.items.length} tag{c.items.length !== 1 ? "s" : ""}
+                        {(c.folderItems?.length || 0)}f · {(c.filenameItems?.length || 0)}n
                       </span>
                     </label>
                   );
@@ -632,6 +576,147 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 </button>
               </div>
             </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** One list section — folder tags OR filename tags — with add form + tag grid. */
+function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick }) {
+  return (
+    <div className="border-b border-app/40 last:border-b-0" data-testid={`section-${listKey}`}>
+      <div className="px-4 py-2 flex items-center gap-2 bg-app/40 sticky top-0 z-10">
+        <ListIcon size={13} className="text-primary-earth" />
+        <span className="text-[10px] uppercase tracking-widest font-heading text-app">{listLabel}</span>
+        <span className="text-[10px] text-dim font-mono">{items.length}</span>
+      </div>
+
+      {/* Add form for this list */}
+      <div className="px-4 py-3 space-y-3">
+        <p className="text-[11px] text-dim">{helpText}</p>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setDraft({ pickerMode: "builtin" })}
+            className={`px-3 py-1 rounded text-xs font-medium ${
+              draft.pickerMode === "builtin" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-surface text-dim"
+            }`}
+            data-testid={`${listKey}-mode-builtin`}
+          >
+            Built-in Icons
+          </button>
+          <button
+            onClick={() => setDraft({ pickerMode: "image" })}
+            className={`px-3 py-1 rounded text-xs font-medium ${
+              draft.pickerMode === "image" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-surface text-dim"
+            }`}
+            data-testid={`${listKey}-mode-image`}
+          >
+            Custom Image
+          </button>
+        </div>
+
+        {draft.pickerMode === "builtin" ? (
+          <div className="grid grid-cols-12 gap-1 max-h-32 overflow-auto pane rounded p-2">
+            {BUILTIN_ICONS.map((n) => (
+              <button
+                key={n}
+                onClick={() => setDraft({ selectedBuiltin: n })}
+                className={`w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover ${
+                  draft.selectedBuiltin === n ? "bg-primary-earth/30 text-primary-earth" : "text-app"
+                }`}
+                title={n}
+                data-testid={`${listKey}-icon-${n}`}
+              >
+                <BuiltinIcon name={n} size={16} />
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <div className="w-16 h-16 rounded border border-app bg-surface flex items-center justify-center overflow-hidden">
+              {draft.selectedImage ? (
+                <img src={draft.selectedImage} alt="preview" className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon size={20} className="text-dim" />
+              )}
+            </div>
+            <div>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*"
+                className="hidden-file"
+                onChange={onImagePick}
+                data-testid={`${listKey}-custom-image-input`}
+              />
+              <button
+                onClick={() => fileRef.current?.click()}
+                className="px-3 py-1.5 rounded bg-surface hover:bg-surface-hover text-sm border border-app"
+                data-testid={`${listKey}-pick-image-btn`}
+              >
+                Choose image…
+              </button>
+              <p className="text-[10px] text-dim mt-1">Auto cropped to 64×64</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <input
+            value={draft.label}
+            onChange={(e) => setDraft({ label: e.target.value })}
+            onKeyDown={(e) => e.key === "Enter" && onAdd()}
+            placeholder={`New ${listLabel.toLowerCase().replace(/ tags$/, "")} label…`}
+            className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
+            spellCheck={true}
+            autoCorrect="on"
+            autoCapitalize="off"
+            data-testid={`${listKey}-new-label`}
+          />
+          <button
+            onClick={onAdd}
+            className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium hover:opacity-90 flex items-center gap-1"
+            data-testid={`${listKey}-add-btn`}
+          >
+            <Save size={14} /> Add
+          </button>
+        </div>
+      </div>
+
+      {/* Tag grid */}
+      <div className="px-4 pb-4">
+        {items.length === 0 ? (
+          <div className="text-center text-dim text-xs py-4 italic">
+            No {listLabel.toLowerCase()} yet.
+          </div>
+        ) : (
+          <div className="grid grid-cols-4 gap-2">
+            {items.map((it) => (
+              <div
+                key={it.id}
+                className="pane rounded p-2 flex items-center gap-2 group"
+                data-testid={`${listKey}-item-${it.id}`}
+              >
+                <div className="w-9 h-9 rounded bg-app border border-app flex items-center justify-center text-primary-earth shrink-0">
+                  <IconPreview item={it} size={20} />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate">{it.label}</div>
+                  <div className="text-[10px] text-dim truncate">
+                    {it.iconType === "image" ? "custom" : it.iconName}
+                  </div>
+                </div>
+                <button
+                  onClick={() => onRemove(it.id)}
+                  className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-danger-earth"
+                  data-testid={`${listKey}-remove-${it.id}`}
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>
