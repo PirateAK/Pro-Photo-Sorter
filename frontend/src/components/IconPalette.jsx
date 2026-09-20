@@ -214,15 +214,7 @@ export default function IconPalette({
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-heading text-dim min-w-[68px]">
           <RoleIcon size={12} className="text-primary-earth" /> {roleLabel}
         </div>
-        {hidePicker ? (
-          <div
-            className="bg-app/50 border border-app rounded pl-2 pr-2 py-1 text-xs font-medium text-dim"
-            data-testid={`palette-${role}-category-label`}
-            title="This bar follows the Folders pack. Change the pack above to swap both bars."
-          >
-            {active?.name || "—"}
-          </div>
-        ) : (
+        {hidePicker ? null : (
           <div className="relative">
             <select
               value={active?.id || ""}
