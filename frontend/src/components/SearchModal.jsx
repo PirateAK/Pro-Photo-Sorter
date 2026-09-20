@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
-import { X, Search, FolderOpen, Play, Save, Star, Trash2, RotateCcw, FileText } from "lucide-react";
+import { X, Search, FolderOpen, Play, Save, Star, Trash2, RotateCcw, FileText, ChevronDown, ChevronUp, Plus } from "lucide-react";
 import { pickDirectory } from "../lib/fsapi";
 import { searchPhotos } from "../lib/photoSearch";
 import { toast } from "sonner";
@@ -238,48 +238,26 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
             />
           </section>
 
-          {/* Token pickers */}
+          {/* Token pickers — user types their own terms; tag-pack chips are opt-in helpers below */}
           <section className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-1">Match Folders</div>
-              <div className="pane rounded p-2 flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                {allItems.length === 0 && <span className="text-xs text-dim italic">No categories defined.</span>}
-                {allItems.map((it) => (
-                  <button
-                    key={"f-" + it.id}
-                    onClick={() => toggleToken(folderTokens, setFolderTokens, it.label)}
-                    className={`px-2 py-0.5 rounded text-xs border ${
-                      folderTokens.includes(it.label)
-                        ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
-                        : "bg-app border-app hover:bg-surface-hover"
-                    }`}
-                    data-testid={`search-folder-token-${it.id}`}
-                  >
-                    {it.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div>
-              <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-1">Match Filename</div>
-              <div className="pane rounded p-2 flex flex-wrap gap-1 max-h-32 overflow-y-auto">
-                {allItems.length === 0 && <span className="text-xs text-dim italic">No categories defined.</span>}
-                {allItems.map((it) => (
-                  <button
-                    key={"n-" + it.id}
-                    onClick={() => toggleToken(filenameTokens, setFilenameTokens, it.label)}
-                    className={`px-2 py-0.5 rounded text-xs border ${
-                      filenameTokens.includes(it.label)
-                        ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
-                        : "bg-app border-app hover:bg-surface-hover"
-                    }`}
-                    data-testid={`search-filename-token-${it.id}`}
-                  >
-                    {it.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            <TokenEditor
+              label="Match Folders"
+              placeholder="Type a folder term and press Enter (or comma-separate)…"
+              testIdPrefix="search-folder"
+              tokens={folderTokens}
+              setTokens={setFolderTokens}
+              suggestions={allItems}
+              suggestionsHelp="Tap a tag from your packs to add it as a folder filter"
+            />
+            <TokenEditor
+              label="Match Filename"
+              placeholder="Type a filename term and press Enter (or comma-separate)…"
+              testIdPrefix="search-filename"
+              tokens={filenameTokens}
+              setTokens={setFilenameTokens}
+              suggestions={allItems}
+              suggestionsHelp="Tap a tag from your packs to add it as a filename filter"
+            />
           </section>
 
           {/* Logic + Stars + Dates */}
@@ -439,3 +417,133 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
     </div>
   );
 }
+
+/**
+ * TokenEditor — user types free-form search terms; each term becomes a
+ * removable chip. Optionally shows a collapsible list of tag-pack labels
+ * as one-click add-shortcuts.
+ *
+ * Term entry:
+ *   - Press Enter, Tab, or comma to commit the current text as a token.
+ *   - Paste "a, b, c" and press Enter → three tokens added.
+ *   - Backspace on an empty input removes the last token.
+ *   - Click X on any chip to remove it.
+ *
+ * Tag-pack suggestions are collapsed by default so they don't dominate
+ * the modal. Click "Suggestions from your tag packs" to expand.
+ */
+function TokenEditor({ label, placeholder, testIdPrefix, tokens, setTokens, suggestions, suggestionsHelp }) {
+  const [draft, setDraft] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const inputRef = useRef(null);
+
+  const addTokens = (raw) => {
+    const parts = String(raw || "")
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (parts.length === 0) return;
+    const next = [...tokens];
+    for (const p of parts) {
+      if (!next.includes(p)) next.push(p);
+    }
+    setTokens(next);
+    setDraft("");
+  };
+
+  const removeToken = (t) => setTokens(tokens.filter((x) => x !== t));
+
+  const onKeyDown = (e) => {
+    if (e.key === "Enter" || e.key === "Tab" || e.key === ",") {
+      if (draft.trim()) { e.preventDefault(); addTokens(draft); }
+    } else if (e.key === "Backspace" && draft === "" && tokens.length > 0) {
+      removeToken(tokens[tokens.length - 1]);
+    }
+  };
+
+  // Suggestions the user hasn't already added
+  const remainingSuggestions = suggestions.filter((s) => !tokens.includes(s.label));
+
+  return (
+    <div>
+      <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-1">{label}</div>
+      <div
+        className="pane rounded p-2 min-h-[2.5rem] flex flex-wrap gap-1 items-center cursor-text focus-within:ring-2 focus-within:ring-primary-earth/60 transition-shadow"
+        onClick={() => inputRef.current?.focus()}
+        data-testid={`${testIdPrefix}-token-editor`}
+      >
+        {tokens.map((t) => (
+          <span
+            key={t}
+            className="inline-flex items-center gap-1 bg-primary-earth text-[color:var(--text-inverse)] rounded px-2 py-0.5 text-xs"
+            data-testid={`${testIdPrefix}-chip-${t}`}
+          >
+            {t}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); removeToken(t); }}
+              className="hover:opacity-80"
+              title={`Remove "${t}"`}
+              data-testid={`${testIdPrefix}-chip-remove-${t}`}
+            >
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onKeyDown}
+          onBlur={() => { if (draft.trim()) addTokens(draft); }}
+          placeholder={tokens.length === 0 ? placeholder : "add another…"}
+          className="flex-1 min-w-[8rem] bg-transparent text-xs outline-none py-1 px-1"
+          spellCheck={true}
+          autoCorrect="off"
+          autoCapitalize="off"
+          data-testid={`${testIdPrefix}-input`}
+        />
+      </div>
+
+      {suggestions.length > 0 && (
+        <div className="mt-1">
+          <button
+            type="button"
+            onClick={() => setShowSuggestions((v) => !v)}
+            className="text-[10px] text-dim hover:text-primary-earth flex items-center gap-1"
+            data-testid={`${testIdPrefix}-suggestions-toggle`}
+          >
+            {showSuggestions ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            Suggestions from your tag packs ({remainingSuggestions.length})
+          </button>
+          {showSuggestions && (
+            <div className="mt-1 pane rounded p-2 flex flex-wrap gap-1 max-h-24 overflow-y-auto" data-testid={`${testIdPrefix}-suggestions`}>
+              {remainingSuggestions.length === 0 ? (
+                <span className="text-[10px] text-dim italic">All suggestions already added.</span>
+              ) : (
+                remainingSuggestions.map((it) => (
+                  <button
+                    key={it.id}
+                    type="button"
+                    onClick={() => addTokens(it.label)}
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] bg-app border border-app hover:bg-surface-hover hover:border-primary-earth/60"
+                    title={`Add "${it.label}" (from ${it.catName})`}
+                    data-testid={`${testIdPrefix}-suggestion-${it.id}`}
+                  >
+                    <Plus size={9} className="opacity-60" />
+                    {it.label}
+                  </button>
+                ))
+              )}
+              {suggestionsHelp && (
+                <span className="w-full text-[9px] text-dim italic mt-1">{suggestionsHelp}</span>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
