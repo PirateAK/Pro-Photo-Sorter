@@ -1,5 +1,8 @@
 // LocalStorage-backed persistence for categories, settings, ratings.
-const KEY = "pps.state.v2";
+// v1.1 (Feb 2026): paired-list tag packs. Each pack has folderItems +
+// filenameItems. Bumping the key wipes any legacy v2 data so users start
+// with a clean paired-list model instead of migrating mismatched shapes.
+const KEY = "pps.state.v1_1";
 
 const DEFAULT_SETTINGS = {
   moveMode: false,
@@ -26,29 +29,22 @@ const DEFAULT_STATE = {
   categories: [
     {
       id: "cat-default-1",
-      name: "Subjects (Basic)",
-      items: [
-        { id: "it-1", label: "portrait", iconType: "lucide", iconName: "User" },
-        { id: "it-2", label: "landscape", iconType: "lucide", iconName: "Mountain" },
-        { id: "it-3", label: "wildlife", iconType: "lucide", iconName: "Bird" },
-        { id: "it-4", label: "macro", iconType: "lucide", iconName: "Flower2" },
-        { id: "it-5", label: "action", iconType: "lucide", iconName: "Zap" },
-        { id: "it-6", label: "group", iconType: "lucide", iconName: "Users" },
-        { id: "it-7", label: "closeup", iconType: "lucide", iconName: "Aperture" },
-        { id: "it-8", label: "night", iconType: "lucide", iconName: "Moon" },
+      name: "Wildlife (Example)",
+      // Folder-path tags — used to build the destination folder tree
+      folderItems: [
+        { id: "wf-1", label: "Mammals",  iconType: "lucide", iconName: "Rabbit" },
+        { id: "wf-2", label: "Birds",    iconType: "lucide", iconName: "Bird" },
+        { id: "wf-3", label: "Reptiles", iconType: "lucide", iconName: "Triangle" },
+        { id: "wf-4", label: "Fish",     iconType: "lucide", iconName: "Fish" },
       ],
-    },
-    {
-      id: "cat-default-2",
-      name: "Ratings",
-      items: [
-        { id: "it-r1", label: "pick", iconType: "lucide", iconName: "Star" },
-        { id: "it-r2", label: "keep", iconType: "lucide", iconName: "Heart" },
-        { id: "it-r3", label: "reject", iconType: "lucide", iconName: "X" },
-        { id: "it-r4", label: "best", iconType: "lucide", iconName: "Trophy" },
-        { id: "it-r5", label: "star3", iconType: "lucide", iconName: "Star" },
-        { id: "it-r6", label: "star4", iconType: "lucide", iconName: "Star" },
-        { id: "it-r7", label: "star5", iconType: "lucide", iconName: "Star" },
+      // Filename tags — appended to the destination filename
+      filenameItems: [
+        { id: "wn-1", label: "portrait", iconType: "lucide", iconName: "Aperture" },
+        { id: "wn-2", label: "action",   iconType: "lucide", iconName: "Zap" },
+        { id: "wn-3", label: "flying",   iconType: "lucide", iconName: "Wind" },
+        { id: "wn-4", label: "feeding",  iconType: "lucide", iconName: "Utensils" },
+        { id: "wn-5", label: "distant",  iconType: "lucide", iconName: "MapPin" },
+        { id: "wn-6", label: "closeup",  iconType: "lucide", iconName: "Sparkles" },
       ],
     },
   ],
@@ -63,27 +59,23 @@ const DEFAULT_STATE = {
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) {
-      // Try to migrate from v1
-      const v1 = localStorage.getItem("pps.state.v1");
-      if (v1) {
-        const parsed = JSON.parse(v1);
-        return {
-          ...DEFAULT_STATE,
-          categories: parsed.categories || DEFAULT_STATE.categories,
-        };
-      }
-      return DEFAULT_STATE;
-    }
+    if (!raw) return DEFAULT_STATE; // No migration from older keys — v1.1 is a clean break
     const parsed = JSON.parse(raw);
     const settings = { ...DEFAULT_SETTINGS, ...(parsed.settings || {}) };
     // Migrate legacy default template so existing users get nested-folder support
     if (settings.filenameTemplate === "{folder}/{labels}{ext}") {
       settings.filenameTemplate = "{folders}/{tags}{ext}";
     }
+    // Defensive: any pack missing one of the two lists gets an empty one
+    const categories = (parsed.categories || DEFAULT_STATE.categories).map((c) => ({
+      ...c,
+      folderItems: Array.isArray(c.folderItems) ? c.folderItems : [],
+      filenameItems: Array.isArray(c.filenameItems) ? c.filenameItems : [],
+    }));
     return {
       ...DEFAULT_STATE,
       ...parsed,
+      categories,
       settings,
       ratings: parsed.ratings || {},
       looks: parsed.looks || [],

@@ -2,15 +2,14 @@ import React, { useState, useRef, useEffect } from "react";
 import { IconPreview } from "./CategoryManager";
 import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
 import { uid } from "../lib/storage";
+import { getItems, getListKey } from "../lib/tags";
 import { toast } from "sonner";
 
 /**
  * A single icon palette row bound to one destination role: "folders" or "filename".
- * Right-click on a chip → context menu (Rename / Add before / Add after / Delete / Manage).
- * Right-click on empty space → context menu (Add tag / Manage categories).
- * Middle-click on a chip → quick delete with an undo toast.
- * Popovers are inline (no big modal), text-only for label. Custom-image icons stay
- * in the full Category Manager. New items get a default Lucide "Tag" icon.
+ * Reads/writes the pack's role-specific list (folderItems or filenameItems).
+ * When hidePicker is true, the pack dropdown is replaced by a static label —
+ * used for the filename bar so the folder bar's picker drives both rows.
  */
 export default function IconPalette({
   role, // "folders" | "filename"
@@ -20,11 +19,14 @@ export default function IconPalette({
   onApply, // fn(icon, "folders" | "tags")
   onCategoriesChange, // fn(nextCategories) — for quick edits
   onOpenManager,       // fn() — opens the full Category Manager modal
+  hidePicker = false,  // when true, show pack name as read-only label instead of a <select>
 }) {
   const active = categories.find((c) => c.id === activeCatId) || categories[0];
   const roleLabel = role === "folders" ? "Folders" : "Filename";
   const RoleIcon = role === "folders" ? FolderTree : Tag;
   const applyRow = role === "folders" ? "folders" : "tags";
+  const listKey = getListKey(role);
+  const items = getItems(active, role);
 
   // Context menu state — { x, y, targetItem?, mode: "chip" | "empty" }
   const [menu, setMenu] = useState(null);
@@ -83,22 +85,22 @@ export default function IconPalette({
   const deleteItem = (item) => {
     if (!active || !onCategoriesChange) return;
     const next = categories.map((c) =>
-      c.id === active.id ? { ...c, items: c.items.filter((i) => i.id !== item.id) } : c
+      c.id === active.id ? { ...c, [listKey]: (c[listKey] || []).filter((i) => i.id !== item.id) } : c
     );
     onCategoriesChange(next);
     setMenu(null);
     // Undo toast — restore full item at original index
-    const idx = active.items.findIndex((i) => i.id === item.id);
+    const idx = items.findIndex((i) => i.id === item.id);
     toast.success(`Deleted "${item.label}"`, {
-      description: `From ${active.name}`,
+      description: `From ${active.name} · ${roleLabel}`,
       action: {
         label: "Undo",
         onClick: () => {
           const restored = categories.map((c) => {
             if (c.id !== active.id) return c;
-            const arr = [...c.items];
+            const arr = [...(c[listKey] || [])];
             arr.splice(Math.max(0, idx), 0, item);
-            return { ...c, items: arr };
+            return { ...c, [listKey]: arr };
           });
           onCategoriesChange(restored);
         },
@@ -114,18 +116,18 @@ export default function IconPalette({
     if (popover.mode === "edit") {
       const next = categories.map((c) =>
         c.id === active.id
-          ? { ...c, items: c.items.map((i) => i.id === popover.targetItem.id ? { ...i, label: trimmed } : i) }
+          ? { ...c, [listKey]: (c[listKey] || []).map((i) => i.id === popover.targetItem.id ? { ...i, label: trimmed } : i) }
           : c
       );
       onCategoriesChange(next);
     } else if (popover.mode === "add") {
-      const newItem = { id: uid("it"), label: trimmed, iconType: "builtin", iconName: "Tag" };
+      const newItem = { id: uid("it"), label: trimmed, iconType: "lucide", iconName: "Tag" };
       const next = categories.map((c) => {
         if (c.id !== active.id) return c;
-        const arr = [...c.items];
+        const arr = [...(c[listKey] || [])];
         const at = popover.insertIndex ?? arr.length;
         arr.splice(at, 0, newItem);
-        return { ...c, items: arr };
+        return { ...c, [listKey]: arr };
       });
       onCategoriesChange(next);
     }
@@ -156,39 +158,51 @@ export default function IconPalette({
         try { parsed = JSON.parse(raw); } catch { return; }
         const item = parsed?.item;
         const sourceCatId = parsed?.sourceCatId;
+        const sourceRole = parsed?.sourceRole; // "folders" | "filename"
         if (!item || !sourceCatId || !active || !onCategoriesChange) return;
-        // Same category → do nothing (no reorg needed)
-        if (sourceCatId === active.id) return;
+        const sourceListKey = getListKey(sourceRole);
+        // Same pack + same list → nothing to do (chip just landed on its own row)
+        if (sourceCatId === active.id && sourceListKey === listKey) return;
         e.preventDefault();
         e.stopPropagation();
 
         const sourceCat = categories.find((c) => c.id === sourceCatId);
-        const sourceIdx = sourceCat?.items.findIndex((i) => i.id === item.id) ?? -1;
-        // Move: remove from source cat, append to target cat
+        const sourceIdx = (sourceCat?.[sourceListKey] || []).findIndex((i) => i.id === item.id) ?? -1;
+        // Move: remove from source (pack + list), append to this pack's list.
+        // If the drop is inside the same pack, this simply moves between folder/filename lists.
         const next = categories.map((c) => {
-          if (c.id === sourceCatId) return { ...c, items: c.items.filter((i) => i.id !== item.id) };
-          if (c.id === active.id) {
-            // Avoid duplicate if by chance it already exists
-            if (c.items.some((i) => i.id === item.id)) return c;
-            return { ...c, items: [...c.items, item] };
+          let updated = c;
+          if (c.id === sourceCatId) {
+            updated = { ...updated, [sourceListKey]: (updated[sourceListKey] || []).filter((i) => i.id !== item.id) };
           }
-          return c;
+          if (updated.id === active.id) {
+            const existing = updated[listKey] || [];
+            if (existing.some((i) => i.id === item.id)) return updated; // avoid duplicate
+            updated = { ...updated, [listKey]: [...existing, item] };
+          }
+          return updated;
         });
         onCategoriesChange(next);
 
+        const sameCat = sourceCatId === active.id;
         toast.success(`Moved "${item.label}"`, {
-          description: `${sourceCat?.name || "?"} → ${active.name}`,
+          description: sameCat
+            ? `${sourceRole === "folders" ? "Folders" : "Filename"} → ${roleLabel} (${active.name})`
+            : `${sourceCat?.name || "?"} → ${active.name} · ${roleLabel}`,
           action: {
             label: "Undo",
             onClick: () => {
               const undo = categories.map((c) => {
+                let u = c;
                 if (c.id === sourceCatId) {
-                  const arr = [...c.items.filter((i) => i.id !== item.id)];
+                  const arr = [...((u[sourceListKey] || []).filter((i) => i.id !== item.id))];
                   arr.splice(Math.max(0, sourceIdx), 0, item);
-                  return { ...c, items: arr };
+                  u = { ...u, [sourceListKey]: arr };
                 }
-                if (c.id === active.id) return { ...c, items: c.items.filter((i) => i.id !== item.id) };
-                return c;
+                if (u.id === active.id) {
+                  u = { ...u, [listKey]: (u[listKey] || []).filter((i) => i.id !== item.id) };
+                }
+                return u;
               });
               onCategoriesChange(undo);
             },
@@ -200,40 +214,49 @@ export default function IconPalette({
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-heading text-dim min-w-[68px]">
           <RoleIcon size={12} className="text-primary-earth" /> {roleLabel}
         </div>
-        <div className="relative">
-          <select
-            value={active?.id || ""}
-            onChange={(e) => onSetCat(e.target.value)}
-            className="appearance-none bg-app border border-app rounded pl-2 pr-6 py-1 text-xs font-medium focus-ring cursor-pointer"
-            data-testid={`palette-${role}-category-select`}
+        {hidePicker ? (
+          <div
+            className="bg-app/50 border border-app rounded pl-2 pr-2 py-1 text-xs font-medium text-dim"
+            data-testid={`palette-${role}-category-label`}
+            title="This bar follows the Folders pack. Change the pack above to swap both bars."
           >
-            {categories.map((c) => (
-              <option key={c.id} value={c.id} className="bg-app">
-                {c.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-dim" />
-        </div>
+            {active?.name || "—"}
+          </div>
+        ) : (
+          <div className="relative">
+            <select
+              value={active?.id || ""}
+              onChange={(e) => onSetCat(e.target.value)}
+              className="appearance-none bg-app border border-app rounded pl-2 pr-6 py-1 text-xs font-medium focus-ring cursor-pointer"
+              data-testid={`palette-${role}-category-select`}
+            >
+              {categories.map((c) => (
+                <option key={c.id} value={c.id} className="bg-app">
+                  {c.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-dim" />
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-1 overflow-x-auto min-w-0 flex-1">
-        {(!active || active.items.length === 0) && (
+        {(!active || items.length === 0) && (
           <span className="text-xs text-dim italic">
-            No tags in this pack — right-click to add one, or open Tag Manager.
+            No {roleLabel.toLowerCase()} tags in this pack — right-click to add one, or open Tag Manager.
           </span>
         )}
-        {active?.items.map((it) => (
+        {items.map((it) => (
           <button
             key={it.id}
             data-chip="1"
             draggable
             onDragStart={(e) => {
-              // Include the source bar's role AND the source category id so:
-              //   - overlay drops route by role (source bar wins over drop location)
-              //   - palette-bar drops can identify cross-category moves
+              // sourceRole tells the drop target which list this chip came from,
+              // so intra-pack folder ↔ filename swaps route correctly.
               e.dataTransfer.setData(
                 "application/x-pps-icon",
-                JSON.stringify({ item: it, role: applyRow, sourceCatId: active?.id })
+                JSON.stringify({ item: it, role: applyRow, sourceCatId: active?.id, sourceRole: role })
               );
               e.dataTransfer.effectAllowed = "copyMove";
             }}
@@ -263,17 +286,18 @@ export default function IconPalette({
           mode={menu.mode}
           item={menu.targetItem}
           categoryName={active?.name}
+          roleLabel={roleLabel}
           role={role}
           onRename={() => startRename(menu.targetItem)}
           onAddBefore={() => {
-            const idx = active.items.findIndex((i) => i.id === menu.targetItem.id);
+            const idx = items.findIndex((i) => i.id === menu.targetItem.id);
             startAdd(Math.max(0, idx));
           }}
           onAddAfter={() => {
-            const idx = active.items.findIndex((i) => i.id === menu.targetItem.id);
+            const idx = items.findIndex((i) => i.id === menu.targetItem.id);
             startAdd(idx + 1);
           }}
-          onAddEnd={() => startAdd(active?.items.length ?? 0)}
+          onAddEnd={() => startAdd(items.length ?? 0)}
           onDelete={() => deleteItem(menu.targetItem)}
           onManage={() => { onOpenManager?.(); setMenu(null); }}
         />
@@ -296,7 +320,7 @@ export default function IconPalette({
   );
 }
 
-function ContextMenu({ x, y, mode, item, categoryName, role, onRename, onAddBefore, onAddAfter, onAddEnd, onDelete, onManage }) {
+function ContextMenu({ x, y, mode, item, categoryName, roleLabel, role, onRename, onAddBefore, onAddAfter, onAddEnd, onDelete, onManage }) {
   // Clamp to viewport
   const style = {
     position: "fixed",
@@ -322,7 +346,7 @@ function ContextMenu({ x, y, mode, item, categoryName, role, onRename, onAddBefo
       {mode === "chip" && item && (
         <>
           <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-dim font-heading truncate">
-            {item.label}
+            {item.label} · {roleLabel}
           </div>
           <Row icon={Pencil} label="Rename…" onClick={onRename} />
           <Row icon={ArrowLeftFromLine} label="Add tag before" onClick={onAddBefore} />
@@ -336,9 +360,9 @@ function ContextMenu({ x, y, mode, item, categoryName, role, onRename, onAddBefo
       {mode === "empty" && (
         <>
           <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-dim font-heading truncate">
-            {categoryName || "Tag pack"}
+            {categoryName || "Tag pack"} · {roleLabel}
           </div>
-          <Row icon={Plus} label={`Add tag to "${categoryName}"`} onClick={onAddEnd} />
+          <Row icon={Plus} label={`Add ${roleLabel.toLowerCase()} tag`} onClick={onAddEnd} />
           <div className="h-px bg-app/60 my-1" />
           <Row icon={Settings2} label="Manage tag packs…" onClick={onManage} />
         </>

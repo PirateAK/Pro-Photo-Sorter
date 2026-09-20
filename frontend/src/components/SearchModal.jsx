@@ -60,7 +60,12 @@ export default function SearchModal({ open, onClose, destRoot, destRootName, cat
   useEffect(() => () => { abortRef.current?.abort(); }, []);
 
   const allItems = useMemo(() => {
-    return categories.flatMap((c) => c.items.map((it) => ({ ...it, catName: c.name })));
+    // Every tag from every pack, both folder-role and filename-role, tagged
+    // with the source pack name so the picker UI can show provenance.
+    return categories.flatMap((c) => [
+      ...(c.folderItems || []).map((it) => ({ ...it, catName: c.name, sourceRole: "folders" })),
+      ...(c.filenameItems || []).map((it) => ({ ...it, catName: c.name, sourceRole: "filename" })),
+    ]);
   }, [categories]);
 
   const changeRoot = async () => {

@@ -1806,11 +1806,12 @@ export default function App() {
               <IconPalette
                 role="filename"
                 categories={categories}
-                activeCatId={tagsCatId}
-                onSetCat={setTagsCatId}
+                activeCatId={foldersCatId}
+                onSetCat={setFoldersCatId}
                 onApply={applyIcon}
                 onCategoriesChange={setCategories}
                 onOpenManager={() => setShowCatMgr(true)}
+                hidePicker
               />
             </div>
             <div className="grid grid-cols-2 gap-1 shrink-0">
