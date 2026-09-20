@@ -28,7 +28,12 @@ export async function pickDirectory(opts = {}) {
   pickerActive = true;
   const options = { mode: opts.mode || "readwrite" };
   if (opts.id) options.id = opts.id;
-  if (opts.startIn) options.startIn = opts.startIn;
+  // NOTE: We deliberately IGNORE opts.startIn. Passing a persisted or
+  // previously-picked directory handle to showDirectoryPicker makes Chromium
+  // treat that handle as "in use", which then throws "File picker already
+  // active" on subsequent pick calls — locking the user out until the app
+  // window is reloaded. Chromium already remembers the last picked directory
+  // per-`id` via the `id` parameter, so `startIn` is redundant here.
   try {
     // eslint-disable-next-line no-undef
     return await window.showDirectoryPicker(options);
