@@ -2,6 +2,78 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.0 — 2026-02-15 · Paired-list Tag Packs + In-App Help
+
+### Added
+- **Paired-list Tag Packs** — every pack now holds two lists: `Folder path tags`
+  and `Filename tags`. Picking a pack from the Folders bar fills both rows at
+  once. Fixes the "same tags in both bars" duplication of v1.0.
+- **Drag between sections** in Tag Manager — grab a tag card, drop it in the
+  other section, it reassigns. Toast confirms with an Undo button.
+- **Bulk paste** — a "Paste…" button on each list section accepts a newline-
+  separated list of labels and adds them all at once. `//` prefix = comment.
+- **Plain-text pack format** (`.pps-taglist.txt`) — author packs in Notepad,
+  one column, `# PackName` header, blank line separates folder tags from
+  filename tags, multiple packs per file supported.
+  - **Import text list…** button in Tag Manager
+  - **Export as text** button next to Export pack — turns any pack into a
+    shareable `.txt`
+- **In-app Help modal** — top-toolbar Help button (or `F1` / `?`) opens a five-
+  tab window: Quick Start · User Guide · Shortcuts · Changelog · About.
+  Docs bundled into the app so they travel with the installer.
+- **Print button** in the Help modal — prints the current tab via the OS print
+  dialog. Useful for pinning the Shortcuts sheet next to your desk.
+- **Help / About tab** shows version + build date + credit line for bug reports.
+
+### Changed
+- Tag Manager UI rebuilt as a two-section editor (`FOLDER PATH TAGS` /
+  `FILENAME TAGS`), each with its own icon picker, Add button, Paste button,
+  and tag grid.
+- Filename palette bar no longer shows a redundant pack-name label; the
+  Folders dropdown drives both rows.
+- Storage key bumped `pps.state.v2` → `pps.state.v1_1`. Legacy tag packs are
+  replaced by a single "Wildlife (Example)" starter (per Captain Kurt's
+  approval to wipe on release). Ratings, watermark settings, and other
+  preferences are preserved.
+- Tag pack export format bumped to `formatVersion: 2` — carries both
+  `folderTags` and `filenameTags`. Legacy v1 files auto-import into the
+  folder list for backward compatibility.
+- `run-app.bat` and `pack-app.bat` now auto-sync `USER_GUIDE.md`,
+  `QUICK_START.md`, and `CHANGELOG.md` into `frontend/public/docs/` before
+  every build. Doc edits appear in the app on next launch, no manual copy.
+
+### Fixed
+- Watermark toggle relocated below the Rate stars bar as a proper switch
+  (© knob) instead of a small pill inside the Resize row.
+- Tidy © badge on the top-left of the photo when watermark is ON.
+- Main viewer left/right nav arrows and the filename pill restyled with the
+  `icon-overlay` treatment for better legibility.
+- Keyboard hint chips (`Space`, `Del`, `S`) fixed in both dark and light
+  themes — previously invisible in light mode.
+- Installer version filename now stays in sync with `frontend/package.json`
+  via a small `pack-app.bat` step; no more `Setup 1.0.0.exe` when the app is
+  actually 1.0.5.
+
+### Storage note
+On first launch after upgrading from v1.0.x, your legacy tag packs will be
+replaced by the new starter. You can re-import any you exported previously
+via **Import pack…** (the v1 JSON format is backward-compatible).
+
+---
+
+## v1.0.5 — 2026-02-15 · UI polish + installer name sync
+
+### Added
+- Watermark toggle bar in the viewer with a © knob switch.
+- Tidy © badge in the top-left of any photo whose watermark is ON.
+
+### Fixed
+- Nav arrows in the main viewer restyled for legibility.
+- `Space` / `Del` / `S` hint chips now readable in both themes.
+- `pack-app.bat` stamps the installer version from `frontend/package.json`.
+
+---
+
 ## v1.0.0 — 2026-02-15 · Ship candidate
 
 The first officially "shippable" release. Everything below is what a new
