@@ -2,6 +2,35 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.1 — 2026-02-15 · Folder-picker deadlock fix
+
+### Fixed
+- **Folder picker deadlock**: after opening any source or destination folder,
+  trying to pick a different one threw "File picker already active" and the
+  entire session was locked until the app was closed and reopened.
+  Root cause: passing a persisted directory handle as `startIn` to Chromium's
+  `showDirectoryPicker` marks that handle as in-use, blocking future picks.
+  Fix: strip `startIn` at the `fsapi.js` layer entirely — Chromium already
+  remembers the last picked directory per-`id`, so no functionality is lost.
+- **Chromium-blocked system directories** (`C:\`, `C:\Windows`,
+  `C:\Program Files`) now show a specific error message telling the user to
+  pick a subfolder (e.g. `C:\Users\YourName\Pictures`) instead of a raw
+  browser exception.
+- **Recovery "Restart window" button** in the picker-error toast reloads the
+  app window in-place — resets Chromium's picker state without closing
+  Electron. All tag packs, ratings, and settings survive (they live in
+  localStorage, unaffected by a reload).
+
+### Added
+- Module-level concurrency lock in `pickDirectory` — a second pick call while
+  another is open throws a friendly "PickerBusyError" instead of stacking.
+- Longer 12–20 s duration on picker-error toasts so users have time to read
+  the recovery instructions.
+- USER_GUIDE.md section documenting which system folders Windows blocks and
+  how to work around it.
+
+---
+
 ## v1.1.0 — 2026-02-15 · Paired-list Tag Packs + In-App Help
 
 ### Added

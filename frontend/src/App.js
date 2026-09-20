@@ -383,16 +383,38 @@ export default function App() {
     } catch { /* ignore */ }
   }, []);
 
+  // Show a friendly toast for folder-picker errors. For the "stuck picker"
+  // family of errors (which need a page reload to fully recover), include
+  // a "Restart" action button that reloads the app window — resets
+  // Chromium's internal picker state while preserving all localStorage data
+  // (tag packs, ratings, watermark settings, recent folders all survive).
+  const handlePickerError = (e) => {
+    const isSystemErr =
+      e?.name === "SystemDirectoryBlockedError" ||
+      e?.name === "PickerStuckError" ||
+      e?.name === "PickerBusyError";
+    const msg = e?.message || "Failed to open folder";
+    if (isSystemErr) {
+      toast.error(msg, {
+        duration: 20000,
+        action: {
+          label: "Restart window",
+          onClick: () => window.location.reload(),
+        },
+      });
+    } else {
+      toast.error(msg);
+    }
+  };
+
   const pickSource = async () => {
     try {
-      // Prefer the most recent source as the picker's starting point;
-      // otherwise Chrome remembers per-id on its own.
-      let startIn = undefined;
-      try {
-        const recents = await getRecent("source");
-        if (recents[0]?.handle) startIn = recents[0].handle;
-      } catch { /* ignore */ }
-      const h = await pickDirectory({ id: "pps-source", startIn });
+      // Note: we intentionally do NOT pass `startIn` here. Passing a persisted
+      // handle (from IndexedDB or a prior pick) makes Chromium treat that
+      // handle as "in use" and throws "File picker already active" on
+      // subsequent picks. The `id` parameter already makes Chromium remember
+      // the last picked directory per-panel, so `startIn` is redundant.
+      const h = await pickDirectory({ id: "pps-source" });
       setSourceRoot(h);
       setSourceRootName(h.name);
       onSelectSourceFolder({ name: h.name, handle: h }, h.name);
@@ -400,20 +422,13 @@ export default function App() {
       try { await addRecent("source", h, h.name); } catch { /* ignore */ }
     } catch (e) {
       if (e?.name === "AbortError") return; // user cancelled
-      // Show longer-duration toast for the "stuck picker" / "system dir" errors
-      // so the user has time to read the recovery instructions.
-      const isSystemErr = e?.name === "SystemDirectoryBlockedError" || e?.name === "PickerStuckError" || e?.name === "PickerBusyError";
-      toast.error(e.message || "Failed to open folder", isSystemErr ? { duration: 12000 } : undefined);
+      handlePickerError(e);
     }
   };
+
   const pickDest = async () => {
     try {
-      let startIn = undefined;
-      try {
-        const recents = await getRecent("dest");
-        if (recents[0]?.handle) startIn = recents[0].handle;
-      } catch { /* ignore */ }
-      const h = await pickDirectory({ id: "pps-dest", startIn });
+      const h = await pickDirectory({ id: "pps-dest" });
       setDestRoot(h);
       setDestRootName(h.name);
       setDestSelected({ handle: h, path: h.name });
@@ -422,8 +437,7 @@ export default function App() {
       try { await addRecent("dest", h, h.name); } catch { /* ignore */ }
     } catch (e) {
       if (e?.name === "AbortError") return;
-      const isSystemErr = e?.name === "SystemDirectoryBlockedError" || e?.name === "PickerStuckError" || e?.name === "PickerBusyError";
-      toast.error(e.message || "Failed to open folder", isSystemErr ? { duration: 12000 } : undefined);
+      handlePickerError(e);
     }
   };
 
