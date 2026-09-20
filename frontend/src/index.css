@@ -248,3 +248,40 @@ input[type="file"].hidden-file {
 button {
     font-family: inherit;
 }
+
+/* ── react-markdown styling inside the Help modal ───────────────────────── */
+.prose-md h1 { font-size: 20px; font-weight: 700; margin-top: 12px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid var(--border); }
+.prose-md h2 { font-size: 16px; font-weight: 600; margin-top: 20px; margin-bottom: 6px; color: var(--primary-earth, #c68a53); }
+.prose-md h3 { font-size: 14px; font-weight: 600; margin-top: 14px; margin-bottom: 4px; }
+.prose-md h4 { font-size: 13px; font-weight: 600; margin-top: 10px; margin-bottom: 2px; }
+.prose-md p  { font-size: 13px; line-height: 1.55; margin: 6px 0; color: var(--text); }
+.prose-md ul, .prose-md ol { padding-left: 20px; margin: 6px 0; }
+.prose-md li { font-size: 13px; line-height: 1.55; margin: 2px 0; }
+.prose-md a  { color: var(--primary-earth, #c68a53); text-decoration: underline; }
+.prose-md code {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+}
+[data-theme="light"] .prose-md code { background: rgba(58,45,34,0.08); }
+.prose-md pre {
+    font-family: "JetBrains Mono", ui-monospace, monospace;
+    background: rgba(0,0,0,0.35);
+    padding: 10px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    font-size: 12px;
+    overflow-x: auto;
+    line-height: 1.45;
+    margin: 8px 0;
+}
+[data-theme="light"] .prose-md pre { background: rgba(58,45,34,0.06); }
+.prose-md pre code { background: transparent; padding: 0; font-size: inherit; }
+.prose-md table { border-collapse: collapse; margin: 8px 0; width: 100%; }
+.prose-md th, .prose-md td { border: 1px solid var(--border); padding: 4px 8px; font-size: 12px; text-align: left; vertical-align: top; }
+.prose-md th { background: rgba(255,255,255,0.05); font-weight: 600; }
+[data-theme="light"] .prose-md th { background: rgba(58,45,34,0.08); }
+.prose-md hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
+.prose-md blockquote { border-left: 3px solid var(--primary-earth, #c68a53); margin: 8px 0; padding: 2px 10px; color: var(--text-dim); }

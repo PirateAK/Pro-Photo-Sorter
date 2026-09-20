@@ -8,6 +8,11 @@ REM ============================================================
 cd /d C:\Pro-Photo-Sorter
 echo === Pulling latest from GitHub ===
 git pull
+echo === Syncing docs into frontend/public/docs/ ===
+if not exist frontend\public\docs mkdir frontend\public\docs
+copy /Y USER_GUIDE.md  frontend\public\docs\USER_GUIDE.md  >nul
+copy /Y QUICK_START.md frontend\public\docs\QUICK_START.md >nul
+copy /Y CHANGELOG.md   frontend\public\docs\CHANGELOG.md   >nul
 echo === Ensuring dependencies are installed (frontend) ===
 cd frontend
 call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error

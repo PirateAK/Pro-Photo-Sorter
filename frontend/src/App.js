@@ -32,7 +32,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -58,6 +58,7 @@ import RecentFoldersDropdown from "@/components/RecentFoldersDropdown";
 import SearchModal from "@/components/SearchModal";
 import CullMode from "@/components/CullMode";
 import DrivesPanel from "@/components/DrivesPanel";
+import HelpModal from "@/components/HelpModal";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 import { isElectron, totalFreeBytes, formatBytes } from "@/lib/electronBridge";
 
@@ -1296,6 +1297,7 @@ export default function App() {
       else if (e.key === "b" || e.key === "B") { e.preventDefault(); toggleBatch(); }
       else if (e.key === "e" || e.key === "E") { e.preventDefault(); if (currentImage) setShowEditor(true); }
       else if (e.key === "?" ) { e.preventDefault(); setShowHelp((v) => !v); }
+      else if (e.key === "F1" ) { e.preventDefault(); setShowHelp((v) => !v); }
       else if (e.key === "Escape") {
         // Close top-most modal if any
         if (showHelp) { e.preventDefault(); setShowHelp(false); }
@@ -1784,9 +1786,9 @@ export default function App() {
               onClick={() => setShowHelp((v) => !v)}
               className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
               data-testid="show-help"
-              title="Show shortcuts (?)"
+              title="Help &amp; About (F1 or ?)"
             >
-              <Keyboard size={12} /> Shortcuts
+              <HelpCircle size={12} /> Help
             </button>
           </div>
 
@@ -2346,52 +2348,7 @@ export default function App() {
 
       <DrivesPanel open={showDrives} onClose={() => setShowDrives(false)} />
 
-      {showHelp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-6" data-testid="help-modal">
-          <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setShowHelp(false)} />
-          <div className="relative pane rounded-lg w-full max-w-md p-6">
-            <button
-              onClick={() => setShowHelp(false)}
-              className="absolute top-2 right-2 w-7 h-7 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-app"
-              data-testid="help-close"
-              aria-label="Close"
-            >
-              <XIcon size={14} />
-            </button>
-            <div className="flex items-center gap-2 mb-4">
-              <Keyboard size={18} className="text-primary-earth" />
-              <h3 className="font-heading font-semibold text-lg">Keyboard Shortcuts</h3>
-            </div>
-            <div className="space-y-2 text-sm">
-              {[
-                ["←  /  →", "Previous / Next photo"],
-                ["Space", "Skip (remove from list)"],
-                ["Delete", "Delete file from disk"],
-                ["S", "Store to destination"],
-                ["E", "Open image editor"],
-                ["1 – 5", "Set star rating"],
-                ["0", "Clear star rating"],
-                ["\\  or  `", "Hold to peek original (in editor)"],
-                ["Ctrl / ⌘ + Z", "Undo last action"],
-                ["B", "Toggle batch mode"],
-                ["?", "Show / hide this panel"],
-              ].map(([k, d]) => (
-                <div key={k} className="flex items-center justify-between">
-                  <span className="text-dim">{d}</span>
-                  <span className="kbd">{k}</span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 pt-3 border-t border-app text-xs text-dim flex items-start gap-2">
-              <Info size={12} className="mt-0.5 shrink-0 text-primary-earth" />
-              <span>
-                Drag icons from the palette onto the photo to build the destination path.
-                First icon = folder, remaining icons = filename parts (customize in Settings).
-              </span>
-            </div>
-          </div>
-        </div>
-      )}
+      <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
     </div>
   );
 }

@@ -11,6 +11,9 @@
 # production
 /build
 
+# Auto-synced docs (copied from repo root by run-app.bat / pack-app.bat)
+/public/docs/
+
 # misc
 .DS_Store
 .env.local
