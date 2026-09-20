@@ -297,13 +297,23 @@ Files touched:
 - New: `frontend/src/lib/electronBridge.js`, `frontend/src/components/DrivesPanel.jsx`, `USER_GUIDE.md`, `QUICK_START.md`, `CHANGELOG.md`, `electron-additions/{main.js,preload.js,icon.png,package.json}`.
 - Updated: `frontend/src/App.js` (drives button + free-space chip + DrivesPanel modal), `frontend/src/components/TreeNode.jsx` (per-folder image count on hover), `frontend/src/buildInfo.json`, `frontend/package.json`, `README.md`, `ELECTRON-SETUP.md`, `run-app.bat`, `pack-app.bat`.
 
-### Roadmap (post-v1.0)
+### Iteration 28 — v1.1.0 shipped (2026-02-15)
 
-- **P1 · Multi-Source Roots** — open several source folders stacked in the UI.
+**Final version bump: `1.1.0-dev` → `1.1.0`.** Kurt promoted, built the NSIS installer, uninstalled v1.0.5, installed `Pro Photo Sorter Setup 1.1.0.exe` on his PC, verified everything, tagged `v1.1.0` in git, pushed the tag, and published a GitHub Release with the installer attached. v1.0.5 release kept live for history.
+
+### On-deck for v1.2 (deferred by Kurt at end of v1.1.0 session)
+
+- **P1 · Multi-Source Roots** — open several source folders stacked in the UI (Kurt's photographers-with-multiple-cards scenario).
 - **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
-- **P2 · Per-folder disk size** — needs the folder-path bridge; app currently shows image count on hover instead.
-- **P2 · First-Run Welcome Modal** and **In-App Starter-Pack Browser** — nicer onboarding for testers.
-- **P3 · AI Auto-Tagging** — offline TensorFlow.js/MobileNet scan that suggests category icons per photo.
+- **P2 · First-Run Welcome Modal** — greet new testers with a "try the starter pack" nudge.
+- **P2 · In-App Starter-Pack Browser** — one-click imports without folder-diving. Pairs naturally with community text-list packs.
+- **P2 · Duplicate pack button** in Tag Manager — spotted during v1.1 build; useful when two packs share ~80% of tags.
+- **P3 · AI Auto-Tagging** — offline TensorFlow.js/MobileNet scan. Explicitly deferred by Kurt to "much later".
+- **P3 · Per-folder disk size** in the file tree — needs the folder-path bridge; app currently shows image count on hover as the lightweight alternative.
+
+### Waiting on tester feedback
+Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, not bugs". Any bug reports that come back should be triaged against the current v1.1.0 build; enhancement requests go into the on-deck list above.
+
 
 
 ### Iteration 27 — v1.1.0-dev · Paired-list Tag Packs (2026-02-15)
