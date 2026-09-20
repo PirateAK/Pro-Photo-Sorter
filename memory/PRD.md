@@ -304,3 +304,33 @@ Files touched:
 - **P2 · Per-folder disk size** — needs the folder-path bridge; app currently shows image count on hover instead.
 - **P2 · First-Run Welcome Modal** and **In-App Starter-Pack Browser** — nicer onboarding for testers.
 - **P3 · AI Auto-Tagging** — offline TensorFlow.js/MobileNet scan that suggests category icons per photo.
+
+
+### Iteration 27 — v1.1.0-dev · Paired-list Tag Packs (2026-02-15)
+
+Post-v1.0 usability fix. Kurt hit the "identical tags in both bars" problem the moment he sat down to sort real photos with the shipped v1.0.5.
+
+**Problem:** Tag packs held ONE list of tags. Picking "Wildlife" for the Folders bar and "Wildlife" for the Filename bar loaded the same 8 tags in both places, offering no meaningful distinction between folder-level and filename-level tagging.
+
+**Fix:** Restructured tag packs to hold TWO paired lists per pack (`folderItems` + `filenameItems`). One picker on the Folders bar drives both rows. The Filename bar now shows a read-only pack label instead of its own picker.
+
+- ✅ Storage key bumped `pps.state.v2` → `pps.state.v1_1` — clean break, no migration (Kurt approved wiping legacy packs).
+- ✅ New `lib/tags.js` helper (`getListKey`, `getItems`, `withItems`, `totalCount`) so palette/manager/search share one source of truth.
+- ✅ `IconPalette` reads role-specific list, accepts `hidePicker` prop, drag payload now carries `sourceRole` so intra-pack folder↔filename swaps route correctly.
+- ✅ `CategoryManager` (Tag Manager) reworked as a two-section editor: **FOLDER PATH TAGS** and **FILENAME TAGS**, each with its own icon picker, Add button, and tag grid.
+- ✅ **Drag-and-drop between sections inside Tag Manager** — grab a card, drop on the other section, tag moves and a toast with **Undo** appears. Verified via native DragEvent + DataTransfer dispatch.
+- ✅ Import/export fidelity — new format `formatVersion: 2` carries `folderTags` + `filenameTags`; legacy v1 files auto-import into the folder list (backward-compatible fallback).
+- ✅ New default seed pack: single "Wildlife (Example)" showing the paired-list model — Kurt will recreate his own six packs on his side.
+- ✅ SearchModal updated to flat-map both lists so all tags remain searchable regardless of role.
+
+Files touched:
+- New: `frontend/src/lib/tags.js`.
+- Updated: `frontend/src/lib/storage.js`, `frontend/src/components/IconPalette.jsx`, `frontend/src/components/CategoryManager.jsx`, `frontend/src/components/SearchModal.jsx`, `frontend/src/App.js` (Filename palette now takes `foldersCatId` + `hidePicker`), `frontend/src/buildInfo.json`, `frontend/package.json` (→ 1.1.0-dev).
+
+**Also patched during the same session (pre-1.1 UI polish):**
+- Watermark toggle moved from the "Resize for print" row header into its own bar directly below the Rate stars bar in the viewer (proper `role="switch"` toggle with © knob and ON/OFF label).
+- Tidy © badge in the top-left of the photo when watermark is ON for the current image.
+- Nav arrows in the main viewer restyled with `icon-overlay` + heavier stroke for legibility.
+- kbd hint chips (`Space` / `Del` / `S` on Skip/Delete/Store) fixed for both dark and light themes.
+- Installer version-sync — `pack-app.bat` now stamps `electron-shell/package.json` from `frontend/package.json` before building so the `Setup X.Y.Z.exe` filename can never drift again.
+- v1.0.5 tagged in git and published as a GitHub Release with the installer attached.
