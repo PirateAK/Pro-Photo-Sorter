@@ -105,6 +105,34 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     onChange(next);
   };
 
+  // Move a tag between the two lists of the CURRENT pack.
+  // fromKey / toKey are "folderItems" | "filenameItems". No-op if same.
+  const moveTagBetweenLists = (fromKey, toKey, itemId) => {
+    if (!current || fromKey === toKey) return;
+    const src = current[fromKey] || [];
+    const item = src.find((it) => it.id === itemId);
+    if (!item) return;
+    const next = categories.map((c) => {
+      if (c.id !== current.id) return c;
+      return {
+        ...c,
+        [fromKey]: (c[fromKey] || []).filter((it) => it.id !== itemId),
+        // Guard against dupes in case of a stray drop
+        [toKey]: (c[toKey] || []).some((it) => it.id === itemId)
+          ? (c[toKey] || [])
+          : [...(c[toKey] || []), item],
+      };
+    });
+    onChange(next);
+    toast.success(`Moved "${item.label}"`, {
+      description: `${fromKey === "folderItems" ? "Folder" : "Filename"} → ${toKey === "folderItems" ? "Folder" : "Filename"}`,
+      action: {
+        label: "Undo",
+        onClick: () => moveTagBetweenLists(toKey, fromKey, itemId),
+      },
+    });
+  };
+
   // ── Rename an existing tag pack ─────────────────────────────────────────
   const startRename = (cat) => {
     setRenamingId(cat.id);
@@ -433,6 +461,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onAdd={() => addItem("folderItems")}
                     onRemove={(id) => removeItem("folderItems", id)}
                     onImagePick={(e) => handleImagePick("folderItems", e)}
+                    onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "folderItems", itemId)}
                   />
                   <div className="h-px bg-app/60 mx-4" />
                   <ListSection
@@ -447,6 +476,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onAdd={() => addItem("filenameItems")}
                     onRemove={(id) => removeItem("filenameItems", id)}
                     onImagePick={(e) => handleImagePick("filenameItems", e)}
+                    onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "filenameItems", itemId)}
                   />
                 </div>
               </>
@@ -583,14 +613,44 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   );
 }
 
-/** One list section — folder tags OR filename tags — with add form + tag grid. */
-function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick }) {
+/** One list section — folder tags OR filename tags — with add form + tag grid.
+ *  Supports drag-and-drop MOVE of tags in/out via `onMoveIn(fromKey, itemId)`.
+ *  Drop data type: "application/x-pps-tagmgr" carrying { fromKey, itemId }.
+ */
+function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick, onMoveIn }) {
+  const [dropOver, setDropOver] = React.useState(false);
   return (
-    <div className="border-b border-app/40 last:border-b-0" data-testid={`section-${listKey}`}>
+    <div
+      className={`border-b border-app/40 last:border-b-0 transition-colors ${dropOver ? "bg-primary-earth/10 ring-1 ring-primary-earth/50" : ""}`}
+      data-testid={`section-${listKey}`}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-pps-tagmgr")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          setDropOver(true);
+        }
+      }}
+      onDragLeave={(e) => {
+        if (!e.currentTarget.contains(e.relatedTarget)) setDropOver(false);
+      }}
+      onDrop={(e) => {
+        setDropOver(false);
+        const raw = e.dataTransfer.getData("application/x-pps-tagmgr");
+        if (!raw) return;
+        try {
+          const { fromKey, itemId } = JSON.parse(raw);
+          if (fromKey && itemId && fromKey !== listKey) {
+            e.preventDefault();
+            onMoveIn?.(fromKey, itemId);
+          }
+        } catch { /* ignore */ }
+      }}
+    >
       <div className="px-4 py-2 flex items-center gap-2 bg-app/40 sticky top-0 z-10">
         <ListIcon size={13} className="text-primary-earth" />
         <span className="text-[10px] uppercase tracking-widest font-heading text-app">{listLabel}</span>
         <span className="text-[10px] text-dim font-mono">{items.length}</span>
+        <span className="ml-auto text-[10px] text-dim italic">Drag tags between sections to reassign</span>
       </div>
 
       {/* Add form for this list */}
@@ -696,7 +756,16 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
             {items.map((it) => (
               <div
                 key={it.id}
-                className="pane rounded p-2 flex items-center gap-2 group"
+                className="pane rounded p-2 flex items-center gap-2 group cursor-grab active:cursor-grabbing"
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    "application/x-pps-tagmgr",
+                    JSON.stringify({ fromKey: listKey, itemId: it.id })
+                  );
+                  e.dataTransfer.effectAllowed = "move";
+                }}
+                title={`Drag to the ${listKey === "folderItems" ? "Filename" : "Folder"} section to reassign`}
                 data-testid={`${listKey}-item-${it.id}`}
               >
                 <div className="w-9 h-9 rounded bg-app border border-app flex items-center justify-center text-primary-earth shrink-0">
