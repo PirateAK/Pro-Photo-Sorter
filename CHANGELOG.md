@@ -2,6 +2,22 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.2 — 2026-02-15 · File-tree refresh fix
+
+### Fixed
+- **File tree kept showing the previous folder** after switching source or
+  destination to a new drive. The picker returned the new handle correctly,
+  but the tree component below the header stayed frozen on the first drive's
+  subfolders.
+  Root cause: `TreeNode` caches its children in local React state
+  (`useState`). Because the root node sits in the same layout position across
+  picks, React reused the same instance instead of rebuilding it, so the
+  cached children (and `open` state) survived the switch.
+  Fix: `FileTree.jsx` now applies a `key` derived from the root folder's
+  name/handle to its root `TreeNode`. When you pick a new source or
+  destination, React remounts the tree fresh and the correct subfolders
+  appear immediately.
+
 ## v1.1.1 — 2026-02-15 · Folder-picker deadlock fix
 
 ### Fixed
