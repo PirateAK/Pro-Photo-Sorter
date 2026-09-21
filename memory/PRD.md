@@ -84,6 +84,22 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.3 — 2026-02-15 · Adjustable UI text size
+- ✅ **Global UI Text Size** control in Settings → Appearance. Five presets
+  (Compact 90%, Default 100%, **Comfortable 110% — new baseline**,
+  Large 125%, Extra Large 140%). Scales every label, button, tab, filmstrip
+  caption, tree row, and modal body proportionally via root `<html>` font-size.
+  Tailwind's rem-based sizing means containers/padding/gaps grow in lockstep
+  with the text — verified no clipping at 140%.
+- ✅ **Keyboard shortcuts**: `Ctrl` + `=` (bigger), `Ctrl` + `-` (smaller),
+  `Ctrl` + `0` (reset to Comfortable). Snaps to nearest preset then moves one
+  step; toast confirms new size.
+- ✅ Persists to localStorage; survives app restarts.
+- Files touched: `frontend/src/lib/storage.js` (added `uiScale` default 1.10),
+  `frontend/src/App.js` (root font-size effect + nudgeUiScale/resetUiScale +
+  Ctrl shortcuts), `frontend/src/components/SettingsModal.jsx` (new UI Text
+  Size section between Appearance and Workflow), version bumped to 1.1.3.
+
 ### v1.1.2 — 2026-02-15 · File-tree refresh fix
 - ✅ **Source tree stayed on the previous folder after switching drives**
   (destination worked only by coincidence when leaf names differed). Chromium

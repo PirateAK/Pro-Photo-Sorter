@@ -2,6 +2,27 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.3 — 2026-02-15 · Adjustable UI text size
+
+### Added
+- **UI Text Size control** in Settings → Appearance. Five presets:
+  Compact (90%), Default (100%), Comfortable (110%, **new default**),
+  Large (125%), Extra Large (140%). Scales every label, button, tab,
+  filmstrip caption, tree row, and modal body proportionally.
+- **Keyboard shortcuts**:
+  `Ctrl` + `=` bumps text size up one step,
+  `Ctrl` + `-` bumps it down,
+  `Ctrl` + `0` resets to Default (110% Comfortable).
+- Setting persists to localStorage so it survives app restarts.
+
+### How it works
+Scale is applied to the root `<html>` font-size. Because every Tailwind
+size class in the app is `rem`-based (`text-xs`, `p-2`, `gap-1`, `h-8`,
+etc.), containers, padding, and gaps grow in lockstep with the text —
+nothing clips even at 140%. Icons and hard-coded panel widths intentionally
+stay the same size, so your filmstrip, tree structure, and image viewer
+keep their proportions.
+
 ## v1.1.2 — 2026-02-15 · File-tree refresh fix
 
 ### Fixed

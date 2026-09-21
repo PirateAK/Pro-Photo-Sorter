@@ -23,6 +23,9 @@ const DEFAULT_SETTINGS = {
   // Watermark (Feb 2026 – Iter 15)
   watermarkEnabled: false,
   watermarkText: "© Your Studio",
+  // UI text size (Feb 2026 – v1.1.3). Values match preset scale factors.
+  // 0.90 Compact · 1.00 Default · 1.10 Comfortable · 1.25 Large · 1.40 Extra Large
+  uiScale: 1.10,
 };
 
 const DEFAULT_STATE = {
