@@ -14,7 +14,7 @@ to the cloud.
   destination folders and filenames.
 - **Filmstrip + Viewer + EXIF chips** on one screen.
 - **Star ratings** with a full-screen Cull Mode for the fast first pass.
-- **Image Editor** — crop, exposure, contrast, saturation, temperature,
+- **Image Editor** — crop, sharpen, exposure, contrast, saturation, temperature,
   tint, rotate, flip, Auto-Tone.
 - **Watermarks** — draggable position, scale, opacity, light/dark style,
   font choice, per-photo or batch.
@@ -60,7 +60,7 @@ Pro-Photo-Sorter/
 pack-app.bat
 ```
 
-Produces `electron-shell\dist\Pro Photo Sorter Setup 1.0.0.exe`.
+Produces `electron-shell\dist\Pro Photo Sorter Setup 1.1.5.exe`.
 
 ## License
 
