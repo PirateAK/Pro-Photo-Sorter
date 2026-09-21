@@ -402,6 +402,19 @@ Files touched:
   keyboard shortcut (`Alt+D`) to focus the Month dropdown.
 - **P1 · Multi-Source Roots** — open several source folders stacked in the UI (Kurt's photographers-with-multiple-cards scenario).
 - **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
+- **P1 · Main preview zoom + pan** *(Kurt, 2026-02-15, late-night)* —
+  add Lightroom-style Loupe behavior to the main viewer window (NOT just
+  the editor):
+  - **Mouse wheel** on the preview zooms in/out toward the cursor.
+  - **Middle-click + drag** OR **space+drag** pans when zoomed in.
+  - **`+` / `-` keyboard** and small on-screen buttons for zoom in / out
+    when no mouse wheel is available (laptop trackpad users).
+  - **`0`** or a "Fit" button resets to fit-to-window.
+  - Zoom level shown as a tiny badge (e.g. `1.4×`) that fades after 1s.
+  - Preserves current image between zooms (no re-decode), and resets to
+    Fit when navigating to a new image in the filmstrip.
+  Complements the existing editor zoom without adding a modal step, so
+  Kurt can quickly check focus on a filmstrip pick before deciding to Store.
 - **P2 · Hover-Zoom preview on filmstrip thumbs** *(Kurt, 2026-02-15)* —
   hovering any filmstrip thumbnail for ~500ms pops up a 2× (or scaled by
   current thumbSize) preview alongside the cursor, so composition and focus
