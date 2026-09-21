@@ -402,6 +402,29 @@ Files touched:
   keyboard shortcut (`Alt+D`) to focus the Month dropdown.
 - **P1 · Multi-Source Roots** — open several source folders stacked in the UI (Kurt's photographers-with-multiple-cards scenario).
 - **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
+- **P1 · Filmstrip inside the Editor window** *(Kurt, 2026-02-15, late-night)* —
+  add a compact filmstrip strip along the bottom of the editor so the user
+  can navigate to the next/previous image without closing and reopening.
+  Loading a new image auto-resets zoom/pan/sliders to Fit; unsaved edits
+  trigger the v1.1.5 Save/Discard/Cancel prompt before switching.
+- **P1 · Editor "Save changes" holds image in state, not auto-write** *(Kurt, 2026-02-15)* —
+  today the editor's Save writes an `_edit_*.jpg` to source or destination.
+  New behavior: Save keeps the edited version as an in-memory "working
+  image" so the user can drag folder/filename tags onto it, apply further
+  edits, or run the Aspect Ratio buttons — then finally click Store to
+  write with the templated path/filename. Preserves the tagging workflow
+  the way the rest of the app already does.
+- **P1 · Aspect Ratio buttons hold image in state too** *(Kurt, 2026-02-15)* —
+  same treatment as the editor Save. Today the 4×6/5×7/8×10/etc. buttons
+  immediately write a resized file to the destination `/Unsorted` folder,
+  losing the ability to add tags first. New behavior: hold the resized
+  bitmap in state as the working image, allow further tagging/editing,
+  then Store on user command.
+- **P1 · Preserve tags across editor round-trip** *(Kurt, 2026-02-15)* —
+  when the user opens the editor with folder/filename tags already dragged
+  onto the image, those tags should survive the edit and be attached to
+  the newly-saved edited image (or preserved on the original if the user
+  discarded). Currently tags are cleared/dropped in the edit process.
 - **P1 · Main preview zoom + pan** *(Kurt, 2026-02-15, late-night)* —
   add Lightroom-style Loupe behavior to the main viewer window (NOT just
   the editor):
@@ -415,6 +438,11 @@ Files touched:
     Fit when navigating to a new image in the filmstrip.
   Complements the existing editor zoom without adding a modal step, so
   Kurt can quickly check focus on a filmstrip pick before deciding to Store.
+- **P2 · Tag Bar drag-to-reorder** *(Kurt, 2026-02-15)* — complementary to
+  the shipped v1.1.5 A→Z sort toggle. Let the user grab a tag chip and
+  drag it left/right within the bar to set a custom order. Needs a small
+  grip handle (or long-press) so it doesn't conflict with the existing
+  drag-onto-photo behavior.
 - **P2 · Hover-Zoom preview on filmstrip thumbs** *(Kurt, 2026-02-15)* —
   hovering any filmstrip thumbnail for ~500ms pops up a 2× (or scaled by
   current thumbSize) preview alongside the cursor, so composition and focus
