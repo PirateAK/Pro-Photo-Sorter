@@ -84,6 +84,29 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.5 — 2026-02-15 · Repeat Tags, safer Editor Done, A-Z tag sort
+- ✅ **Repeat Last Tags** button + `R` keyboard shortcut. Snapshots the tag
+  overlay from the most recently stored photo (folder + filename tags),
+  one-click re-applies to the current image. Confirm dialog protects the
+  current photo if it already has tags. Snapshot stored in-memory only
+  (per-session); great for repetitive shoots. Files touched:
+  `frontend/src/App.js` (`lastAppliedTags` state, snapshot inside
+  `storeCurrent`, `repeatLastTags` handler, `R` shortcut, UI button in
+  destination panel with `data-testid="btn-repeat-tags"`).
+- ✅ **A→Z sort toggle** on both Folder and Filename tag bars. Per-pack
+  per-role flag stored on the pack shape as `sortAlpha: { folders, filename }`.
+  Little `ArrowDownAZ` button next to the pack dropdown; highlights in
+  earth-tone when active. `IconPalette.jsx` sorts `items` by `label` before
+  render when the flag is on. Persists via `onCategoriesChange`.
+- ✅ **Editor Done dialog**: `ImageEditor.jsx` used to silently write an
+  `_edit_*.jpg` on Done-with-edits and toast "No changes to save" on
+  Done-without-edits. Now a proper three-way inline dialog (`showDonePrompt`
+  state) offers **Save changes / Discard / Cancel** when there are edits;
+  Done with zero edits still closes silently. Data-testids:
+  `editor-done-prompt`, `done-prompt-save`, `done-prompt-discard`,
+  `done-prompt-cancel`.
+- Version bumped to 1.1.5.
+
 ### v1.1.4 — 2026-02-15 · Six starter Tag Packs
 - ✅ **Six ready-to-use starter Tag Packs** ship on every fresh install:
   Wildlife, Wedding, Portrait, Landscape, Sports, Real Estate. Each pack has
@@ -400,6 +423,31 @@ Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, 
 ### v2 Ideas Bin (post-v1.2, longer-term)
 
 **Kurt's v2 additions, captured 2026-02-15 while chatting between sessions:**
+
+#### 🖋️ EXIF Write-Back with full EXIF Editor window *(Kurt, 2026-02-15, late-night)*
+- **Bundle Phil Harvey's ExifTool.exe** (~10MB) inside the Electron shell so
+  Location, Date, Camera, and any custom field values get written directly
+  into the file's real EXIF/IPTC/XMP blocks. Windows Explorer → Properties →
+  Details, Lightroom, Bridge — every tool will see the values.
+- **Full EXIF Edit window** that mirrors the Windows "Properties → Details"
+  tab layout: every field grouped by section (Description, Origin, Image,
+  Camera, GPS, Advanced), edit-in-place, "Reset field", "Reset all" buttons.
+- **RAW support is required, not optional** — CR2/NEF/ARW/DNG all must work,
+  because working photographers shoot RAW. This is what makes the app
+  competitive vs. the free Windows built-in tools and cheaper JPEG-only
+  alternatives.
+- Settings toggle: "Write EXIF on Store" (opt-in, so paranoid users can
+  audit before enabling). Pairs perfectly with the Default EXIF Location
+  setting in v1.2.
+
+#### 📁 Native RAW file support in filmstrip + viewer *(Kurt, 2026-02-15)*
+- Today the app only decodes browser-supported formats (JPEG/PNG/WEBP).
+- v2 must decode RAW files (CR2, NEF, ARW, DNG, RAF, ORF at minimum) via a
+  WASM decoder (`libraw-wasm` or similar) OR by shelling out to ExifTool /
+  dcraw in the Electron shell for previews.
+- Should show the embedded JPEG preview instantly (all RAW files carry a
+  full-size JPEG) for filmstrip + viewer performance, then do the slow
+  full-RAW decode only on demand for the editor.
 
 #### 🏷️ Third "Tags" bar — Lightroom-style keyword database (P1 for v2)
 

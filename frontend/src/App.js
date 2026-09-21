@@ -7,6 +7,7 @@ import {
   SkipForward,
   Save,
   Undo2,
+  Repeat,
   Camera,
   Aperture,
   Calendar,
@@ -189,6 +190,11 @@ export default function App() {
   const [batchSelected, setBatchSelected] = useState(new Set());
   const [showBatchMenu, setShowBatchMenu] = useState(false);
 
+  // Repeat Tags (v1.1.5) — snapshot of the last-stored photo's tag overlay so
+  // the user can one-click re-apply it to the current photo. Great for shoots
+  // where 90% of frames share the same folder + filename tags.
+  const [lastAppliedTags, setLastAppliedTags] = useState(null); // { folders, tags } | null
+
   // Session stats — counters reset on manual reset (Iter 8, Feb 2026)
   const [sessionStats, setSessionStats] = useState({
     stored: 0, moved: 0, deleted: 0, skipped: 0, rated: 0, enhanced: 0,
@@ -283,8 +289,33 @@ export default function App() {
     toast.success("Text size: 110% (Comfortable)");
   };
 
-  // Merge any missing starter packs into the user's library (v1.1.4).
-  // Uses fixed pack IDs so we never touch a pack the user has customized —
+  // Repeat Tags (v1.1.5) — one-click re-apply the last-stored photo's tag
+  // overlay to the current photo. Great for shoots where every frame gets
+  // the same folder/filename combo.
+  const repeatLastTags = () => {
+    if (!currentImage) { toast.error("No photo selected"); return; }
+    if (!lastAppliedTags || (lastAppliedTags.folders.length + lastAppliedTags.tags.length === 0)) {
+      toast.info("No previous tags to repeat", { description: "Store a photo with tags first, then Repeat becomes available." });
+      return;
+    }
+    const cur = getOverlay(appliedByImage, currentImage.name);
+    if (cur.folders.length + cur.tags.length > 0) {
+      const ok = window.confirm("Current photo already has tags applied. Replace them with the previous set?");
+      if (!ok) return;
+    }
+    setAppliedByImage((prev) => ({
+      ...prev,
+      [currentImage.name]: {
+        folders: lastAppliedTags.folders.map((f) => ({ ...f, uid: uid("ovl") })),
+        tags:    lastAppliedTags.tags.map((f)    => ({ ...f, uid: uid("ovl") })),
+      },
+    }));
+    toast.success("Repeated last tags", {
+      description: `${lastAppliedTags.folders.length} folder + ${lastAppliedTags.tags.length} filename`,
+    });
+  };
+
+  // Merge any missing starter packs into the user's library (v1.1.4).  // Uses fixed pack IDs so we never touch a pack the user has customized —
   // only adds packs whose ID isn't already present.
   const restoreStarterPacks = () => {
     const existingIds = new Set(categories.map((c) => c.id));
@@ -1029,6 +1060,24 @@ export default function App() {
       if (afterAction === "move") bumpStat("moved", stored);
       else if (afterAction === "delete") { bumpStat("stored", stored); bumpStat("deleted", stored); }
       else bumpStat("stored", stored);
+      // Snapshot the tag overlay from the just-stored photo so the user can
+      // repeat it on the next image with one click (v1.1.5 Repeat Tags).
+      // In batch mode we snapshot whichever target had tags applied first.
+      const snapshotSrc = isBatch
+        ? (targets.find((t) => {
+            const ov = getOverlay(effectiveOverlays, t.name);
+            return ov.folders.length + ov.tags.length > 0;
+          }) || currentImage)
+        : currentImage;
+      if (snapshotSrc) {
+        const ov = getOverlay(effectiveOverlays, snapshotSrc.name);
+        if (ov.folders.length + ov.tags.length > 0) {
+          setLastAppliedTags({
+            folders: ov.folders.map((f) => ({ ...f, uid: undefined })),
+            tags:    ov.tags.map((f)    => ({ ...f, uid: undefined })),
+          });
+        }
+      }
       // Auto-advance on single-photo store (Iter 14): move to next photo in filmstrip
       if (!isBatch && settings.autoAdvanceOnStore !== false && removedFromFilmstrip.length === 0) {
         setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
@@ -1396,6 +1445,7 @@ export default function App() {
       else if (isMod && (e.key === "=" || e.key === "+")) { e.preventDefault(); nudgeUiScale(+1); }
       else if (isMod && e.key === "-") { e.preventDefault(); nudgeUiScale(-1); }
       else if (isMod && e.key === "0") { e.preventDefault(); resetUiScale(); }
+      else if (e.key === "r" || e.key === "R") { e.preventDefault(); repeatLastTags(); }
       else if (e.key >= "0" && e.key <= "5") { e.preventDefault(); setCurrentStars(parseInt(e.key, 10)); }
     };
     window.addEventListener("keydown", handler);
@@ -1908,6 +1958,19 @@ export default function App() {
               />
             </div>
             <div className="grid grid-cols-2 gap-1 shrink-0">
+              <button
+                onClick={repeatLastTags}
+                disabled={!lastAppliedTags || !currentImage}
+                className="col-span-2 px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-primary-earth/40 text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="btn-repeat-tags"
+                title={
+                  lastAppliedTags
+                    ? `Repeat tags from last stored photo (R) — ${lastAppliedTags.folders.length} folder + ${lastAppliedTags.tags.length} filename`
+                    : "Store a photo with tags first — then Repeat becomes available"
+                }
+              >
+                <Repeat size={13} className="text-primary-earth" /> Repeat last tags <span className="kbd ml-1">R</span>
+              </button>
               <button
                 onClick={removeCurrentFromView}
                 className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
