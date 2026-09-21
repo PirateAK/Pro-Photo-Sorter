@@ -123,6 +123,10 @@ export default function App() {
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
   const [sourceRootName, setSourceRootName] = useState("");
+  // Bumped on every source pick so <FileTree> gets a brand-new React key and
+  // remounts, even when two picks share the same leaf folder name (e.g.
+  // `G:\Photos` and `C:\Users\Kurt\Photos` both surface as `.name === "Photos"`).
+  const [sourceTreeKey, setSourceTreeKey] = useState(0);
   const [currentSourceFolder, setCurrentSourceFolder] = useState(null); // handle
   const [currentSourcePath, setCurrentSourcePath] = useState("");
   const [images, setImages] = useState([]);
@@ -134,6 +138,8 @@ export default function App() {
   // Destination
   const [destRoot, setDestRoot] = useState(null);
   const [destRootName, setDestRootName] = useState("");
+  // Same remount-guard for the destination tree — see sourceTreeKey.
+  const [destTreeKey, setDestTreeKey] = useState(0);
   const [destSelected, setDestSelected] = useState(null); // { handle, path }
 
   // Applied icons on current image — two rows: folders + tags
@@ -417,6 +423,7 @@ export default function App() {
       const h = await pickDirectory({ id: "pps-source" });
       setSourceRoot(h);
       setSourceRootName(h.name);
+      setSourceTreeKey((k) => k + 1); // force tree remount even on same-name pick
       onSelectSourceFolder({ name: h.name, handle: h }, h.name);
       toast.success(`Loaded source: ${h.name}`);
       try { await addRecent("source", h, h.name); } catch { /* ignore */ }
@@ -431,6 +438,7 @@ export default function App() {
       const h = await pickDirectory({ id: "pps-dest" });
       setDestRoot(h);
       setDestRootName(h.name);
+      setDestTreeKey((k) => k + 1); // force tree remount even on same-name pick
       setDestSelected({ handle: h, path: h.name });
       setJustStored({});
       toast.success(`Loaded destination: ${h.name}`);
@@ -447,6 +455,7 @@ export default function App() {
     if (!h) { toast.error("Permission denied for that folder"); return; }
     setSourceRoot(h);
     setSourceRootName(name);
+    setSourceTreeKey((k) => k + 1);
     onSelectSourceFolder({ name, handle: h }, name);
     toast.success(`Reopened source: ${name}`);
     try { await addRecent("source", h, name); } catch { /* ignore */ }
@@ -456,6 +465,7 @@ export default function App() {
     if (!h) { toast.error("Permission denied for that folder"); return; }
     setDestRoot(h);
     setDestRootName(name);
+    setDestTreeKey((k) => k + 1);
     setDestSelected({ handle: h, path: name });
     setJustStored({});
     toast.success(`Reopened destination: ${name}`);
@@ -1433,6 +1443,7 @@ export default function App() {
           <FileTree
             rootHandle={sourceRoot}
             rootName={sourceRootName}
+            remountKey={sourceTreeKey}
             onSelectFolder={onSelectSourceFolder}
             selectedPath={currentSourcePath}
             testIdPrefix="source"
@@ -2097,6 +2108,7 @@ export default function App() {
           <FileTree
             rootHandle={destRoot}
             rootName={destRootName}
+            remountKey={destTreeKey}
             onSelectFolder={onSelectDestFolder}
             selectedPath={destSelected?.path || ""}
             testIdPrefix="dest"
