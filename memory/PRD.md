@@ -454,7 +454,6 @@ Files touched:
 - **P2 · In-App Starter-Pack Browser** — one-click imports without folder-diving. Pairs naturally with community text-list packs.
 - **P2 · Duplicate pack button** in Tag Manager — spotted during v1.1 build; useful when two packs share ~80% of tags.
 - **P3 · AI Auto-Tagging** — offline TensorFlow.js/MobileNet scan. Explicitly deferred by Kurt to "much later".
-- **P3 · Per-folder disk size** in the file tree — needs the folder-path bridge; app currently shows image count on hover as the lightweight alternative.
 
 ### Waiting on tester feedback
 Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, not bugs". Any bug reports that come back should be triaged against the current v1.1.0 build; enhancement requests go into the on-deck list above.
