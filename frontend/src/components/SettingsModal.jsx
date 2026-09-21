@@ -94,6 +94,95 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
             </div>
           </section>
 
+          {/* UI Text Size (v1.1.3) */}
+          <section>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-2">
+                  <Type size={14} className="text-primary-earth" /> UI Text Size
+                </h3>
+                <p className="text-xs text-dim">
+                  Scales every label, button, and tab in the app. Icons and panel
+                  widths stay put. Also adjustable with keyboard: <kbd className="px-1 rounded border border-app text-[0.65rem]">Ctrl</kbd>{" "}
+                  <kbd className="px-1 rounded border border-app text-[0.65rem]">+</kbd>{" "}
+                  bigger, <kbd className="px-1 rounded border border-app text-[0.65rem]">Ctrl</kbd>{" "}
+                  <kbd className="px-1 rounded border border-app text-[0.65rem]">-</kbd>{" "}
+                  smaller, <kbd className="px-1 rounded border border-app text-[0.65rem]">Ctrl</kbd>{" "}
+                  <kbd className="px-1 rounded border border-app text-[0.65rem]">0</kbd> reset.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1 shrink-0" data-testid="ui-scale-group">
+                {[
+                  { v: 0.90, label: "Compact",     pct: "90%"  },
+                  { v: 1.00, label: "Default",     pct: "100%" },
+                  { v: 1.10, label: "Comfortable", pct: "110%" },
+                  { v: 1.25, label: "Large",       pct: "125%" },
+                  { v: 1.40, label: "Extra Large", pct: "140%" },
+                ].map((opt) => {
+                  const cur = typeof local.uiScale === "number" ? local.uiScale : 1.10;
+                  const active = Math.abs(cur - opt.v) < 0.005;
+                  return (
+                    <button
+                      key={opt.v}
+                      onClick={() => setLocal({ ...local, uiScale: opt.v })}
+                      className={`px-2.5 py-1.5 text-xs rounded border ${
+                        active
+                          ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
+                          : "bg-app hover:bg-surface-hover border-app"
+                      }`}
+                      data-testid={`ui-scale-${Math.round(opt.v * 100)}`}
+                      title={`${opt.label} · ${opt.pct}`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          {/* Filmstrip Thumbnail Size (v1.1.3) */}
+          <section>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-2">
+                  <Layers size={14} className="text-primary-earth" /> Filmstrip Thumbnail Size
+                </h3>
+                <p className="text-xs text-dim">
+                  Sets how big each photo thumbnail is along the bottom filmstrip.
+                  Larger thumbs make composition easier to judge without opening
+                  every frame; smaller thumbs fit more photos on screen at once.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1 shrink-0" data-testid="thumb-size-group">
+                {[
+                  { v:  96, label: "Small"  },
+                  { v: 128, label: "Medium" },
+                  { v: 176, label: "Large"  },
+                  { v: 224, label: "Huge"   },
+                ].map((opt) => {
+                  const cur = typeof local.thumbSize === "number" ? local.thumbSize : 128;
+                  const active = cur === opt.v;
+                  return (
+                    <button
+                      key={opt.v}
+                      onClick={() => setLocal({ ...local, thumbSize: opt.v })}
+                      className={`px-2.5 py-1.5 text-xs rounded border ${
+                        active
+                          ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
+                          : "bg-app hover:bg-surface-hover border-app"
+                      }`}
+                      data-testid={`thumb-size-${opt.v}`}
+                      title={`${opt.label} · ${opt.v}px`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
           {/* Startup */}
           <section>
             <div className="flex items-start justify-between gap-4">

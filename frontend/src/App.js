@@ -243,6 +243,46 @@ export default function App() {
     document.documentElement.setAttribute("data-theme", t);
   }, [settings.theme]);
 
+  // Apply UI text scale to <html> root font-size (v1.1.3, Feb 2026).
+  // Tailwind's rem-based sizing means every text/padding/gap/height that uses
+  // `text-*`, `p-*`, `gap-*`, `h-*` etc. scales in lockstep — so containers
+  // grow with their text and nothing clips even at 140%.
+  useEffect(() => {
+    const scale = typeof settings.uiScale === "number" ? settings.uiScale : 1.10;
+    const clamped = Math.max(0.75, Math.min(1.75, scale));
+    document.documentElement.style.fontSize = `${16 * clamped}px`;
+  }, [settings.uiScale]);
+
+  // Apply filmstrip thumbnail size to the CSS grid row (v1.1.3, Feb 2026).
+  // Strip row = thumb height + ~72px (session-stats bar + filmstrip padding).
+  useEffect(() => {
+    const t = typeof settings.thumbSize === "number" ? settings.thumbSize : 128;
+    const clamped = Math.max(80, Math.min(320, t));
+    document.documentElement.style.setProperty("--filmstrip-h", `${clamped + 72}px`);
+  }, [settings.thumbSize]);
+
+  const UI_SCALE_STEPS = [0.90, 1.00, 1.10, 1.25, 1.40];
+  const nudgeUiScale = (dir) => {
+    const cur = typeof settings.uiScale === "number" ? settings.uiScale : 1.10;
+    // Snap to closest preset, then move one step in requested direction.
+    let idx = 0;
+    let bestDiff = Infinity;
+    UI_SCALE_STEPS.forEach((v, i) => {
+      const d = Math.abs(v - cur);
+      if (d < bestDiff) { bestDiff = d; idx = i; }
+    });
+    const nextIdx = Math.max(0, Math.min(UI_SCALE_STEPS.length - 1, idx + dir));
+    const next = UI_SCALE_STEPS[nextIdx];
+    if (next !== cur) {
+      setSettings({ ...settings, uiScale: next });
+      toast.success(`Text size: ${Math.round(next * 100)}%`);
+    }
+  };
+  const resetUiScale = () => {
+    setSettings({ ...settings, uiScale: 1.10 });
+    toast.success("Text size: 110% (Comfortable)");
+  };
+
   const toggleTheme = () => {
     const next = (settings.theme || "dark") === "dark" ? "light" : "dark";
     setSettings({ ...settings, theme: next });
@@ -1336,6 +1376,9 @@ export default function App() {
         else if (showRename) { e.preventDefault(); setShowRename(false); }
         else if (showContact) { e.preventDefault(); setShowContact(false); }
       }
+      else if (isMod && (e.key === "=" || e.key === "+")) { e.preventDefault(); nudgeUiScale(+1); }
+      else if (isMod && e.key === "-") { e.preventDefault(); nudgeUiScale(-1); }
+      else if (isMod && e.key === "0") { e.preventDefault(); resetUiScale(); }
       else if (e.key >= "0" && e.key <= "5") { e.preventDefault(); setCurrentStars(parseInt(e.key, 10)); }
     };
     window.addEventListener("keydown", handler);
@@ -2137,12 +2180,13 @@ export default function App() {
             <span className="text-app">{formatBytes(totalFree)}</span>
           </div>
         )}
-        <div className="px-3 py-2 border-t border-app text-[10px] text-dim flex items-center justify-between gap-2">
-          <span>
-            Built for photographers · <span className="text-primary-earth">Pro Photo Sorter</span>
+        <div className="px-3 py-2 border-t border-app text-[10px] text-dim flex items-start justify-between gap-2">
+          <span className="flex flex-col leading-tight">
+            <span>Built for photographers</span>
+            <span className="text-primary-earth font-heading text-[11px] mt-0.5">Pro Photo Sorter</span>
           </span>
           <span
-            className="font-mono opacity-70 shrink-0"
+            className="font-mono opacity-70 shrink-0 self-end"
             title={`Version ${buildInfo.version} · Build date ${buildInfo.buildDate}\n\nWhen reporting a bug, please include this so we know which build you're on.`}
             data-testid="build-stamp"
           >
@@ -2236,6 +2280,7 @@ export default function App() {
                     active={i === selectedIdx}
                     batchMode={batchMode}
                     batchSelected={batchMode && batchSelected.has(img.name)}
+                    size={settings.thumbSize || 128}
                     onClick={() => {
                       if (batchMode) toggleBatchSel(img.name);
                       else setSelectedIdx(i);
