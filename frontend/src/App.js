@@ -253,6 +253,14 @@ export default function App() {
     document.documentElement.style.fontSize = `${16 * clamped}px`;
   }, [settings.uiScale]);
 
+  // Apply filmstrip thumbnail size to the CSS grid row (v1.1.3, Feb 2026).
+  // Strip row = thumb height + ~72px (session-stats bar + filmstrip padding).
+  useEffect(() => {
+    const t = typeof settings.thumbSize === "number" ? settings.thumbSize : 128;
+    const clamped = Math.max(80, Math.min(320, t));
+    document.documentElement.style.setProperty("--filmstrip-h", `${clamped + 72}px`);
+  }, [settings.thumbSize]);
+
   const UI_SCALE_STEPS = [0.90, 1.00, 1.10, 1.25, 1.40];
   const nudgeUiScale = (dir) => {
     const cur = typeof settings.uiScale === "number" ? settings.uiScale : 1.10;
@@ -2172,12 +2180,13 @@ export default function App() {
             <span className="text-app">{formatBytes(totalFree)}</span>
           </div>
         )}
-        <div className="px-3 py-2 border-t border-app text-[10px] text-dim flex items-center justify-between gap-2">
-          <span>
-            Built for photographers · <span className="text-primary-earth">Pro Photo Sorter</span>
+        <div className="px-3 py-2 border-t border-app text-[10px] text-dim flex items-start justify-between gap-2">
+          <span className="flex flex-col leading-tight">
+            <span>Built for photographers</span>
+            <span className="text-primary-earth font-heading text-[11px] mt-0.5">Pro Photo Sorter</span>
           </span>
           <span
-            className="font-mono opacity-70 shrink-0"
+            className="font-mono opacity-70 shrink-0 self-end"
             title={`Version ${buildInfo.version} · Build date ${buildInfo.buildDate}\n\nWhen reporting a bug, please include this so we know which build you're on.`}
             data-testid="build-stamp"
           >
@@ -2271,6 +2280,7 @@ export default function App() {
                     active={i === selectedIdx}
                     batchMode={batchMode}
                     batchSelected={batchMode && batchSelected.has(img.name)}
+                    size={settings.thumbSize || 128}
                     onClick={() => {
                       if (batchMode) toggleBatchSel(img.name);
                       else setSelectedIdx(i);

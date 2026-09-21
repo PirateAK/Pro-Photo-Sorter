@@ -26,6 +26,8 @@ const DEFAULT_SETTINGS = {
   // UI text size (Feb 2026 – v1.1.3). Values match preset scale factors.
   // 0.90 Compact · 1.00 Default · 1.10 Comfortable · 1.25 Large · 1.40 Extra Large
   uiScale: 1.10,
+  // Filmstrip thumbnail height in px (v1.1.3). Presets: 96 S · 128 M · 176 L · 224 XL.
+  thumbSize: 128,
 };
 
 const DEFAULT_STATE = {

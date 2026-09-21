@@ -141,6 +141,48 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
             </div>
           </section>
 
+          {/* Filmstrip Thumbnail Size (v1.1.3) */}
+          <section>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-2">
+                  <Layers size={14} className="text-primary-earth" /> Filmstrip Thumbnail Size
+                </h3>
+                <p className="text-xs text-dim">
+                  Sets how big each photo thumbnail is along the bottom filmstrip.
+                  Larger thumbs make composition easier to judge without opening
+                  every frame; smaller thumbs fit more photos on screen at once.
+                </p>
+              </div>
+              <div className="flex flex-wrap gap-1 shrink-0" data-testid="thumb-size-group">
+                {[
+                  { v:  96, label: "Small"  },
+                  { v: 128, label: "Medium" },
+                  { v: 176, label: "Large"  },
+                  { v: 224, label: "Huge"   },
+                ].map((opt) => {
+                  const cur = typeof local.thumbSize === "number" ? local.thumbSize : 128;
+                  const active = cur === opt.v;
+                  return (
+                    <button
+                      key={opt.v}
+                      onClick={() => setLocal({ ...local, thumbSize: opt.v })}
+                      className={`px-2.5 py-1.5 text-xs rounded border ${
+                        active
+                          ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
+                          : "bg-app hover:bg-surface-hover border-app"
+                      }`}
+                      data-testid={`thumb-size-${opt.v}`}
+                      title={`${opt.label} · ${opt.v}px`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
           {/* Startup */}
           <section>
             <div className="flex items-start justify-between gap-4">

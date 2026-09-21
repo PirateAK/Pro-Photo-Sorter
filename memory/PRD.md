@@ -84,21 +84,30 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
-### v1.1.3 — 2026-02-15 · Adjustable UI text size
+### v1.1.3 — 2026-02-15 · Adjustable UI text size + filmstrip thumbnails + tagline polish
 - ✅ **Global UI Text Size** control in Settings → Appearance. Five presets
   (Compact 90%, Default 100%, **Comfortable 110% — new baseline**,
   Large 125%, Extra Large 140%). Scales every label, button, tab, filmstrip
   caption, tree row, and modal body proportionally via root `<html>` font-size.
-  Tailwind's rem-based sizing means containers/padding/gaps grow in lockstep
-  with the text — verified no clipping at 140%.
-- ✅ **Keyboard shortcuts**: `Ctrl` + `=` (bigger), `Ctrl` + `-` (smaller),
-  `Ctrl` + `0` (reset to Comfortable). Snaps to nearest preset then moves one
-  step; toast confirms new size.
-- ✅ Persists to localStorage; survives app restarts.
-- Files touched: `frontend/src/lib/storage.js` (added `uiScale` default 1.10),
-  `frontend/src/App.js` (root font-size effect + nudgeUiScale/resetUiScale +
-  Ctrl shortcuts), `frontend/src/components/SettingsModal.jsx` (new UI Text
-  Size section between Appearance and Workflow), version bumped to 1.1.3.
+  Verified no clipping at 140% because Tailwind sizing is rem-based.
+- ✅ **Keyboard shortcuts**: `Ctrl` + `=` bigger, `Ctrl` + `-` smaller,
+  `Ctrl` + `0` reset. Snaps to nearest preset then moves one step; toast
+  confirms new size.
+- ✅ **Filmstrip Thumbnail Size** control in Settings. Four presets:
+  Small (96px), **Medium (128px, default)**, Large (176px), Huge (224px).
+  Strip row height driven by `--filmstrip-h` CSS variable so the CSS grid
+  layout follows the selected size. Verified via computed styles: 96→168,
+  128→200, 224→296.
+- ✅ **Bottom-right tagline polish**: stacks cleanly on two lines
+  ("Built for photographers" tagline / "Pro Photo Sorter" heading) — no
+  more mid-phrase wrapping between the middle-dot separator.
+- Files touched: `frontend/src/lib/storage.js` (added `uiScale: 1.10`,
+  `thumbSize: 128` defaults), `frontend/src/App.js` (root font-size effect,
+  `--filmstrip-h` effect, nudgeUiScale/resetUiScale, Ctrl shortcuts, stacked
+  tagline block, `size` prop on `<Thumbnail>`), `frontend/src/App.css` (grid
+  row uses `var(--filmstrip-h, 200px)`), `frontend/src/components/Thumbnail.jsx`
+  (`size` prop with inline styles), `frontend/src/components/SettingsModal.jsx`
+  (UI Text Size + Filmstrip Thumbnail Size sections). Version bumped to 1.1.3.
 
 ### v1.1.2 — 2026-02-15 · File-tree refresh fix
 - ✅ **Source tree stayed on the previous folder after switching drives**

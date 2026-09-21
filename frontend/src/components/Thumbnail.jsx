@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getThumbnail } from "../lib/thumbCache";
 import { Image as ImageIcon, CheckSquare, Square } from "lucide-react";
 
-export default function Thumbnail({ file, cacheKey, active, batchMode, batchSelected, onClick, onDoubleClick }) {
+export default function Thumbnail({ file, cacheKey, active, batchMode, batchSelected, onClick, onDoubleClick, size = 128 }) {
   const [src, setSrc] = useState(null);
   const [err, setErr] = useState(false);
 
@@ -27,17 +27,17 @@ export default function Thumbnail({ file, cacheKey, active, batchMode, batchSele
     <div
       onClick={onClick}
       onDoubleClick={onDoubleClick}
-      className={`relative shrink-0 h-32 rounded cursor-pointer transition-all ${
+      className={`relative shrink-0 rounded cursor-pointer transition-all ${
         active ? "selected-thumb" : "opacity-80 hover:opacity-100"
       } ${batchSelected ? "ring-2 ring-success-earth ring-offset-2 ring-offset-[#110F0E]" : ""}`}
-      style={{ minWidth: 80 }}
+      style={{ height: size, minWidth: Math.round(size * 0.625) }}
       data-testid={`thumb-${file.name}`}
       title={file.name}
     >
       {src ? (
-        <img src={src} alt={file.name} className="h-32 w-auto object-cover rounded" draggable={false} />
+        <img src={src} alt={file.name} style={{ height: size }} className="w-auto object-cover rounded" draggable={false} />
       ) : (
-        <div className="h-32 w-32 bg-surface rounded flex items-center justify-center">
+        <div style={{ height: size, width: size }} className="bg-surface rounded flex items-center justify-center">
           {err ? (
             <ImageIcon size={20} className="text-dim" />
           ) : (

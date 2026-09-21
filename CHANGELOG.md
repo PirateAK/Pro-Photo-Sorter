@@ -2,7 +2,7 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.1.3 — 2026-02-15 · Adjustable UI text size
+## v1.1.3 — 2026-02-15 · Adjustable UI text size + filmstrip thumbnails
 
 ### Added
 - **UI Text Size control** in Settings → Appearance. Five presets:
@@ -13,7 +13,15 @@ All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
   `Ctrl` + `=` bumps text size up one step,
   `Ctrl` + `-` bumps it down,
   `Ctrl` + `0` resets to Default (110% Comfortable).
-- Setting persists to localStorage so it survives app restarts.
+- **Filmstrip Thumbnail Size control** in Settings. Four presets:
+  Small (96px), **Medium (128px, default)**, Large (176px), Huge (224px).
+  Bottom filmstrip row height grows with the thumbs so nothing crops.
+- Settings persist to localStorage so they survive app restarts.
+
+### Changed
+- Bottom-right tagline now stacks cleanly on two lines: sales-pitch line
+  ("Built for photographers") on top, app name ("Pro Photo Sorter") in
+  earth-tone heading font below — no more mid-phrase wrapping.
 
 ### How it works
 Scale is applied to the root `<html>` font-size. Because every Tailwind
@@ -21,7 +29,8 @@ size class in the app is `rem`-based (`text-xs`, `p-2`, `gap-1`, `h-8`,
 etc.), containers, padding, and gaps grow in lockstep with the text —
 nothing clips even at 140%. Icons and hard-coded panel widths intentionally
 stay the same size, so your filmstrip, tree structure, and image viewer
-keep their proportions.
+keep their proportions. Filmstrip row uses a `--filmstrip-h` CSS variable
+so the grid layout follows the selected thumb size.
 
 ## v1.1.2 — 2026-02-15 · File-tree refresh fix
 
