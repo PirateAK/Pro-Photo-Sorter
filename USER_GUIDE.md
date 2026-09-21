@@ -1,7 +1,6 @@
 # Pro Photo Sorter — User Guide
 
-**Version 1.0.0** · A fully offline Windows desktop app for photographers who
-shoot faster than they file.
+A fully offline Windows desktop app for photographers who shoot faster than they file. *(The version you're running is shown in the Help window title bar.)*
 
 This guide walks you through every feature. If you just want to install and
 start sorting, see **QUICK_START.md** first.

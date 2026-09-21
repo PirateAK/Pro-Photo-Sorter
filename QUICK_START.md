@@ -1,6 +1,6 @@
 # Pro Photo Sorter — Quick Start
 
-**Version 1.0.0** · From zero to sorting in ten minutes.
+From zero to sorting in ten minutes. *(The version you're running is shown in the Help window title bar.)*
 
 ---
 
@@ -39,7 +39,7 @@ When you're ready to hand the app to another photographer, double-click
 **`pack-app.bat`**. When it finishes you'll find:
 
 ```
-C:\Pro-Photo-Sorter\electron-shell\dist\Pro Photo Sorter Setup 1.0.0.exe
+C:\Pro-Photo-Sorter\electron-shell\dist\Pro Photo Sorter Setup <version>.exe
 ```
 
 That's a normal Windows installer. Anyone can double-click it and run the
