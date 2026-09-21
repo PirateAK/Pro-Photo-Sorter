@@ -342,8 +342,30 @@ Files touched:
 
 ### On-deck for v1.2 (deferred by Kurt at end of v1.1.0 session)
 
+- **P0 · Trial-mode enforcement & Licensing** — Gumroad key entry in Help modal; force watermark ON + `_TRIAL` filename suffix until verified. Blocks monetization otherwise.
+- **P1 · Default EXIF Location in Settings** *(Kurt, 2026-02-15)* — new field
+  in Settings so a user working on a single shoot can set the location value
+  once (e.g. "Kenai, Alaska") and have every photo inherit it, without
+  re-typing on each new photo or session. Should apply to both the on-viewer
+  EXIF chip and any filename token that references location. Persist in
+  `settings.defaultLocation`. Consider a "clear" button and a small "using
+  default" indicator so the user knows the value is coming from Settings.
+- **P1 · Quick Date-Tag Dropdowns in Top Toolbar** *(Kurt, 2026-02-15)* —
+  add three compact dropdowns beside the Help button (Month / Day / Year)
+  plus an "Apply" button. Selecting a value + clicking Apply appends the
+  chosen date parts as filename tags on the current photo (same slot as
+  Filename Tag Packs). Pre-populate from the current photo's EXIF date on
+  load so the user only tweaks. Empty selections skipped. Nice-to-have:
+  keyboard shortcut (`Alt+D`) to focus the Month dropdown.
 - **P1 · Multi-Source Roots** — open several source folders stacked in the UI (Kurt's photographers-with-multiple-cards scenario).
 - **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
+- **P2 · Hover-Zoom preview on filmstrip thumbs** *(Kurt, 2026-02-15)* —
+  hovering any filmstrip thumbnail for ~500ms pops up a 2× (or scaled by
+  current thumbSize) preview alongside the cursor, so composition and focus
+  can be judged without clicking. Should respect the current filmstrip
+  Thumbnail Size preset (Small hover = 2×, Huge hover = 1.2× so it stays
+  on screen). Debounce to avoid flicker; hide on any click or when the
+  cursor leaves the strip.
 - **P2 · First-Run Welcome Modal** — greet new testers with a "try the starter pack" nudge.
 - **P2 · In-App Starter-Pack Browser** — one-click imports without folder-diving. Pairs naturally with community text-list packs.
 - **P2 · Duplicate pack button** in Tag Manager — spotted during v1.1 build; useful when two packs share ~80% of tags.
