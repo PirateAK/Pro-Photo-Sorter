@@ -42,7 +42,7 @@ import {
   writeBlobTo,
   removeEntry,
 } from "@/lib/fsapi";
-import { loadState, saveState, uid } from "@/lib/storage";
+import { loadState, saveState, uid, getStarterPacks, STARTER_PACK_IDS } from "@/lib/storage";
 import { renderTemplate } from "@/lib/template";
 import { autoAnalyzeFile } from "@/lib/autoTone";
 import { computeAutoRating } from "@/lib/focusScore";
@@ -281,6 +281,23 @@ export default function App() {
   const resetUiScale = () => {
     setSettings({ ...settings, uiScale: 1.10 });
     toast.success("Text size: 110% (Comfortable)");
+  };
+
+  // Merge any missing starter packs into the user's library (v1.1.4).
+  // Uses fixed pack IDs so we never touch a pack the user has customized —
+  // only adds packs whose ID isn't already present.
+  const restoreStarterPacks = () => {
+    const existingIds = new Set(categories.map((c) => c.id));
+    const missing = getStarterPacks().filter((p) => !existingIds.has(p.id));
+    if (missing.length === 0) {
+      toast.info("All six starter packs are already in your library.");
+      return;
+    }
+    setCategories([...categories, ...missing]);
+    toast.success(
+      `Restored ${missing.length} starter pack${missing.length > 1 ? "s" : ""}`,
+      { description: missing.map((p) => p.name).join(", ") }
+    );
   };
 
   const toggleTheme = () => {
@@ -2329,6 +2346,7 @@ export default function App() {
         settings={settings}
         onChange={setSettings}
         previewImageHandle={currentImage?.handle || null}
+        onRestoreStarterPacks={restoreStarterPacks}
       />
 
       <ImageEditor

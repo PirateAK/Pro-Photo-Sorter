@@ -2,6 +2,27 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.4 — 2026-02-15 · Six starter Tag Packs
+
+### Added
+- **Six ready-to-use starter Tag Packs** ship with every new install:
+  - **Wildlife** — Mammals, Birds, Reptiles, Fish, Insects + portrait/action/flying/feeding/distant/closeup
+  - **Wedding** — Getting-Ready, Ceremony, Portraits, Details, Reception, First-Dance + candid/formal/moment/wide/close/bw
+  - **Portrait** — Headshot, Family, Couple, Kids, Corporate, Fine-Art + studio/environmental/profile/three-quarter/smile/moody
+  - **Landscape** — Mountains, Coastal, Forest, Desert, Waterfall, Astro + sunrise/sunset/golden-hour/blue-hour/panorama/long-exposure
+  - **Sports** — Game, Practice, Portraits, Team, Sidelines, Awards + action/keeper/celebration/close/wide/sequence
+  - **Real Estate** — Exterior, Interior, Kitchen, Bedroom, Bathroom, Yard, Twilight + wide/detail/hdr/straight/lifestyle/aerial
+- **Restore Starter Packs** button in Settings. Merges any missing starter
+  packs into your library. Existing packs are never touched — only missing
+  ones are added, so you can safely restore after deleting one or after
+  updating from a v1.1.3-or-earlier install.
+
+### Changed
+- Legacy pack id `cat-default-1` from earlier v1.1.x builds is automatically
+  retagged as `cat-starter-wildlife` on load so the new restore-dedup logic
+  recognizes the pack as "already installed" and doesn't add a duplicate.
+  All user customizations to items/labels are preserved.
+
 ## v1.1.3 — 2026-02-15 · Adjustable UI text size + filmstrip thumbnails
 
 ### Added

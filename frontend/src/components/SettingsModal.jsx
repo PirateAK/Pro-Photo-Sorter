@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type } from "lucide-react";
+import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type, PackagePlus } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
 import { paintWatermark, WATERMARK_FONTS } from "../lib/watermark";
 import { toast } from "sonner";
 
-export default function SettingsModal({ open, onClose, settings, onChange, previewImageHandle }) {
+export default function SettingsModal({ open, onClose, settings, onChange, previewImageHandle, onRestoreStarterPacks }) {
   const [local, setLocal] = useState(settings);
 
   // Re-sync local state whenever the modal is (re)opened.
@@ -182,6 +182,35 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
               </div>
             </div>
           </section>
+
+          {/* Restore Starter Packs (v1.1.4) */}
+          {onRestoreStarterPacks && (
+            <section>
+              <div className="flex items-start justify-between gap-4 flex-wrap">
+                <div>
+                  <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-2">
+                    <PackagePlus size={14} className="text-primary-earth" /> Starter Tag Packs
+                  </h3>
+                  <p className="text-xs text-dim">
+                    Pro Photo Sorter ships with six ready-to-use packs:
+                    <span className="text-app"> Wildlife · Wedding · Portrait · Landscape · Sports · Real Estate</span>.
+                    Click Restore below to merge any missing starter packs into your library.
+                    Your existing packs are never touched — only missing ones are added.
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    onRestoreStarterPacks();
+                  }}
+                  className="shrink-0 px-3 py-1.5 rounded border border-primary-earth bg-primary-earth text-[color:var(--text-inverse)] text-xs hover:opacity-90 flex items-center gap-1.5"
+                  data-testid="restore-starter-packs"
+                  title="Merges any missing starter packs — does not modify your existing packs"
+                >
+                  <PackagePlus size={12} /> Restore starter packs
+                </button>
+              </div>
+            </section>
+          )}
 
           {/* Startup */}
           <section>

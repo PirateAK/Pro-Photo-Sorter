@@ -84,6 +84,26 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.4 — 2026-02-15 · Six starter Tag Packs
+- ✅ **Six ready-to-use starter Tag Packs** ship on every fresh install:
+  Wildlife, Wedding, Portrait, Landscape, Sports, Real Estate. Each pack has
+  5-7 folder-path tags + 6 filename tags with sensible Lucide icons. Total
+  seed: 36 folder tags + 36 filename tags across all packs.
+- ✅ **Restore Starter Packs** button in Settings (icon: PackagePlus). Merges
+  any missing starter packs into the user's library — never touches existing
+  packs. Deduplication keyed on stable pack IDs (`cat-starter-*`). Info toast
+  when all six already present.
+- ✅ **Legacy migration**: existing v1.1.3-and-earlier installs had one pack
+  keyed as `cat-default-1` named "Wildlife (Example)". `loadState` now
+  auto-retags it to `cat-starter-wildlife` so the dedup logic recognizes it
+  as the starter Wildlife pack and doesn't add a duplicate on restore.
+  User customizations preserved.
+- Files touched: `frontend/src/lib/storage.js` (six starter packs + migration
+  + `getStarterPacks`/`STARTER_PACK_IDS` exports), `frontend/src/App.js`
+  (`restoreStarterPacks` handler + wired into SettingsModal),
+  `frontend/src/components/SettingsModal.jsx` (new Starter Tag Packs section
+  with PackagePlus icon), version bumped to 1.1.4.
+
 ### v1.1.3 — 2026-02-15 · Adjustable UI text size + filmstrip thumbnails + tagline polish
 - ✅ **Global UI Text Size** control in Settings → Appearance. Five presets
   (Compact 90%, Default 100%, **Comfortable 110% — new baseline**,
@@ -342,8 +362,30 @@ Files touched:
 
 ### On-deck for v1.2 (deferred by Kurt at end of v1.1.0 session)
 
+- **P0 · Trial-mode enforcement & Licensing** — Gumroad key entry in Help modal; force watermark ON + `_TRIAL` filename suffix until verified. Blocks monetization otherwise.
+- **P1 · Default EXIF Location in Settings** *(Kurt, 2026-02-15)* — new field
+  in Settings so a user working on a single shoot can set the location value
+  once (e.g. "Kenai, Alaska") and have every photo inherit it, without
+  re-typing on each new photo or session. Should apply to both the on-viewer
+  EXIF chip and any filename token that references location. Persist in
+  `settings.defaultLocation`. Consider a "clear" button and a small "using
+  default" indicator so the user knows the value is coming from Settings.
+- **P1 · Quick Date-Tag Dropdowns in Top Toolbar** *(Kurt, 2026-02-15)* —
+  add three compact dropdowns beside the Help button (Month / Day / Year)
+  plus an "Apply" button. Selecting a value + clicking Apply appends the
+  chosen date parts as filename tags on the current photo (same slot as
+  Filename Tag Packs). Pre-populate from the current photo's EXIF date on
+  load so the user only tweaks. Empty selections skipped. Nice-to-have:
+  keyboard shortcut (`Alt+D`) to focus the Month dropdown.
 - **P1 · Multi-Source Roots** — open several source folders stacked in the UI (Kurt's photographers-with-multiple-cards scenario).
 - **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
+- **P2 · Hover-Zoom preview on filmstrip thumbs** *(Kurt, 2026-02-15)* —
+  hovering any filmstrip thumbnail for ~500ms pops up a 2× (or scaled by
+  current thumbSize) preview alongside the cursor, so composition and focus
+  can be judged without clicking. Should respect the current filmstrip
+  Thumbnail Size preset (Small hover = 2×, Huge hover = 1.2× so it stays
+  on screen). Debounce to avoid flicker; hide on any click or when the
+  cursor leaves the strip.
 - **P2 · First-Run Welcome Modal** — greet new testers with a "try the starter pack" nudge.
 - **P2 · In-App Starter-Pack Browser** — one-click imports without folder-diving. Pairs naturally with community text-list packs.
 - **P2 · Duplicate pack button** in Tag Manager — spotted during v1.1 build; useful when two packs share ~80% of tags.
