@@ -84,6 +84,13 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.2 — 2026-02-15 · File-tree refresh fix
+- ✅ **Tree stayed on previous folder after switching drives**. `FileTree.jsx`
+  now keys its root `TreeNode` by root name/handle, forcing React to remount
+  the tree (and drop cached `children`/`open` state) on every new pick.
+- Files touched: `frontend/src/components/FileTree.jsx`,
+  `frontend/src/buildInfo.json`, `CHANGELOG.md`.
+
 ### Iteration 13 additions (2026-02, Filmstrip loading state)
 - ✅ **Loading indicator during folder scan**: Added `loadingImages` boolean state. When user selects a source folder, filmstrip immediately clears and shows "Loading images from selected folder…". After scan completes, message flips to actual results ("No images in this folder." only if truly empty). Small UX polish that removes the confusing pre-scan "no images" flash.
 
