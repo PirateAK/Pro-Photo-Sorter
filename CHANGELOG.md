@@ -5,18 +5,21 @@ All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 ## v1.1.2 — 2026-02-15 · File-tree refresh fix
 
 ### Fixed
-- **File tree kept showing the previous folder** after switching source or
-  destination to a new drive. The picker returned the new handle correctly,
-  but the tree component below the header stayed frozen on the first drive's
-  subfolders.
-  Root cause: `TreeNode` caches its children in local React state
-  (`useState`). Because the root node sits in the same layout position across
-  picks, React reused the same instance instead of rebuilding it, so the
-  cached children (and `open` state) survived the switch.
-  Fix: `FileTree.jsx` now applies a `key` derived from the root folder's
-  name/handle to its root `TreeNode`. When you pick a new source or
-  destination, React remounts the tree fresh and the correct subfolders
-  appear immediately.
+- **Source file tree kept showing the previous folder** after switching to a
+  new drive. (Destination worked only by luck when the two picks happened to
+  have different leaf names.)
+  Root cause: the tree remount key was derived from
+  `FileSystemDirectoryHandle.name`, which Chromium reports as *only the leaf
+  folder name* — not the full path. So picking `G:\Photos` then
+  `C:\Users\Kurt\Photos` produced the identical key `"Photos"` and React kept
+  the cached tree state.
+  Fix: `App.js` now maintains `sourceTreeKey` / `destTreeKey` counters that
+  bump on every pick (fresh pick, recent-pick, and startup reopen).
+  `FileTree.jsx` folds that counter into its `TreeNode` key, guaranteeing a
+  full remount and a fresh directory scan on every pick regardless of name.
+- `frontend/package.json` version bumped to **1.1.2** so `pack-app.bat` stamps
+  the installer as `Pro Photo Sorter Setup 1.1.2.exe` (previous v1.1.1 build
+  was correct code-wise but wore the old version number).
 
 ## v1.1.1 — 2026-02-15 · Folder-picker deadlock fix
 

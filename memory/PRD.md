@@ -85,11 +85,18 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
 ### v1.1.2 — 2026-02-15 · File-tree refresh fix
-- ✅ **Tree stayed on previous folder after switching drives**. `FileTree.jsx`
-  now keys its root `TreeNode` by root name/handle, forcing React to remount
-  the tree (and drop cached `children`/`open` state) on every new pick.
-- Files touched: `frontend/src/components/FileTree.jsx`,
-  `frontend/src/buildInfo.json`, `CHANGELOG.md`.
+- ✅ **Source tree stayed on the previous folder after switching drives**
+  (destination worked only by coincidence when leaf names differed). Chromium
+  exposes `FileSystemDirectoryHandle.name` as the *leaf* only, so keying by
+  name collided when two picks shared a folder name (`G:\Photos` vs
+  `C:\Users\Kurt\Photos`). Fix: `App.js` maintains `sourceTreeKey` /
+  `destTreeKey` counters that bump on every pick path (fresh, recent-pick,
+  startup reopen). `FileTree.jsx` folds that counter into its `TreeNode` key,
+  guaranteeing a full remount every time.
+- ✅ Bumped `frontend/package.json` → `1.1.2` so `pack-app.bat` stamps the
+  installer as `Pro Photo Sorter Setup 1.1.2.exe`.
+- Files touched: `frontend/src/App.js`, `frontend/src/components/FileTree.jsx`,
+  `frontend/src/buildInfo.json`, `frontend/package.json`, `CHANGELOG.md`.
 
 ### Iteration 13 additions (2026-02, Filmstrip loading state)
 - ✅ **Loading indicator during folder scan**: Added `loadingImages` boolean state. When user selects a source folder, filmstrip immediately clears and shows "Loading images from selected folder…". After scan completes, message flips to actual results ("No images in this folder." only if truly empty). Small UX polish that removes the confusing pre-scan "no images" flash.
