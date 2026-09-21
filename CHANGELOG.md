@@ -2,6 +2,30 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.5 — 2026-02-15 · Repeat Tags, safer Editor Done, A-Z tag sort
+
+### Added
+- **Repeat Last Tags button** in the destination panel (and keyboard
+  shortcut `R`). One click re-applies the folder + filename tags from the
+  most recently stored photo onto the current image. Perfect for shoots
+  where 90% of frames share the same combo (e.g. a wedding ceremony run,
+  a real-estate walk-through). The button also shows a live tag count in
+  its tooltip so you know what you're about to apply. If the current photo
+  already has tags, a confirm dialog protects against accidental overwrite.
+- **A→Z sort toggle** on both the Folders and Filename tag bars. Small
+  ArrowDownAZ icon button beside each pack picker. Setting is per-pack
+  per-bar (so a pack can have Folders sorted A-Z while Filename stays in
+  insertion order), and persists to localStorage.
+
+### Changed
+- **Editor "Done" now prompts before discarding or writing**. Previously,
+  clicking Done with unsaved edits silently wrote an `_edit_*.jpg` next to
+  the source. Now you get a three-way dialog:
+  - **Save changes** — writes a new `_edit_TIMESTAMP.jpg` (original untouched)
+  - **Discard** — closes and throws away edits (original untouched)
+  - **Cancel** — back to editing, nothing happens
+  Clicking Done with no edits still closes silently.
+
 ## v1.1.4 — 2026-02-15 · Six starter Tag Packs
 
 ### Added

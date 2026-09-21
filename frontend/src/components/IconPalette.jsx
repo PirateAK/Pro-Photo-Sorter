@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { IconPreview } from "./CategoryManager";
-import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine } from "lucide-react";
+import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine, ArrowDownAZ } from "lucide-react";
 import { uid } from "../lib/storage";
 import { getItems, getListKey } from "../lib/tags";
 import { toast } from "sonner";
@@ -26,7 +26,25 @@ export default function IconPalette({
   const RoleIcon = role === "folders" ? FolderTree : Tag;
   const applyRow = role === "folders" ? "folders" : "tags";
   const listKey = getListKey(role);
-  const items = getItems(active, role);
+  const rawItems = getItems(active, role);
+  // Per-pack per-role A-Z sort flag (v1.1.5). Stored on the pack itself so it
+  // survives across sessions with the rest of the tag data.
+  const sortAlpha = !!(active?.sortAlpha && active.sortAlpha[role]);
+  const items = sortAlpha
+    ? [...rawItems].sort((a, b) => a.label.localeCompare(b.label, undefined, { sensitivity: "base" }))
+    : rawItems;
+
+  const toggleSortAlpha = () => {
+    if (!active || !onCategoriesChange) return;
+    const nextFlag = !sortAlpha;
+    const next = categories.map((c) => {
+      if (c.id !== active.id) return c;
+      const sa = { ...(c.sortAlpha || {}), [role]: nextFlag };
+      return { ...c, sortAlpha: sa };
+    });
+    onCategoriesChange(next);
+    toast.success(nextFlag ? `${roleLabel}: sort A→Z ON` : `${roleLabel}: sort A→Z OFF`);
+  };
 
   // Context menu state — { x, y, targetItem?, mode: "chip" | "empty" }
   const [menu, setMenu] = useState(null);
@@ -230,6 +248,23 @@ export default function IconPalette({
             </select>
             <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-dim" />
           </div>
+        )}
+        {/* A-Z toggle (v1.1.5) — per-pack per-role */}
+        {active && onCategoriesChange && (
+          <button
+            onClick={toggleSortAlpha}
+            className={`shrink-0 w-6 h-6 rounded border flex items-center justify-center transition-colors ${
+              sortAlpha
+                ? "bg-primary-earth border-primary-earth text-[color:var(--text-inverse)]"
+                : "bg-app border-app text-dim hover:text-primary-earth hover:border-primary-earth/60"
+            }`}
+            data-testid={`palette-${role}-sort-alpha`}
+            title={sortAlpha
+              ? `${roleLabel} tags are sorted A→Z — click to keep insertion order`
+              : `${roleLabel} tags follow insertion order — click to sort A→Z`}
+          >
+            <ArrowDownAZ size={12} />
+          </button>
         )}
       </div>
       <div className="flex items-center gap-1 overflow-x-auto min-w-0 flex-1">

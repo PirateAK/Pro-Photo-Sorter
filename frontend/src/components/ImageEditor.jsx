@@ -553,14 +553,29 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
     rotation !== 0 || Math.abs(angle) > 0.01 || crop !== null
   );
 
-  const doneEditing = async () => {
+  const [showDonePrompt, setShowDonePrompt] = useState(false);
+
+  const doneEditing = () => {
     if (hasAnyEdits()) {
-      await saveEdited();
-      // saveEdited already toasts "Saved edited image" and calls onClose.
+      // v1.1.5: three-way prompt so an accidental Done can't silently vanish
+      // your work OR silently write a file you didn't want.
+      setShowDonePrompt(true);
     } else {
-      toast("No changes to save");
       onClose(null);
     }
+  };
+
+  const doneSave = async () => {
+    setShowDonePrompt(false);
+    await saveEdited();
+  };
+  const doneDiscard = () => {
+    setShowDonePrompt(false);
+    toast("Discarded edits — original file untouched");
+    onClose(null);
+  };
+  const doneCancel = () => {
+    setShowDonePrompt(false);
   };
 
   if (!open) return null;
@@ -959,6 +974,48 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
           )}
         </div>
       </div>
+
+      {/* v1.1.5 Done prompt — three-way choice on close-with-edits */}
+      {showDonePrompt && (
+        <div className="absolute inset-0 z-30 flex items-center justify-center p-6 bg-black/70 backdrop-blur-sm" data-testid="editor-done-prompt">
+          <div className="pane rounded-lg w-full max-w-md shadow-2xl border border-app">
+            <div className="px-5 py-3 border-b border-app">
+              <h3 className="font-heading font-semibold text-base">You have unsaved edits</h3>
+            </div>
+            <div className="px-5 py-4 text-sm text-app space-y-2">
+              <p>What should we do before closing the editor?</p>
+              <ul className="text-xs text-dim space-y-1 mt-2">
+                <li><span className="text-app font-semibold">Save changes</span> — writes a new <code>_edit_TIMESTAMP.jpg</code> file, leaves your original untouched.</li>
+                <li><span className="text-app font-semibold">Discard</span> — closes the editor and throws away your edits. Original is not modified.</li>
+                <li><span className="text-app font-semibold">Cancel</span> — go back to editing, nothing happens.</li>
+              </ul>
+            </div>
+            <div className="px-5 py-3 border-t border-app flex items-center justify-end gap-2">
+              <button
+                onClick={doneCancel}
+                className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs"
+                data-testid="done-prompt-cancel"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={doneDiscard}
+                className="px-3 py-1.5 rounded bg-danger-earth/20 border border-[color:var(--danger)] text-[color:var(--danger)] hover:bg-danger-earth hover:text-[color:var(--text)] text-xs"
+                data-testid="done-prompt-discard"
+              >
+                Discard
+              </button>
+              <button
+                onClick={doneSave}
+                className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90 text-xs font-semibold"
+                data-testid="done-prompt-save"
+              >
+                Save changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
