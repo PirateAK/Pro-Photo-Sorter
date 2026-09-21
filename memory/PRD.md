@@ -84,6 +84,26 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.4 — 2026-02-15 · Six starter Tag Packs
+- ✅ **Six ready-to-use starter Tag Packs** ship on every fresh install:
+  Wildlife, Wedding, Portrait, Landscape, Sports, Real Estate. Each pack has
+  5-7 folder-path tags + 6 filename tags with sensible Lucide icons. Total
+  seed: 36 folder tags + 36 filename tags across all packs.
+- ✅ **Restore Starter Packs** button in Settings (icon: PackagePlus). Merges
+  any missing starter packs into the user's library — never touches existing
+  packs. Deduplication keyed on stable pack IDs (`cat-starter-*`). Info toast
+  when all six already present.
+- ✅ **Legacy migration**: existing v1.1.3-and-earlier installs had one pack
+  keyed as `cat-default-1` named "Wildlife (Example)". `loadState` now
+  auto-retags it to `cat-starter-wildlife` so the dedup logic recognizes it
+  as the starter Wildlife pack and doesn't add a duplicate on restore.
+  User customizations preserved.
+- Files touched: `frontend/src/lib/storage.js` (six starter packs + migration
+  + `getStarterPacks`/`STARTER_PACK_IDS` exports), `frontend/src/App.js`
+  (`restoreStarterPacks` handler + wired into SettingsModal),
+  `frontend/src/components/SettingsModal.jsx` (new Starter Tag Packs section
+  with PackagePlus icon), version bumped to 1.1.4.
+
 ### v1.1.3 — 2026-02-15 · Adjustable UI text size + filmstrip thumbnails + tagline polish
 - ✅ **Global UI Text Size** control in Settings → Appearance. Five presets
   (Compact 90%, Default 100%, **Comfortable 110% — new baseline**,
