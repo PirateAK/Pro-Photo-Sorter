@@ -2,6 +2,31 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.8 — 2026-02-17 · Resizable Tag Manager + Batch All/None state
+
+### Added
+- **Resizable Tag Manager window.** Drag the corner handle (bottom-right,
+  next to the "Done" button) to enlarge or shrink the modal. Contents
+  reflow live — icon grids widen, chip lists wrap naturally, sub-folder
+  sections stretch. Min size 640×400. Max size = viewport minus 40px
+  padding. Size persists per-user in `localStorage` (`pps.tagmgr.size.v1`)
+  so it opens at your preferred dimensions every time.
+- **Batch mode All / None buttons now reflect state.** When every photo
+  is selected, the **All** button shows the earth-tone fill (matching
+  the active-chip style). When nothing is selected, the **None** button
+  shows the earth-tone fill. Partial selection leaves both dim — quick
+  visual confirmation of your current pick without having to eyeball
+  the count.
+
+### Under the hood
+- New size state + pointer-based resize handler in `CategoryManager.jsx`
+  (~60 lines). Uses `setPointerCapture` for smooth cross-boundary drags.
+  Modal switches from Tailwind fixed-size classes to inline `style`
+  width/height so pointer moves translate 1:1 to size updates.
+- Batch buttons compute `allSelected` and `noneSelected` inline in
+  App.js and swap classes accordingly. Data-attribute `data-active`
+  added for future testing.
+
 ## v1.2.7 — 2026-02-17 · Tag Manager sticky-header unification
 
 ### Fixed

@@ -1888,26 +1888,42 @@ export default function App() {
                 <span className="ml-1 font-mono">({batchSelected.size}/{images.length})</span>
               )}
             </button>
-            {batchMode && (
-              <div className="flex rounded overflow-hidden border border-app" data-testid="batch-select-controls">
-                <button
-                  onClick={selectAllBatch}
-                  className="px-1.5 py-1 text-[10px] bg-app hover:bg-surface-hover"
-                  data-testid="batch-select-all"
-                  title="Select every photo in the filmstrip"
-                >
-                  All
-                </button>
-                <button
-                  onClick={selectNoneBatch}
-                  className="px-1.5 py-1 text-[10px] bg-app hover:bg-surface-hover border-l border-app"
-                  data-testid="batch-select-none"
-                  title="Deselect all"
-                >
-                  None
-                </button>
-              </div>
-            )}
+            {batchMode && (() => {
+              // v1.2.8 — visualize which mode is currently reflected in the
+              // selection state so it's obvious at a glance without counting.
+              const allSelected = images.length > 0 && batchSelected.size === images.length;
+              const noneSelected = batchSelected.size === 0;
+              return (
+                <div className="flex rounded overflow-hidden border border-app" data-testid="batch-select-controls">
+                  <button
+                    onClick={selectAllBatch}
+                    className={`px-1.5 py-1 text-[10px] transition-colors ${
+                      allSelected
+                        ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                        : "bg-app hover:bg-surface-hover"
+                    }`}
+                    data-testid="batch-select-all"
+                    data-active={allSelected ? "1" : "0"}
+                    title={allSelected ? "All photos selected" : "Select every photo in the filmstrip"}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={selectNoneBatch}
+                    className={`px-1.5 py-1 text-[10px] border-l border-app transition-colors ${
+                      noneSelected
+                        ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                        : "bg-app hover:bg-surface-hover"
+                    }`}
+                    data-testid="batch-select-none"
+                    data-active={noneSelected ? "1" : "0"}
+                    title={noneSelected ? "Nothing selected" : "Deselect all"}
+                  >
+                    None
+                  </button>
+                </div>
+              );
+            })()}
             {batchMode && batchSelected.size > 0 && (
               <div className="relative">
                 <button
