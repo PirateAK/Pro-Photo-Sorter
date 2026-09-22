@@ -642,7 +642,26 @@ in Settings.watermarkText can't accidentally launder trial photos.
   instead of subjects. Zero AI, ships in a day. **When v2.0 face
   recognition launches, this same "People" pack auto-populates with
   detected faces — no lost user data, smooth upgrade path.** Ship target:
-  v1.2.5.
+  v1.2.6 or v1.2.7.
+- **🧰 P2 · Tag Manager housekeeping batch** *(Kurt, 2026-02-17)* — several
+  quality-of-life fixes to run together when we next touch the Tag Manager:
+  1. **Reorder sections** so the natural path order is reflected:
+     `Folders → Sub-Folders → Filename` (currently
+     `Folders → Filename → Sub-Folders`). Sub-folders belong next to
+     Folders since they inherit folder-tag context.
+  2. **Resizable Tag Manager window** — add a resize handle next to the ×
+     close button (bottom-right corner too, standard modal resize). All
+     inner sections must reflow gracefully on resize (grid columns, chip
+     wrapping, list heights). Persist last size in settings.
+  3. **Spring-loaded sub-folder open** — when dragging a chip over a
+     collapsed sub-folder header for ~500 ms, auto-expand the panel so
+     the user can drop into it without a separate click. Follows
+     Finder/File Explorer convention.
+  4. **Cross-list drag between main lists and sub-folders** — drop a
+     main-pack tag onto a sub-folder to move/copy it into that
+     sub-folder's filename tags; drop a sub-folder tag onto the main
+     Folder or Filename list to promote it up. Uses the same Ctrl-drag
+     copy modifier we already ship for cross-subfolder moves.
 - **P1 · Default EXIF Location in Settings** *(Kurt, 2026-02-15)* — new field
   in Settings so a user working on a single shoot can set the location value
   once (e.g. "Kenai, Alaska") and have every photo inherit it, without
