@@ -1006,7 +1006,7 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
         } catch { /* ignore */ }
       }}
     >
-      <div className="px-4 py-2 flex items-center gap-2 bg-app/40 sticky top-0 z-10">
+      <div className="px-4 py-2 flex items-center gap-2 bg-surface sticky top-0 z-10 border-b border-app/60 shadow-sm">
         <ListIcon size={13} className="text-primary-earth" />
         <span className="text-[10px] uppercase tracking-widest font-heading text-app">{listLabel}</span>
         <span className="text-[10px] text-dim font-mono">{items.length}</span>
@@ -1353,7 +1353,7 @@ function SubfolderSection({
         </div>
       </div>
       <p className="text-xs text-dim mb-3">
-        Sub-folders show as chips in the main window's SUB-FOLDER bar. Picking one prepends its name to the destination path (e.g. <span className="text-primary-earth">Sports/Baseball/…</span>) and swaps the Filename bar to its own filename tags. Parent pack's folder tags stay inherited.
+        Sub-folders show as chips in the main window's SUB-FOLDER bar. Picking one appends its name to the destination path (e.g. <span className="text-primary-earth">Wedding/Ceremony/Brides family/…</span>) and swaps the Filename bar to its own filename tags. Parent pack's folder tags stay inherited.
       </p>
 
       {/* Add sub-folder form */}

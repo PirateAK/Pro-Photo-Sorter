@@ -2,6 +2,20 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.6 — 2026-02-17 · Tag Manager sticky-header + stale copy fix
+
+### Fixed
+- **Tag Manager section headers stayed transparent while scrolling** —
+  "FOLDER PATH TAGS" and "FILENAME TAGS" section titles used a 40%-opacity
+  background, so as the icon grid scrolled up, icons visibly bled through
+  the title bar. Now uses a fully opaque surface background + a subtle
+  bottom border and shadow so the sticky header cleanly hides content
+  scrolling underneath. Reported by Kurt via screenshot.
+- **Stale Sub-Folders help text** — the description under the Sub-Folders
+  block still described the v1.1.6 "prepends its name" behavior with a
+  `Sports/Baseball/…` example. Updated to reflect the v1.2.1+ ordering:
+  "appends its name" with `Wedding/Ceremony/Brides family/…`.
+
 ## v1.2.5 — 2026-02-17 · Full-path chips in the on-image overlay
 
 ### Added
