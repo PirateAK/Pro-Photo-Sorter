@@ -2,6 +2,37 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.6 — 2026-02-16 · Nested Tag Packs (sub-folders), A-Z pack sort
+
+### Added
+- **Sub-folders under Tag Packs**. Each pack can now hold optional sub-folders
+  with their own filename tags. When the picked pack has sub-folders, a new
+  middle **SUB-FOLDER** bar appears between FOLDERS and FILENAME with a chip
+  per sub-folder. Click a chip to:
+  1. Prepend the sub-folder's name to the destination folder path
+     (e.g. `Sports/Baseball/…`).
+  2. Swap the FILENAME bar to show the sub-folder's filename tags.
+  The parent pack's FOLDER tags stay in the top bar (inherit model).
+  Bars without sub-folders (Wildlife, Portrait, etc.) look unchanged.
+- **Demo sub-folders on the Sports starter pack**: Baseball, Basketball,
+  Football — each with team-name filename tags. Restore Starter Packs will
+  re-add these if needed.
+- **Text-list format extended with `##` sub-folder headers**. Backwards
+  compatible: old files (no `##`) parse identically to v1.1.5. Hand-editing
+  a `.pps-taglist.txt` and importing it is a full path to custom
+  sub-folders while the visual Tag Manager editor is being built.
+
+### Changed
+- **Tag Pack list always sorted A→Z**. Applied to both the Tag Manager
+  sidebar AND the FOLDERS palette dropdown. Kurt's OCD-friendly.
+- **Data model**: pack shape gains `subfolders?: [{ id, name, iconName,
+  filenameItems: [] }]`. Migration is safe: any pack without the array
+  gets an empty array on load, so v1.1.5 data works without change.
+
+### Coming in v1.1.7
+- Visual sub-folder editor inside Tag Manager (add / rename / delete /
+  reorder sub-folders and their filename tags without editing text files).
+
 ## v1.1.5 — 2026-02-15 · Repeat Tags, safer Editor Done, A-Z tag sort
 
 ### Added

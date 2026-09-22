@@ -20,13 +20,15 @@ export default function IconPalette({
   onCategoriesChange, // fn(nextCategories) — for quick edits
   onOpenManager,       // fn() — opens the full Category Manager modal
   hidePicker = false,  // when true, show pack name as read-only label instead of a <select>
+  overrideItems = null, // v1.1.6: when non-null, this list replaces the pack's list for rendering
+  overrideLabel = null, // v1.1.6: replaces the pack's name when hidePicker mode is on
 }) {
   const active = categories.find((c) => c.id === activeCatId) || categories[0];
   const roleLabel = role === "folders" ? "Folders" : "Filename";
   const RoleIcon = role === "folders" ? FolderTree : Tag;
   const applyRow = role === "folders" ? "folders" : "tags";
   const listKey = getListKey(role);
-  const rawItems = getItems(active, role);
+  const rawItems = overrideItems !== null ? overrideItems : getItems(active, role);
   // Per-pack per-role A-Z sort flag (v1.1.5). Stored on the pack itself so it
   // survives across sessions with the rest of the tag data.
   const sortAlpha = !!(active?.sortAlpha && active.sortAlpha[role]);
@@ -232,7 +234,17 @@ export default function IconPalette({
         <div className="flex items-center gap-1 text-[10px] uppercase tracking-widest font-heading text-dim min-w-[68px]">
           <RoleIcon size={12} className="text-primary-earth" /> {roleLabel}
         </div>
-        {hidePicker ? null : (
+        {hidePicker ? (
+          overrideLabel ? (
+            <span
+              className="px-2 py-1 rounded bg-primary-earth/15 border border-primary-earth/50 text-primary-earth text-[11px] font-mono truncate max-w-[220px]"
+              data-testid="palette-filename-subfolder-label"
+              title={`Filename tags are scoped to sub-folder "${overrideLabel}"`}
+            >
+              {overrideLabel}
+            </span>
+          ) : null
+        ) : (
           <div className="relative">
             <select
               value={active?.id || ""}
@@ -240,7 +252,11 @@ export default function IconPalette({
               className="appearance-none bg-app border border-app rounded pl-2 pr-6 py-1 text-xs font-medium focus-ring cursor-pointer"
               data-testid={`palette-${role}-category-select`}
             >
-              {categories.map((c) => (
+              {/* v1.1.6 — pack options always A→Z sorted for consistency
+                  with the Tag Manager pack list. */}
+              {[...categories]
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+                .map((c) => (
                 <option key={c.id} value={c.id} className="bg-app">
                   {c.name}
                 </option>

@@ -28,6 +28,7 @@ import FileTree from "@/components/FileTree";
 import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
+import SubfolderBar from "@/components/SubfolderBar";
 import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
@@ -115,11 +116,19 @@ export default function App() {
   const setFoldersCatId = useCallback((id) => {
     setFoldersCatIdRaw(id);
     setSettings({ ...settings, foldersCatId: id });
+    // Reset subfolder selection when the parent pack changes (v1.1.6)
+    setActiveSubfolderId(null);
   }, [settings, setSettings]);
   const setTagsCatId = useCallback((id) => {
     setTagsCatIdRaw(id);
     setSettings({ ...settings, tagsCatId: id });
   }, [settings, setSettings]);
+
+  // v1.1.6 — Sub-folder navigation. When a pack has subfolders defined, a
+  // middle SUBFOLDER bar shows chips; clicking one sets this state, prepends
+  // the subfolder name to the destination folder path in storeCurrent, and
+  // swaps the Filename bar to show that subfolder's filenameItems.
+  const [activeSubfolderId, setActiveSubfolderId] = useState(null);
 
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
@@ -991,10 +1000,14 @@ export default function App() {
         exifDate: imgExifDate,
         stars,
       });
+      // v1.1.6: prepend active sub-folder name to path (e.g. "Sports/Baseball/…")
+      const activePack = categories.find((c) => c.id === foldersCatId);
+      const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
+      const effectiveFolderParts = activeSub ? [activeSub.name, ...folderParts] : folderParts;
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
       try {
-        const targetDir = await getOrCreateSubdir(anchor, folderParts);
+        const targetDir = await getOrCreateSubdir(anchor, effectiveFolderParts);
         const wmEnabled = isWatermarkOnFor(imgPath);
         let writtenName;
         if (wmEnabled && canWatermark(img.name)) {
@@ -1011,7 +1024,7 @@ export default function App() {
           writtenName = await copyFileTo(img.handle, targetDir, fileName);
         }
         stored++;
-        const targetPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
+        const targetPath = [anchorPath, ...effectiveFolderParts].filter(Boolean).join("/");
         setJustStored((cur) => ({ ...cur, [targetPath]: (cur[targetPath] || 0) + 1 }));
         // Iter 11: mirror the rating under the destination key so search's
         // min-stars filter finds it. Uses ratings[`${targetPath}/${writtenName}`].
@@ -1493,10 +1506,18 @@ export default function App() {
       exifDate: exif?.DateTimeOriginal || exif?.CreateDate || null,
       stars,
     });
-    if (!hasAnyIcons) return null;
+    // v1.1.6: prepend active sub-folder to preview path too
+    const activePack = categories.find((c) => c.id === foldersCatId);
+    const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
+    const hasSubFolderOnly = activeSub && !hasAnyIcons;
+    if (!hasAnyIcons && !activeSub) return null;
     const root = destSelected?.path || destRootName || "…";
-    return `${root} / ${rendered.pathPreview}`;
-  }, [currentOverlay, hasAnyIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif]);
+    const prefix = activeSub ? `${activeSub.name}/` : "";
+    // Even if no icons are dragged yet, showing the subfolder alone still
+    // gives the user a preview of where the photo will land.
+    const rest = hasAnyIcons ? rendered.pathPreview : "(pick tags to build path)";
+    return `${root} / ${prefix}${rest}`;
+  }, [currentOverlay, hasAnyIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif, categories, foldersCatId, activeSubfolderId]);
 
   // ------------------------------------------------------------------------
   // Render
@@ -1945,17 +1966,40 @@ export default function App() {
                 onCategoriesChange={setCategories}
                 onOpenManager={() => setShowCatMgr(true)}
               />
-              <div className="h-px bg-app/60" />
-              <IconPalette
-                role="filename"
-                categories={categories}
-                activeCatId={foldersCatId}
-                onSetCat={setFoldersCatId}
-                onApply={applyIcon}
-                onCategoriesChange={setCategories}
-                onOpenManager={() => setShowCatMgr(true)}
-                hidePicker
-              />
+              {(() => {
+                const activePack = categories.find((c) => c.id === foldersCatId);
+                const hasSubs = activePack?.subfolders?.length > 0;
+                const activeSub = hasSubs && activeSubfolderId
+                  ? activePack.subfolders.find((s) => s.id === activeSubfolderId)
+                  : null;
+                return (
+                  <>
+                    {hasSubs && (
+                      <>
+                        <div className="h-px bg-app/60" />
+                        <SubfolderBar
+                          active={activePack}
+                          activeSubfolderId={activeSubfolderId}
+                          onSetSubfolder={setActiveSubfolderId}
+                        />
+                      </>
+                    )}
+                    <div className="h-px bg-app/60" />
+                    <IconPalette
+                      role="filename"
+                      categories={categories}
+                      activeCatId={foldersCatId}
+                      onSetCat={setFoldersCatId}
+                      onApply={applyIcon}
+                      onCategoriesChange={setCategories}
+                      onOpenManager={() => setShowCatMgr(true)}
+                      hidePicker
+                      overrideItems={activeSub ? activeSub.filenameItems : null}
+                      overrideLabel={activeSub ? `${activePack.name} › ${activeSub.name}` : null}
+                    />
+                  </>
+                );
+              })()}
             </div>
             <div className="grid grid-cols-2 gap-1 shrink-0">
               <button

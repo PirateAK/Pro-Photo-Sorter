@@ -461,7 +461,11 @@ export default function CategoryManager({ open, onClose, categories, onChange })
               </div>
             </div>
             <div className="flex-1 overflow-auto p-1">
-              {categories.map((c) => (
+              {/* v1.1.6 — pack list is auto-sorted A→Z. Fixes Kurt's OCD ask
+                  and matches how the palette dropdown will show them too. */}
+              {[...categories]
+                .sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }))
+                .map((c) => (
                 <div
                   key={c.id}
                   onClick={() => renamingId !== c.id && setActiveCat(c.id)}

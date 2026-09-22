@@ -130,6 +130,47 @@ const DEFAULT_STATE = {
         { id: "sp-n5", label: "wide",         iconType: "lucide", iconName: "Camera" },
         { id: "sp-n6", label: "sequence",     iconType: "lucide", iconName: "Flame" },
       ],
+      // v1.1.6 — demo subfolders. When one is picked in the main window's
+      // SUBFOLDER bar, its name prepends to the destination folder path
+      // (e.g. "Sports/Baseball/…") and its filenameItems replace the
+      // pack's default filename tags in the Filename bar. Parent's
+      // folderItems stay in the Folders bar (inherited).
+      subfolders: [
+        {
+          id: "sp-sub-baseball",
+          name: "Baseball",
+          iconType: "lucide", iconName: "Circle",
+          filenameItems: [
+            { id: "sp-bb-1", label: "Yankees",  iconType: "lucide", iconName: "Star" },
+            { id: "sp-bb-2", label: "RedSox",   iconType: "lucide", iconName: "Star" },
+            { id: "sp-bb-3", label: "Dodgers",  iconType: "lucide", iconName: "Star" },
+            { id: "sp-bb-4", label: "Cubs",     iconType: "lucide", iconName: "Star" },
+            { id: "sp-bb-5", label: "Mets",     iconType: "lucide", iconName: "Star" },
+          ],
+        },
+        {
+          id: "sp-sub-basketball",
+          name: "Basketball",
+          iconType: "lucide", iconName: "Circle",
+          filenameItems: [
+            { id: "sp-bk-1", label: "Lakers",   iconType: "lucide", iconName: "Star" },
+            { id: "sp-bk-2", label: "Celtics",  iconType: "lucide", iconName: "Star" },
+            { id: "sp-bk-3", label: "Bulls",    iconType: "lucide", iconName: "Star" },
+            { id: "sp-bk-4", label: "Warriors", iconType: "lucide", iconName: "Star" },
+          ],
+        },
+        {
+          id: "sp-sub-football",
+          name: "Football",
+          iconType: "lucide", iconName: "Circle",
+          filenameItems: [
+            { id: "sp-fb-1", label: "Chiefs",   iconType: "lucide", iconName: "Star" },
+            { id: "sp-fb-2", label: "49ers",    iconType: "lucide", iconName: "Star" },
+            { id: "sp-fb-3", label: "Cowboys",  iconType: "lucide", iconName: "Star" },
+            { id: "sp-fb-4", label: "Patriots", iconType: "lucide", iconName: "Star" },
+          ],
+        },
+      ],
     },
     {
       id: "cat-starter-realestate",
@@ -205,6 +246,7 @@ export function loadState() {
         id,
         folderItems: Array.isArray(c.folderItems) ? c.folderItems : [],
         filenameItems: Array.isArray(c.filenameItems) ? c.filenameItems : [],
+        subfolders: Array.isArray(c.subfolders) ? c.subfolders : [],
       };
     });
     return {

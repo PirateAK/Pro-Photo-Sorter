@@ -84,6 +84,31 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.6 — 2026-02-16 · Sub-folders (Inherit model) + A-Z pack sort
+- ✅ **Nested Tag Packs**: pack shape gains optional `subfolders: [{ id, name,
+  iconName, filenameItems }]`. When the picked pack has sub-folders, a new
+  middle **SUB-FOLDER** bar renders between FOLDERS and FILENAME (new
+  component `SubfolderBar.jsx`). Clicking a chip sets `activeSubfolderId`
+  in App.js; the FILENAME bar swaps to that sub-folder's items via a new
+  `overrideItems`/`overrideLabel` prop on IconPalette. Path builder in
+  `storeCurrent` and the destination preview both prepend the sub-folder
+  name (e.g. `Sports/Baseball/…`). Parent's folder tags stay in the top
+  bar (Inherit model — Kurt's pick).
+- ✅ **Sports starter pack demo**: Baseball, Basketball, Football sub-folders
+  seeded with team-name filename tags so the feature works on first install.
+- ✅ **Text-list `##` sub-folder headers** in `tagpackText.js`. Backwards
+  compatible: old v1.1.5 files parse identically (no `##` = no sub-folders).
+  Round-trip verified via `/app/backend/tests/tagpackText_test.mjs`.
+- ✅ **Pack list A→Z sort** everywhere: Tag Manager sidebar AND every
+  IconPalette FOLDERS/FILENAME dropdown. Cures Kurt's OCD.
+- Files touched: `frontend/src/lib/storage.js` (subfolders on Sports pack +
+  defensive migration), `frontend/src/components/SubfolderBar.jsx` (new),
+  `frontend/src/App.js` (activeSubfolderId state, SubfolderBar injection,
+  path prepend), `frontend/src/components/IconPalette.jsx` (overrideItems
+  + overrideLabel + A-Z dropdown), `frontend/src/components/CategoryManager.jsx`
+  (A-Z pack sidebar), `frontend/src/lib/tagpackText.js` (## parser +
+  subfolder serialize), version bumped to 1.1.6.
+
 ### v1.1.5 — 2026-02-15 · Repeat Tags, safer Editor Done, A-Z tag sort
 - ✅ **Repeat Last Tags** button + `R` keyboard shortcut. Snapshots the tag
   overlay from the most recently stored photo (folder + filename tags),
@@ -402,6 +427,47 @@ Files touched:
   keyboard shortcut (`Alt+D`) to focus the Month dropdown.
 - **P1 · Multi-Source Roots** — open several source folders stacked in the UI (Kurt's photographers-with-multiple-cards scenario).
 - **P1 · Metadata Sidecar (.xmp) export** — round-trip stars/tags with Lightroom.
+- **P1 · Filmstrip inside the Editor window** *(Kurt, 2026-02-15, late-night)* —
+  add a compact filmstrip strip along the bottom of the editor so the user
+  can navigate to the next/previous image without closing and reopening.
+  Loading a new image auto-resets zoom/pan/sliders to Fit; unsaved edits
+  trigger the v1.1.5 Save/Discard/Cancel prompt before switching.
+- **P1 · Editor "Save changes" holds image in state, not auto-write** *(Kurt, 2026-02-15)* —
+  today the editor's Save writes an `_edit_*.jpg` to source or destination.
+  New behavior: Save keeps the edited version as an in-memory "working
+  image" so the user can drag folder/filename tags onto it, apply further
+  edits, or run the Aspect Ratio buttons — then finally click Store to
+  write with the templated path/filename. Preserves the tagging workflow
+  the way the rest of the app already does.
+- **P1 · Aspect Ratio buttons hold image in state too** *(Kurt, 2026-02-15)* —
+  same treatment as the editor Save. Today the 4×6/5×7/8×10/etc. buttons
+  immediately write a resized file to the destination `/Unsorted` folder,
+  losing the ability to add tags first. New behavior: hold the resized
+  bitmap in state as the working image, allow further tagging/editing,
+  then Store on user command.
+- **P1 · Preserve tags across editor round-trip** *(Kurt, 2026-02-15)* —
+  when the user opens the editor with folder/filename tags already dragged
+  onto the image, those tags should survive the edit and be attached to
+  the newly-saved edited image (or preserved on the original if the user
+  discarded). Currently tags are cleared/dropped in the edit process.
+- **P1 · Main preview zoom + pan** *(Kurt, 2026-02-15, late-night)* —
+  add Lightroom-style Loupe behavior to the main viewer window (NOT just
+  the editor):
+  - **Mouse wheel** on the preview zooms in/out toward the cursor.
+  - **Middle-click + drag** OR **space+drag** pans when zoomed in.
+  - **`+` / `-` keyboard** and small on-screen buttons for zoom in / out
+    when no mouse wheel is available (laptop trackpad users).
+  - **`0`** or a "Fit" button resets to fit-to-window.
+  - Zoom level shown as a tiny badge (e.g. `1.4×`) that fades after 1s.
+  - Preserves current image between zooms (no re-decode), and resets to
+    Fit when navigating to a new image in the filmstrip.
+  Complements the existing editor zoom without adding a modal step, so
+  Kurt can quickly check focus on a filmstrip pick before deciding to Store.
+- **P2 · Tag Bar drag-to-reorder** *(Kurt, 2026-02-15)* — complementary to
+  the shipped v1.1.5 A→Z sort toggle. Let the user grab a tag chip and
+  drag it left/right within the bar to set a custom order. Needs a small
+  grip handle (or long-press) so it doesn't conflict with the existing
+  drag-onto-photo behavior.
 - **P2 · Hover-Zoom preview on filmstrip thumbs** *(Kurt, 2026-02-15)* —
   hovering any filmstrip thumbnail for ~500ms pops up a 2× (or scaled by
   current thumbSize) preview alongside the cursor, so composition and focus
@@ -413,7 +479,6 @@ Files touched:
 - **P2 · In-App Starter-Pack Browser** — one-click imports without folder-diving. Pairs naturally with community text-list packs.
 - **P2 · Duplicate pack button** in Tag Manager — spotted during v1.1 build; useful when two packs share ~80% of tags.
 - **P3 · AI Auto-Tagging** — offline TensorFlow.js/MobileNet scan. Explicitly deferred by Kurt to "much later".
-- **P3 · Per-folder disk size** in the file tree — needs the folder-path bridge; app currently shows image count on hover as the lightweight alternative.
 
 ### Waiting on tester feedback
 Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, not bugs". Any bug reports that come back should be triaged against the current v1.1.0 build; enhancement requests go into the on-deck list above.
