@@ -4,7 +4,7 @@ import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, P
 import JSZip from "jszip";
 import { uid } from "../lib/storage";
 import { totalCount } from "../lib/tags";
-import { parseTagList, serializePack as serializePackText } from "../lib/tagpackText";
+import { parseTagList, serializePack as serializePackText, serializePacks as serializePacksText } from "../lib/tagpackText";
 import { toast } from "sonner";
 
 // Curated built-in icons
@@ -337,6 +337,52 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         filenameTags: (s.filenameItems || []).map(mapTag),
       })),
     };
+  };
+
+  // v1.2.3 — One-click "Backup Everything Now" — bundles every pack as
+  // both v3 JSON files AND a single plain-text `.pps-taglist.txt` snapshot
+  // (belt-and-suspenders: text file is human-readable and always restorable
+  // even if the JSON schema changes in the future).
+  const backupEverything = async () => {
+    if (categories.length === 0) { toast.error("No packs to back up"); return; }
+    try {
+      const zip = new JSZip();
+      const stamp = new Date().toISOString().slice(0, 10);
+      // JSON packs — one file per pack, all under json/
+      for (const cat of categories) {
+        const payload = serializePack(cat);
+        const safe = cat.name.replace(/[^\w\-]+/g, "_").slice(0, 60) || "pack";
+        zip.file(`json/${safe}.pps-tagpack.json`, JSON.stringify(payload, null, 2));
+      }
+      // Single text snapshot of everything — same format the auto-backup uses
+      zip.file(`text/pps-tagpacks_${stamp}.pps-taglist.txt`, serializePacksText(categories));
+      // Bundle manifest
+      zip.file("bundle.json", JSON.stringify({
+        formatVersion: 3,
+        kind: "pps-tagpack-bundle",
+        exportedAt: new Date().toISOString(),
+        packs: categories.map((c) => ({
+          name: c.name,
+          folderTagCount: c.folderItems?.length || 0,
+          filenameTagCount: c.filenameItems?.length || 0,
+          subfolderCount: c.subfolders?.length || 0,
+        })),
+      }, null, 2));
+      const blob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pps-backup_${stamp}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Backed up ${categories.length} pack${categories.length !== 1 ? "s" : ""}`, {
+        description: `pps-backup_${stamp}.zip · JSON + text-list snapshots inside`,
+      });
+    } catch (e) {
+      toast.error("Backup failed", { description: e.message });
+    }
   };
 
   // ── Bundle export — every SELECTED pack as one downloadable .zip ─────
@@ -797,6 +843,15 @@ export default function CategoryManager({ open, onClose, categories, onChange })
             folder tree, <span className="text-primary-earth">Filename tags</span> shape the final filename. Pick a pack
             from the Folders bar and both rows fill together.
           </div>
+          <button
+            onClick={backupEverything}
+            disabled={categories.length === 0}
+            className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1 shrink-0 disabled:opacity-40"
+            data-testid="backup-all-btn"
+            title="One-click backup — every pack as JSON + text-list snapshots in a single .zip you can restore from"
+          >
+            <Download size={12} /> Backup All
+          </button>
           <button
             onClick={openBundlePicker}
             disabled={categories.length === 0}

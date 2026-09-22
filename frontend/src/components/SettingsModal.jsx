@@ -284,6 +284,54 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
             </div>
           </section>
 
+          {/* v1.2.3 — Auto-update opt-in */}
+          <section>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1">Auto-Update</h3>
+                <p className="text-xs text-dim">
+                  When enabled, Pro Photo Sorter checks GitHub Releases once per launch and offers
+                  to download + install the latest version if one is out. One tiny internet call
+                  per launch; otherwise the app stays fully offline.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0" data-testid="check-updates-toggle-label">
+                <input
+                  type="checkbox"
+                  checked={local.checkForUpdates === true}
+                  onChange={(e) => setLocal({ ...local, checkForUpdates: e.target.checked })}
+                  className="w-4 h-4 accent-primary-earth cursor-pointer"
+                  data-testid="check-updates-toggle"
+                />
+                <span className="text-xs">Check for updates on launch</span>
+              </label>
+            </div>
+          </section>
+
+          {/* v1.2.3 — Tag-pack auto-backup */}
+          <section>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1">Auto-Backup Tag Packs</h3>
+                <p className="text-xs text-dim">
+                  Once per calendar day, drops a plain-text snapshot of every tag pack into
+                  <code className="px-1 rounded bg-surface-hover font-mono text-[10px] mx-1">&lt;destination&gt;/.pps-backups/</code>.
+                  Keeps the last 7 days. Restore any time via Tag Manager → Import text list.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0" data-testid="auto-backup-toggle-label">
+                <input
+                  type="checkbox"
+                  checked={local.autoBackupTagPacks !== false}
+                  onChange={(e) => setLocal({ ...local, autoBackupTagPacks: e.target.checked })}
+                  className="w-4 h-4 accent-primary-earth cursor-pointer"
+                  data-testid="auto-backup-toggle"
+                />
+                <span className="text-xs">Daily tag-pack backup to destination</span>
+              </label>
+            </div>
+          </section>
+
           {/* Move / Copy toggle */}
           <section>
             <div className="flex items-start justify-between gap-4">

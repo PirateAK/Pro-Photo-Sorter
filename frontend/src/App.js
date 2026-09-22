@@ -64,7 +64,9 @@ import CullMode from "@/components/CullMode";
 import DrivesPanel from "@/components/DrivesPanel";
 import HelpModal from "@/components/HelpModal";
 import TrialBanner from "@/components/TrialBanner";
+import UpdateBanner from "@/components/UpdateBanner";
 import { isTrialMode, applyTrialSuffix, TRIAL_WATERMARK_TEXT } from "@/lib/license";
+import { maybeAutoBackup } from "@/lib/backups";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 import { isElectron, totalFreeBytes, formatBytes } from "@/lib/electronBridge";
 
@@ -509,6 +511,32 @@ export default function App() {
       setTotalFree(bytes);
     } catch { /* ignore */ }
   }, []);
+
+  // v1.2.3 — Auto-backup all tag packs to <destRoot>/.pps-backups/ once per
+  // calendar day whenever a destination drive is connected. Runs silently
+  // in the background; only surfaces a toast on the day of the first write.
+  useEffect(() => {
+    if (!destRoot) return;
+    if (!settings.autoBackupTagPacks) return;
+    let cancelled = false;
+    (async () => {
+      const res = await maybeAutoBackup({
+        destRoot,
+        categories,
+        settings,
+        updateSettings: (next) => { if (!cancelled) setSettings(next); },
+      });
+      if (!cancelled && res.ok && res.wrote) {
+        toast.success("Tag packs auto-backed up", {
+          description: `Saved ${res.wrote} in your destination drive · restore anytime from Tag Manager → Import text list`,
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+    // Only runs when destRoot first appears or categories change meaningfully.
+    // Guarded internally to no-op if it already ran today.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destRoot]);
 
   // Show a friendly toast for folder-picker errors. For the "stuck picker"
   // family of errors (which need a page reload to fully recover), include
@@ -1638,6 +1666,7 @@ export default function App() {
       <TrialBanner
         onActivateClick={() => { setHelpInitialTab("license"); setShowHelp(true); }}
       />
+      <UpdateBanner enabled={!!settings.checkForUpdates} />
       <div className="app-grid" data-testid="app-root">
       <Toaster theme={settings.theme || "dark"} position="bottom-right" richColors closeButton />
 

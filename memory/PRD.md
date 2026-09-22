@@ -471,6 +471,57 @@ Files touched:
 
 **Final version bump: `1.1.0-dev` → `1.1.0`.** Kurt promoted, built the NSIS installer, uninstalled v1.0.5, installed `Pro Photo Sorter Setup 1.1.0.exe` on his PC, verified everything, tagged `v1.1.0` in git, pushed the tag, and published a GitHub Release with the installer attached. v1.0.5 release kept live for history.
 
+### Iteration 32 — v1.2.3 Auto-update + Auto-backup + Backup All (2026-02-17)
+
+Kurt asked for a scalable path to push updates as he ramps sales — plus
+belt-and-suspenders data safety after nearly losing a morning of tag
+work. All three shipped in one release:
+
+1. **Full auto-update via `electron-updater`** targeting
+   `github.com/PirateAK/Pro-Photo-Sorter/releases/latest`. Opt-in per user.
+   Non-silent: user sees a Download button, then an Install & Restart
+   button. All user data survives.
+2. **Daily tag-pack auto-backup** — plain-text snapshot to
+   `<destRoot>/.pps-backups/pps-tagpacks_YYYY-MM-DD.pps-taglist.txt`,
+   7-day rolling retention. Opt-out via Settings.
+3. **Backup All button** in Tag Manager — one-click zip of every pack
+   as JSON + text-list snapshot + bundle manifest.
+
+Files touched:
+- `electron-additions/main.js` — rewrote to add `autoUpdater` wiring,
+  new IPC handlers: `pps:check-for-updates`, `pps:download-update`,
+  `pps:install-update`, `pps:open-external`, `pps:app-version`.
+- `electron-additions/preload.js` — exposed the update APIs via
+  `window.electronAPI.*` + `onUpdateStatus(cb)` subscription.
+- `electron-additions/package.json` — added `electron-updater` dep +
+  `publish: [{ provider: "github", owner: "PirateAK",
+  repo: "Pro-Photo-Sorter" }]` block so `electron-builder` writes a
+  `latest.yml` alongside the `.exe`.
+- `frontend/src/lib/electronBridge.js` — thin wrappers over the update
+  IPC channels; degrade to no-ops outside Electron.
+- `frontend/src/lib/backups.js` — new module. `maybeAutoBackup()`
+  guarded by `settings.lastTagBackupDate` so it only writes once per
+  calendar day. Retention loop keeps the newest 7.
+- `frontend/src/components/UpdateBanner.jsx` — new. Renders inside the
+  app-shell alongside the Trial banner. Progress %, Download button,
+  Install & Restart button, dismiss X.
+- `frontend/src/App.js` — imports and renders UpdateBanner; kicks off
+  `maybeAutoBackup()` when destRoot first appears.
+- `frontend/src/lib/storage.js` — new default settings:
+  `checkForUpdates: false`, `autoBackupTagPacks: true`,
+  `lastTagBackupDate: ""`.
+- `frontend/src/components/SettingsModal.jsx` — two new sections:
+  Auto-Update (opt-in) + Auto-Backup Tag Packs (opt-out).
+- `frontend/src/components/CategoryManager.jsx` — new `backupEverything()`
+  handler + Backup All button in the footer, next to Bundle…
+- `ELECTRON-SETUP.md` — rewritten for v1.2.3 with the critical new step:
+  upload BOTH `.exe` and `latest.yml` to every GitHub Release.
+
+**Critical publishing note baked into the release-day workflow:**
+`electron-builder` outputs `latest.yml` alongside `Pro Photo Sorter
+Setup X.Y.Z.exe`. Attach BOTH to the GitHub Release. Without
+`latest.yml`, `electron-updater` can't discover the new version.
+
 ### Iteration 31 — v1.2.2 Sub-folder round-trip fix (2026-02-17)
 
 Kurt spent a morning building rich tag packs with sub-folders, then found:

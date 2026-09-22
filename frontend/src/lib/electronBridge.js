@@ -42,3 +42,32 @@ export function formatBytes(n) {
   }
   return `${v.toFixed(v >= 100 ? 0 : 1)} ${units[i]}`;
 }
+
+// v1.2.3 — Auto-update bridge. All no-ops outside Electron.
+export async function appVersion() {
+  if (!isElectron() || !window.electronAPI?.appVersion) return null;
+  try { return await window.electronAPI.appVersion(); } catch { return null; }
+}
+export async function checkForUpdates() {
+  if (!isElectron() || !window.electronAPI?.checkForUpdates) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.checkForUpdates(); } catch (e) { return { ok: false, error: e.message }; }
+}
+export async function downloadUpdate() {
+  if (!isElectron() || !window.electronAPI?.downloadUpdate) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.downloadUpdate(); } catch (e) { return { ok: false, error: e.message }; }
+}
+export async function installUpdate() {
+  if (!isElectron() || !window.electronAPI?.installUpdate) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.installUpdate(); } catch (e) { return { ok: false, error: e.message }; }
+}
+export function subscribeUpdateStatus(cb) {
+  if (!isElectron() || !window.electronAPI?.onUpdateStatus) return () => {};
+  return window.electronAPI.onUpdateStatus(cb);
+}
+export async function openExternal(url) {
+  if (isElectron() && window.electronAPI?.openExternal) {
+    return await window.electronAPI.openExternal(url);
+  }
+  window.open(url, "_blank", "noopener,noreferrer");
+  return true;
+}

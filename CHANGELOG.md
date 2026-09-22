@@ -2,6 +2,59 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.3 — 2026-02-17 · Auto-update + Auto-backup + Backup All button
+
+### Added
+- **Full auto-update from GitHub Releases.** Opt-in (Settings → Auto-Update).
+  When enabled, PPS checks `github.com/PirateAK/Pro-Photo-Sorter/releases/latest`
+  on launch. If a newer version is out, a banner slides in offering a
+  one-click Download → Install & Restart flow. The user stays in control:
+  no silent downloads, no silent installs. Update mechanism:
+  `electron-updater` in the main process, `pps:update-status` IPC channel
+  streams progress to the renderer.
+- **Daily tag-pack auto-backup.** Once per calendar day, whenever a
+  destination drive is connected, PPS silently writes a timestamped
+  `pps-tagpacks_YYYY-MM-DD.pps-taglist.txt` snapshot to
+  `<destination>/.pps-backups/`. Keeps the last 7 days on rolling
+  retention. Opt-out via Settings → Auto-Backup Tag Packs. Restore any
+  snapshot via Tag Manager → Import text list.
+- **Backup All button** in Tag Manager footer. One-click download of a
+  single `.zip` containing:
+  - Every pack as a v3 JSON file (`json/<pack>.pps-tagpack.json`)
+  - A plain-text snapshot of everything (`text/pps-tagpacks_YYYY-MM-DD.pps-taglist.txt`)
+  - A `bundle.json` manifest
+  Human-readable text and machine-readable JSON, both restorable.
+
+### Electron shell changes (v1.2.3 setup)
+- Added `electron-updater` as a runtime dependency.
+- `main.js` — wires `autoUpdater` events to renderer, exposes
+  `pps:check-for-updates`, `pps:download-update`, `pps:install-update`,
+  and `pps:open-external` IPC handlers.
+- `preload.js` — exposes `window.electronAPI.checkForUpdates`,
+  `.downloadUpdate`, `.installUpdate`, `.onUpdateStatus`, `.openExternal`,
+  `.appVersion`.
+- `package.json` — new `publish: [{ provider: "github",
+  owner: "PirateAK", repo: "Pro-Photo-Sorter" }]` block so
+  `electron-builder` writes a `latest.yml` alongside the `.exe`.
+
+### Under the hood
+- New `frontend/src/lib/backups.js` — daily snapshot writer with
+  rolling 7-day retention.
+- New `frontend/src/components/UpdateBanner.jsx` — top-of-app banner
+  parallel to the trial banner. Shows only when an update is pending.
+- Extended `frontend/src/lib/electronBridge.js` — thin wrappers around the
+  new IPC channels; each is a no-op in dev-server / plain browser.
+- New default settings: `checkForUpdates: false` (opt-in),
+  `autoBackupTagPacks: true` (opt-out), `lastTagBackupDate: ""` (bookkeeping).
+
+### Publishing v1.2.3 (one-time setup on Kurt's PC)
+After pulling + `pack-app.bat`, `electron-builder` produces both
+`Pro Photo Sorter Setup 1.2.3.exe` and `latest.yml` in
+`electron-shell\dist\`. **Upload BOTH** to the GitHub Release —
+`electron-updater` uses `latest.yml` to find the correct `.exe`. This
+step is critical: without `latest.yml` alongside the `.exe`, opted-in
+users won't see the update.
+
 ## v1.2.2 — 2026-02-17 · Sub-folder round-trip fix (Export & Import)
 
 ### Fixed
