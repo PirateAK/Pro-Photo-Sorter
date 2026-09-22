@@ -7,7 +7,7 @@ import { Pencil, Check, X } from "lucide-react";
  * - Enter saves, Escape cancels.
  * - "overridden" is true when the displayed value came from the user (not the file EXIF).
  */
-export default function ExifChip({ icon: Icon, label, value, placeholder, onSave, testid, overridden, editable = true }) {
+export default function ExifChip({ icon: Icon, label, value, placeholder, onSave, testid, overridden, usingDefault = false, editable = true }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(value || "");
   const inputRef = useRef(null);
@@ -78,16 +78,19 @@ export default function ExifChip({ icon: Icon, label, value, placeholder, onSave
     <div
       className={`group flex items-center gap-1.5 pane rounded px-2 py-1 text-xs ${
         editable ? "cursor-pointer hover:border-primary-earth/60" : ""
-      } ${overridden ? "border-primary-earth/60" : ""}`}
+      } ${overridden ? "border-primary-earth/60" : ""} ${usingDefault ? "border-dim/40" : ""}`}
       onClick={() => editable && setEditing(true)}
       data-testid={testid}
-      title={truncated ? `${label}: ${displayed}${overridden ? "  (edited)" : ""}` : undefined}
+      title={truncated ? `${label}: ${displayed}${overridden ? "  (edited)" : usingDefault ? "  (using default from Settings)" : ""}` : (usingDefault ? `${label}: ${displayed} (using default from Settings)` : undefined)}
     >
-      <Icon size={12} className={overridden ? "text-success-earth" : "text-primary-earth"} />
+      <Icon size={12} className={overridden ? "text-success-earth" : usingDefault ? "text-dim" : "text-primary-earth"} />
       <span className="text-dim">{label}:</span>
-      <span className={`font-mono truncate max-w-[16ch] ${overridden ? "text-success-earth" : ""} ${isPlaceholder ? "italic text-dim/70" : ""}`}>
+      <span className={`font-mono truncate max-w-[16ch] ${overridden ? "text-success-earth" : ""} ${isPlaceholder ? "italic text-dim/70" : ""} ${usingDefault && !overridden ? "text-dim/90" : ""}`}>
         {shown}
       </span>
+      {usingDefault && !overridden && (
+        <span className="text-[9px] uppercase tracking-wider text-dim/70 font-heading shrink-0" data-testid={`${testid}-default-badge`}>default</span>
+      )}
       {editable && (
         <Pencil size={10} className="text-dim opacity-0 group-hover:opacity-100 shrink-0" />
       )}

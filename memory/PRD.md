@@ -84,6 +84,38 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.8 — 2026-02-16 · Visual Sub-Folder Editor
+- ✅ **SUB-FOLDERS section** in Tag Manager (`SubfolderSection` component)
+  below the Filename tags list. Full CRUD: add (Enter or button), rename
+  (double-click name or pencil), reorder (up/down arrows), delete (with
+  confirm if it has tags). Chevron expands each row to reveal a mini
+  filename-tags editor (Enter to add, hover-x to remove). Empty-state hint
+  guides new users. New packs seeded with empty `subfolders: []`. Files
+  touched: `frontend/src/components/CategoryManager.jsx` (CRUD handlers
+  + `SubfolderSection` component, ~250 lines).
+- Version bumped to 1.1.8.
+
+### v1.1.7 — 2026-02-16 · Default Location + Date-Tag Dropdowns + sub-folder migration
+- ✅ **Default EXIF Location** in Settings (`settings.defaultLocation`). Fallback
+  chain on the Location chip: per-photo override → Settings default → EXIF GPS.
+  Chip shows a subtle `default` badge (data-testid `exif-loc-default-badge`)
+  when the value comes from Settings, distinct from the green "override"
+  style for per-photo values. Placeholder in the edit input hints at the
+  default. Files touched: `frontend/src/lib/storage.js` (new setting),
+  `frontend/src/components/ExifChip.jsx` (usingDefault prop),
+  `frontend/src/App.js` (fallback chain, don't-save-if-equals-default),
+  `frontend/src/components/SettingsModal.jsx` (new Default EXIF Location section).
+- ✅ **Date-Tag Dropdowns** (`DateTagDropdowns.jsx`) beside Help button.
+  Month/Day/Year dropdowns pre-fill from EXIF on photo load. Apply pushes
+  non-empty parts as FILENAME tags via `applyIcon(..., "tags")` — Calendar
+  icon, one per part. data-testids: `date-tag-dropdowns`, `date-tag-month`,
+  `date-tag-day`, `date-tag-year`, `date-tag-apply`.
+- ✅ **Auto-migration for existing Sports pack**: `loadState` now seeds the
+  demo Baseball/Basketball/Football sub-folders into any Sports pack that
+  has zero sub-folders. User's own sub-folders never touched. Fixes the
+  "I upgraded but Sports has no sub-folders" issue.
+- Version bumped to 1.1.7.
+
 ### v1.1.6 — 2026-02-16 · Sub-folders (Inherit model) + A-Z pack sort
 - ✅ **Nested Tag Packs**: pack shape gains optional `subfolders: [{ id, name,
   iconName, filenameItems }]`. When the picked pack has sub-folders, a new
