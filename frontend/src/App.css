@@ -1,11 +1,19 @@
 /* App-level layout classes */
+.app-shell {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+}
 .app-grid {
     display: grid;
     grid-template-columns: 280px 1fr 280px;
     /* Filmstrip row height driven by --filmstrip-h (set from settings.thumbSize) */
     grid-template-rows: 1fr var(--filmstrip-h, 200px);
-    height: 100vh;
-    width: 100vw;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
     overflow: hidden;
 }
 

@@ -63,6 +63,8 @@ import SearchModal from "@/components/SearchModal";
 import CullMode from "@/components/CullMode";
 import DrivesPanel from "@/components/DrivesPanel";
 import HelpModal from "@/components/HelpModal";
+import TrialBanner from "@/components/TrialBanner";
+import { isTrialMode, applyTrialSuffix, TRIAL_WATERMARK_TEXT } from "@/lib/license";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 import { isElectron, totalFreeBytes, formatBytes } from "@/lib/electronBridge";
 
@@ -225,6 +227,7 @@ export default function App() {
   // Category manager modal
   const [showCatMgr, setShowCatMgr] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  const [helpInitialTab, setHelpInitialTab] = useState(null); // "license" | null
   const [showSettings, setShowSettings] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
   const [showRename, setShowRename] = useState(false);
@@ -1014,10 +1017,18 @@ export default function App() {
       const anchorPath = destSelected?.path || destRootName;
       try {
         const targetDir = await getOrCreateSubdir(anchor, effectiveFolderParts);
-        const wmEnabled = isWatermarkOnFor(imgPath);
+        // Trial mode: force watermark ON and append _TRIAL to the filename.
+        // Trial watermark text overrides the user's watermark text so trial
+        // output is unmistakably a trial output.
+        const trial = isTrialMode();
+        const wmEnabled = isWatermarkOnFor(imgPath) || trial;
+        const wmText = trial
+          ? TRIAL_WATERMARK_TEXT
+          : (settings.watermarkText || "").trim();
+        const outputName = trial ? applyTrialSuffix(fileName) : fileName;
         let writtenName;
-        if (wmEnabled && canWatermark(img.name)) {
-          const blob = await writeWithWatermark(img.handle, settings.watermarkText.trim(), {
+        if (wmEnabled && canWatermark(img.name) && wmText) {
+          const blob = await writeWithWatermark(img.handle, wmText, {
             fontSize: settings.watermarkFontSize || "medium",
             opacity: settings.watermarkOpacity ?? 0.9,
             xPct: settings.watermarkXPct ?? 0.98,
@@ -1025,9 +1036,9 @@ export default function App() {
             color: settings.watermarkColor || "white",
             fontFamily: settings.watermarkFontFamily || "sans",
           });
-          writtenName = await writeBlobTo(blob, targetDir, fileName);
+          writtenName = await writeBlobTo(blob, targetDir, outputName);
         } else {
-          writtenName = await copyFileTo(img.handle, targetDir, fileName);
+          writtenName = await copyFileTo(img.handle, targetDir, outputName);
         }
         stored++;
         const targetPath = [anchorPath, ...effectiveFolderParts].filter(Boolean).join("/");
@@ -1164,20 +1175,26 @@ export default function App() {
       // and append the print-size suffix so multiple prints of the same
       // photo don't collide.
       const base = templatedName.replace(/\.[^.]+$/, "");
-      const fileName = `${base}_${printKey}.jpg`;
+      const trial = isTrialMode();
+      const fileName = trial
+        ? applyTrialSuffix(`${base}_${printKey}.jpg`)
+        : `${base}_${printKey}.jpg`;
 
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
       const targetDir = await getOrCreateSubdir(anchor, folderParts);
 
-      const wmEnabled = isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`);
+      const wmEnabled = isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`) || trial;
+      const wmText = trial
+        ? TRIAL_WATERMARK_TEXT
+        : (settings.watermarkText || "").trim();
       const blob = await cropAndResize({
         sourceHandle: currentImage.handle,
         printKey,
         centerX,
         centerY,
-        watermarkOpts: wmEnabled ? {
-          text: settings.watermarkText.trim(),
+        watermarkOpts: wmEnabled && wmText ? {
+          text: wmText,
           fontSize: settings.watermarkFontSize || "medium",
           opacity: settings.watermarkOpacity ?? 0.9,
           xPct: settings.watermarkXPct ?? 0.98,
@@ -1551,7 +1568,11 @@ export default function App() {
   }
 
   return (
-    <div className="app-grid text-app" data-testid="app-root">
+    <div className="app-shell text-app" data-testid="app-shell">
+      <TrialBanner
+        onActivateClick={() => { setHelpInitialTab("license"); setShowHelp(true); }}
+      />
+      <div className="app-grid" data-testid="app-root">
       <Toaster theme={settings.theme || "dark"} position="bottom-right" richColors closeButton />
 
       {/* LEFT — Source drive tree */}
@@ -2612,7 +2633,12 @@ export default function App() {
 
       <DrivesPanel open={showDrives} onClose={() => setShowDrives(false)} />
 
-      <HelpModal open={showHelp} onClose={() => setShowHelp(false)} />
+      <HelpModal
+        open={showHelp}
+        onClose={() => { setShowHelp(false); setHelpInitialTab(null); }}
+        initialTab={helpInitialTab}
+      />
+      </div>
     </div>
   );
 }
