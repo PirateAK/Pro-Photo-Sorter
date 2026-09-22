@@ -28,6 +28,7 @@ import FileTree from "@/components/FileTree";
 import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
+import SubfolderBar from "@/components/SubfolderBar";
 import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
@@ -115,11 +116,19 @@ export default function App() {
   const setFoldersCatId = useCallback((id) => {
     setFoldersCatIdRaw(id);
     setSettings({ ...settings, foldersCatId: id });
+    // Reset subfolder selection when the parent pack changes (v1.1.6)
+    setActiveSubfolderId(null);
   }, [settings, setSettings]);
   const setTagsCatId = useCallback((id) => {
     setTagsCatIdRaw(id);
     setSettings({ ...settings, tagsCatId: id });
   }, [settings, setSettings]);
+
+  // v1.1.6 — Sub-folder navigation. When a pack has subfolders defined, a
+  // middle SUBFOLDER bar shows chips; clicking one sets this state, prepends
+  // the subfolder name to the destination folder path in storeCurrent, and
+  // swaps the Filename bar to show that subfolder's filenameItems.
+  const [activeSubfolderId, setActiveSubfolderId] = useState(null);
 
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
