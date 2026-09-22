@@ -649,10 +649,8 @@ in Settings.watermarkText can't accidentally launder trial photos.
      `Folders → Sub-Folders → Filename` (currently
      `Folders → Filename → Sub-Folders`). Sub-folders belong next to
      Folders since they inherit folder-tag context.
-  2. **Resizable Tag Manager window** — add a resize handle next to the ×
-     close button (bottom-right corner too, standard modal resize). All
-     inner sections must reflow gracefully on resize (grid columns, chip
-     wrapping, list heights). Persist last size in settings.
+  2. ~~**Resizable Tag Manager window**~~ ✅ Shipped v1.2.8 (2026-02-17).
+     Drag corner handle, size persists per-user.
   3. **Spring-loaded sub-folder open** — when dragging a chip over a
      collapsed sub-folder header for ~500 ms, auto-expand the panel so
      the user can drop into it without a separate click. Follows

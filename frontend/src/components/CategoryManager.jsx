@@ -46,6 +46,48 @@ export { IconPreview };
 
 export default function CategoryManager({ open, onClose, categories, onChange }) {
   const [activeCat, setActiveCat] = useState(categories[0]?.id || null);
+  // v1.2.8 — resizable modal. Size persisted to localStorage; defaults tuned
+  // to be close to the old fixed size (max-w-4xl / h-80vh).
+  const SIZE_KEY = "pps.tagmgr.size.v1";
+  const MIN_W = 640;
+  const MIN_H = 400;
+  const readStoredSize = () => {
+    try {
+      const raw = localStorage.getItem(SIZE_KEY);
+      if (!raw) return null;
+      const p = JSON.parse(raw);
+      if (p && Number.isFinite(p.w) && Number.isFinite(p.h)) return p;
+    } catch { /* ignore */ }
+    return null;
+  };
+  const [size, setSize] = useState(() => {
+    const stored = readStoredSize();
+    if (stored) return stored;
+    // Default: same as old max-w-4xl (~896px) x 80vh, clamped to viewport.
+    const w = typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 896) : 896;
+    const h = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.8) : 720;
+    return { w, h };
+  });
+  const resizing = useRef(null);
+  const onResizeStart = (e) => {
+    resizing.current = { startX: e.clientX, startY: e.clientY, startW: size.w, startH: size.h };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    e.preventDefault();
+  };
+  const onResizeMove = (e) => {
+    if (!resizing.current) return;
+    const maxW = window.innerWidth - 40;
+    const maxH = window.innerHeight - 40;
+    const w = Math.max(MIN_W, Math.min(maxW, resizing.current.startW + (e.clientX - resizing.current.startX)));
+    const h = Math.max(MIN_H, Math.min(maxH, resizing.current.startH + (e.clientY - resizing.current.startY)));
+    setSize({ w, h });
+  };
+  const onResizeEnd = (e) => {
+    if (!resizing.current) return;
+    resizing.current = null;
+    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
+    try { localStorage.setItem(SIZE_KEY, JSON.stringify(size)); } catch { /* ignore */ }
+  };
   const [newCatName, setNewCatName] = useState("");
   // Two independent add-form drafts — one per list
   const [drafts, setDrafts] = useState({
@@ -609,7 +651,10 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-6" data-testid="category-manager">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative pane rounded-lg w-full max-w-4xl h-[80vh] flex flex-col shadow-2xl">
+      <div
+        className="relative pane rounded-lg flex flex-col shadow-2xl"
+        style={{ width: `${size.w}px`, height: `${size.h}px`, maxWidth: "calc(100vw - 40px)", maxHeight: "calc(100vh - 40px)" }}
+      >
         <div className="flex items-center justify-between px-5 py-3 border-b border-app">
           <div className="flex items-center gap-2">
             <Palette size={18} className="text-primary-earth" />
@@ -868,6 +913,22 @@ export default function CategoryManager({ open, onClose, categories, onChange })
           >
             Done
           </button>
+        </div>
+
+        {/* v1.2.8 — resize handle (bottom-right corner) */}
+        <div
+          onPointerDown={onResizeStart}
+          onPointerMove={onResizeMove}
+          onPointerUp={onResizeEnd}
+          onPointerCancel={onResizeEnd}
+          className="absolute bottom-0 right-0 w-4 h-4 cursor-nwse-resize opacity-70 hover:opacity-100 flex items-end justify-end p-0.5 text-dim hover:text-primary-earth"
+          data-testid="category-manager-resize"
+          title="Drag to resize"
+          aria-label="Resize Tag Manager"
+        >
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor" aria-hidden="true">
+            <path d="M0 10 L10 10 L10 0 Z M0 6 L6 0 M3 10 L10 3 M7 10 L10 7" stroke="currentColor" strokeWidth="1" fill="currentColor" />
+          </svg>
         </div>
 
         {/* Bundle picker overlay — nested inside the Tag Manager modal */}
