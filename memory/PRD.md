@@ -643,6 +643,15 @@ in Settings.watermarkText can't accidentally launder trial photos.
   recognition launches, this same "People" pack auto-populates with
   detected faces — no lost user data, smooth upgrade path.** Ship target:
   v1.2.6 or v1.2.7.
+- **🎨 P2 · Consistent "active-mode" visual language across all toggles**
+  *(Kurt, 2026-02-17)* — apply the earth-tone-when-active fill we now
+  use on Batch All/None + applied chips to every stateful button in the
+  app. First target: **star-rating filter buttons** in the filmstrip
+  header — currently show a checkmark but keep the neutral fill. Also
+  audit: Watermark toggle, filter buttons, sort toggles, cull-mode
+  buttons — anything that has an "on/off" or "N-of-many" mode. Goal:
+  one consistent visual language so users immediately know which
+  toggles are active.
 - **🧰 P2 · Tag Manager housekeeping batch** *(Kurt, 2026-02-17)* — several
   quality-of-life fixes to run together when we next touch the Tag Manager:
   1. **Reorder sections** so the natural path order is reflected:
