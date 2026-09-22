@@ -2,6 +2,31 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.7 — 2026-02-16 · Default Location · Date-Tag Dropdowns · Sub-folder migration
+
+### Added
+- **Default EXIF Location** field in Settings. Type once (e.g. "Kenai,
+  Alaska") and every photo shows it in the on-viewer Location chip. Chip
+  shows a subtle `default` badge when using the default, distinct from the
+  green "override" style you get when you manually type a per-photo value.
+  Fallback chain is:
+  1. Per-photo override (green outline, `edited` tooltip)
+  2. Settings default (grey outline, `default` badge)
+  3. EXIF GPS coords (if any)
+- **Quick Date-Tag Dropdowns** beside the Help button in the top toolbar.
+  Three compact dropdowns (Month / Day / Year) + an Apply button. Pre-fills
+  from the current photo's EXIF date on load, so you only tweak. Apply
+  pushes any non-empty parts as FILENAME tags onto the current image
+  (e.g. `Aug · 14 · 2024` becomes three tag chips).
+
+### Fixed
+- **Existing users' Sports pack** from v1.1.4/v1.1.5 didn't inherit the new
+  demo sub-folders (Baseball / Basketball / Football) because migration
+  only ran on the wipe-and-reseed path. New auto-migration in `loadState`
+  now seeds them into any Sports pack that has zero sub-folders, so
+  upgrading users see the feature immediately without deleting anything.
+  Sub-folders you've added yourself are never overwritten.
+
 ## v1.1.6 — 2026-02-16 · Nested Tag Packs (sub-folders), A-Z pack sort
 
 ### Added

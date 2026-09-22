@@ -29,6 +29,7 @@ import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
 import SubfolderBar from "@/components/SubfolderBar";
+import DateTagDropdowns from "@/components/DateTagDropdowns";
 import IconOverlay from "@/components/IconOverlay";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
@@ -1637,22 +1638,31 @@ export default function App() {
               testid="exif-loc"
               value={(() => {
                 const o = currentImagePath ? exifOverrides[currentImagePath]?.location : null;
-                return o || exifLoc || "";
+                // v1.1.7 fallback chain: per-photo override → Settings default → EXIF GPS
+                return o || settings.defaultLocation || exifLoc || "";
               })()}
               overridden={!!(currentImagePath && exifOverrides[currentImagePath]?.location)}
+              usingDefault={
+                !!(!currentImagePath || !exifOverrides[currentImagePath]?.location) &&
+                !!settings.defaultLocation
+              }
               editable={!!currentImage}
               onSave={(val) => {
                 if (!currentImagePath) return;
                 setExifOverrides((cur) => {
                   const next = { ...cur };
                   const entry = { ...(next[currentImagePath] || {}) };
-                  if (val) entry.location = val; else delete entry.location;
+                  // Don't save an override that matches the current default —
+                  // that would just be noise; the fallback chain will re-show
+                  // the same value automatically.
+                  if (val && val !== settings.defaultLocation) entry.location = val;
+                  else delete entry.location;
                   if (Object.keys(entry).length === 0) delete next[currentImagePath];
                   else next[currentImagePath] = entry;
                   return next;
                 });
               }}
-              placeholder="e.g. Kenai, Alaska"
+              placeholder={settings.defaultLocation ? `Default: ${settings.defaultLocation}` : "e.g. Kenai, Alaska"}
             />
             <ExifChip
               icon={Aperture}
@@ -1952,6 +1962,20 @@ export default function App() {
             >
               <HelpCircle size={12} /> Help
             </button>
+            <DateTagDropdowns
+              exifDate={exif?.DateTimeOriginal || exif?.CreateDate || null}
+              disabled={!currentImage}
+              onApply={(labels) => {
+                labels.forEach((l) => applyIcon({
+                  uid: uid("ovl"),
+                  id: uid("date-tag"),
+                  label: l,
+                  iconType: "lucide",
+                  iconName: "Calendar",
+                }, "tags"));
+                toast.success(`Added ${labels.length} date tag${labels.length > 1 ? "s" : ""}`, { description: labels.join(" · ") });
+              }}
+            />
           </div>
 
           {/* Row 2: icon palette (folders) + Row 3: icon palette (filename) + actions */}

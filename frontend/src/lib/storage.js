@@ -28,6 +28,10 @@ const DEFAULT_SETTINGS = {
   uiScale: 1.10,
   // Filmstrip thumbnail height in px (v1.1.3). Presets: 96 S · 128 M · 176 L · 224 XL.
   thumbSize: 128,
+  // Default location that fills the on-viewer EXIF Location chip whenever a
+  // photo has no per-image location override (v1.1.7). Empty string means
+  // "no default — show whatever EXIF GPS translates to (usually nothing)".
+  defaultLocation: "",
 };
 
 const DEFAULT_STATE = {
@@ -241,12 +245,21 @@ export function loadState() {
       if (id === "cat-default-1" && typeof c.name === "string" && c.name.toLowerCase().startsWith("wildlife")) {
         id = "cat-starter-wildlife";
       }
+      let subfolders = Array.isArray(c.subfolders) ? c.subfolders : [];
+      // v1.1.6 migration: an existing user's Sports pack (from v1.1.4/1.1.5)
+      // won't have the demo Baseball/Basketball/Football sub-folders. Auto-seed
+      // them ONLY if the current Sports pack still has zero subfolders, so we
+      // never clobber sub-folders the user has already customized.
+      if (id === "cat-starter-sports" && subfolders.length === 0) {
+        const seed = DEFAULT_STATE.categories.find((p) => p.id === "cat-starter-sports");
+        if (seed?.subfolders?.length) subfolders = seed.subfolders;
+      }
       return {
         ...c,
         id,
         folderItems: Array.isArray(c.folderItems) ? c.folderItems : [],
         filenameItems: Array.isArray(c.filenameItems) ? c.filenameItems : [],
-        subfolders: Array.isArray(c.subfolders) ? c.subfolders : [],
+        subfolders,
       };
     });
     return {

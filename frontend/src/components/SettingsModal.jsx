@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type, PackagePlus } from "lucide-react";
+import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type, PackagePlus, MapPin } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
 import { paintWatermark, WATERMARK_FONTS } from "../lib/watermark";
@@ -180,6 +180,32 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                   );
                 })}
               </div>
+            </div>
+          </section>
+
+          {/* Default EXIF Location (v1.1.7) */}
+          <section>
+            <div className="flex items-start justify-between gap-4 flex-wrap">
+              <div className="flex-1 min-w-[240px]">
+                <h3 className="font-heading font-semibold text-sm mb-1 flex items-center gap-2">
+                  <MapPin size={14} className="text-primary-earth" /> Default EXIF Location
+                </h3>
+                <p className="text-xs text-dim">
+                  Set once — every photo you open will show this location in
+                  the on-viewer Location chip (unless you've typed a different
+                  one for that specific photo). Handy for a full shoot in a
+                  single place. Leave blank to disable the default.
+                </p>
+              </div>
+              <input
+                type="text"
+                value={local.defaultLocation || ""}
+                onChange={(e) => setLocal({ ...local, defaultLocation: e.target.value })}
+                placeholder="e.g. Kenai, Alaska"
+                className="shrink-0 w-64 bg-app border border-app rounded px-2 py-1.5 text-xs font-mono focus-ring"
+                data-testid="settings-default-location"
+                spellCheck={false}
+              />
             </div>
           </section>
 
