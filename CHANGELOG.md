@@ -2,6 +2,17 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.7 — 2026-02-17 · Tag Manager sticky-header unification
+
+### Fixed
+- **Only the pack title bar ("Wedding" / whichever pack you're editing)
+  stays pinned at the top now.** The FOLDER PATH TAGS and FILENAME TAGS
+  section headers were sticky in v1.2.6 (with the opacity fix) but Kurt
+  pointed out that the Sub-Folders block header scrolls inline with
+  content — the other two blocks should match. All three block headers
+  now behave consistently: they scroll with their content, and only the
+  pack title bar at the top of the panel stays pinned.
+
 ## v1.2.6 — 2026-02-17 · Tag Manager sticky-header + stale copy fix
 
 ### Fixed

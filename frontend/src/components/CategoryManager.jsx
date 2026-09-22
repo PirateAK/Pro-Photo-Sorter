@@ -751,7 +751,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
           <div className="flex-1 flex flex-col overflow-hidden">
             {current ? (
               <>
-                <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-2">
+                <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-2 bg-surface sticky top-0 z-20 shadow-sm">
                   <div className="min-w-0">
                     <h3 className="font-heading font-semibold truncate">{current.name}</h3>
                     <p className="text-xs text-dim mt-0.5">
@@ -1006,7 +1006,7 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
         } catch { /* ignore */ }
       }}
     >
-      <div className="px-4 py-2 flex items-center gap-2 bg-surface sticky top-0 z-10 border-b border-app/60 shadow-sm">
+      <div className="px-4 py-2 flex items-center gap-2 bg-surface border-b border-app/60">
         <ListIcon size={13} className="text-primary-earth" />
         <span className="text-[10px] uppercase tracking-widest font-heading text-app">{listLabel}</span>
         <span className="text-[10px] text-dim font-mono">{items.length}</span>
