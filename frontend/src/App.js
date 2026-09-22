@@ -31,11 +31,12 @@ import IconPalette from "@/components/IconPalette";
 import SubfolderBar from "@/components/SubfolderBar";
 import DateTagDropdowns from "@/components/DateTagDropdowns";
 import IconOverlay from "@/components/IconOverlay";
+import ZoomablePreview from "@/components/ZoomablePreview";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle, ZoomIn, ZoomOut, Maximize } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -199,6 +200,10 @@ export default function App() {
   const [batchMode, setBatchMode] = useState(false);
   const [batchSelected, setBatchSelected] = useState(new Set());
   const [showBatchMenu, setShowBatchMenu] = useState(false);
+
+  // Zoom+pan ref for the main preview (v1.1.10) — used by keyboard shortcuts
+  // and the small toolbar zoom buttons.
+  const zoomRef = useRef(null);
 
   // Repeat Tags (v1.1.5) — snapshot of the last-stored photo's tag overlay so
   // the user can one-click re-apply it to the current photo. Great for shoots
@@ -1459,6 +1464,12 @@ export default function App() {
       else if (isMod && (e.key === "=" || e.key === "+")) { e.preventDefault(); nudgeUiScale(+1); }
       else if (isMod && e.key === "-") { e.preventDefault(); nudgeUiScale(-1); }
       else if (isMod && e.key === "0") { e.preventDefault(); resetUiScale(); }
+      // v1.1.10 — main-viewer zoom shortcuts (no modifier). Guarded above
+      // against typing in inputs so they don't fight the user. `0` isn't
+      // bound here so it stays available for "clear star rating"; use the
+      // on-screen Fit button (or click zoom-out enough times) to reset.
+      else if (!isMod && (e.key === "=" || e.key === "+")) { e.preventDefault(); zoomRef.current?.zoomIn(); }
+      else if (!isMod && e.key === "-") { e.preventDefault(); zoomRef.current?.zoomOut(); }
       else if (e.key === "r" || e.key === "R") { e.preventDefault(); repeatLastTags(); }
       else if (e.key >= "0" && e.key <= "5") { e.preventDefault(); setCurrentStars(parseInt(e.key, 10)); }
     };
@@ -2139,11 +2150,11 @@ export default function App() {
               </>
             ) : (
             <>
-              <img
+              <ZoomablePreview
+                ref={zoomRef}
                 src={previewUrl}
                 alt={currentImage.name}
-                className="max-h-full max-w-full object-contain rounded shadow-2xl"
-                draggable={false}
+                resetKey={currentImagePath}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   if (!currentImage) return;
@@ -2201,6 +2212,33 @@ export default function App() {
                 <span data-testid="current-image-name">{currentImage.name}</span>
                 <span className="text-dim">·</span>
                 <span className="text-dim">{selectedIdx + 1} / {images.length}</span>
+              </div>
+              {/* Zoom controls (bottom-right of viewer) — v1.1.10 */}
+              <div className="absolute bottom-3 right-3 icon-overlay rounded-lg px-1 py-1 flex items-center gap-0.5 z-30" data-testid="zoom-controls">
+                <button
+                  onClick={() => zoomRef.current?.zoomOut()}
+                  className="w-7 h-7 rounded flex items-center justify-center hover:bg-surface-hover text-app hover:text-primary-earth"
+                  data-testid="zoom-out"
+                  title="Zoom out (-)"
+                >
+                  <ZoomOut size={14} />
+                </button>
+                <button
+                  onClick={() => zoomRef.current?.fit()}
+                  className="w-7 h-7 rounded flex items-center justify-center hover:bg-surface-hover text-app hover:text-primary-earth"
+                  data-testid="zoom-fit"
+                  title="Fit to window"
+                >
+                  <Maximize size={14} />
+                </button>
+                <button
+                  onClick={() => zoomRef.current?.zoomIn()}
+                  className="w-7 h-7 rounded flex items-center justify-center hover:bg-surface-hover text-app hover:text-primary-earth"
+                  data-testid="zoom-in"
+                  title="Zoom in (=/+)"
+                >
+                  <ZoomIn size={14} />
+                </button>
               </div>
               {/* Star rating overlay (top-right) */}
               <div className="absolute top-3 right-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-2 z-30" data-testid="rating-overlay">

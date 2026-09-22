@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { IconPreview } from "./CategoryManager";
-import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine, ArrowDownAZ } from "lucide-react";
+import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine, ArrowDownAZ, Copy } from "lucide-react";
 import { uid } from "../lib/storage";
 import { getItems, getListKey } from "../lib/tags";
 import { toast } from "sonner";
@@ -126,6 +126,30 @@ export default function IconPalette({
         },
       },
     });
+  };
+
+  // v1.1.11 — Duplicate a chip. New chip inherits same icon + label
+  // with " (copy)" suffix, appended right after the source. Immediately
+  // opens the rename popover so the user can tweak the label.
+  const duplicateItem = (item) => {
+    if (!active || !onCategoriesChange) return;
+    const idx = items.findIndex((i) => i.id === item.id);
+    const copy = {
+      ...item,
+      id: uid("it"),
+      label: `${item.label} (copy)`.slice(0, 60),
+    };
+    const next = categories.map((c) => {
+      if (c.id !== active.id) return c;
+      const arr = [...(c[listKey] || [])];
+      arr.splice(Math.max(0, idx + 1), 0, copy);
+      return { ...c, [listKey]: arr };
+    });
+    onCategoriesChange(next);
+    setMenu(null);
+    // Follow up with an inline rename so the user can immediately tweak
+    setPopover({ x: menu?.x ?? 200, y: menu?.y ?? 200, mode: "edit", targetItem: copy, initialLabel: copy.label });
+    toast.success(`Duplicated "${item.label}"`, { description: "Tweak the label to keep the two chips distinct." });
   };
 
   const savePopover = (label) => {
@@ -332,6 +356,7 @@ export default function IconPalette({
           roleLabel={roleLabel}
           role={role}
           onRename={() => startRename(menu.targetItem)}
+          onDuplicate={() => duplicateItem(menu.targetItem)}
           onAddBefore={() => {
             const idx = items.findIndex((i) => i.id === menu.targetItem.id);
             startAdd(Math.max(0, idx));
@@ -363,7 +388,7 @@ export default function IconPalette({
   );
 }
 
-function ContextMenu({ x, y, mode, item, categoryName, roleLabel, role, onRename, onAddBefore, onAddAfter, onAddEnd, onDelete, onManage }) {
+function ContextMenu({ x, y, mode, item, categoryName, roleLabel, role, onRename, onDuplicate, onAddBefore, onAddAfter, onAddEnd, onDelete, onManage }) {
   // Clamp to viewport
   const style = {
     position: "fixed",
@@ -392,6 +417,7 @@ function ContextMenu({ x, y, mode, item, categoryName, roleLabel, role, onRename
             {item.label} · {roleLabel}
           </div>
           <Row icon={Pencil} label="Rename…" onClick={onRename} />
+          <Row icon={Copy} label="Duplicate chip" onClick={onDuplicate} />
           <Row icon={ArrowLeftFromLine} label="Add tag before" onClick={onAddBefore} />
           <Row icon={ArrowRightFromLine} label="Add tag after" onClick={onAddAfter} />
           <div className="h-px bg-app/60 my-1" />
