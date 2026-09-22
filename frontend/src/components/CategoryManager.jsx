@@ -1018,7 +1018,7 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
                   );
                   e.dataTransfer.effectAllowed = "move";
                 }}
-                title={`Drag to the ${listKey === "folderItems" ? "Filename" : "Folder"} section to reassign`}
+                title={`${it.label} — drag to the ${listKey === "folderItems" ? "Filename" : "Folder"} section to reassign`}
                 data-testid={`${listKey}-item-${it.id}`}
               >
                 <div className="w-9 h-9 rounded bg-app border border-app flex items-center justify-center text-primary-earth shrink-0">
@@ -1215,11 +1215,12 @@ function SubfolderSection({
                       ) : items.map((it) => (
                         <div
                           key={it.id}
-                          className="group flex items-center gap-1 px-2 py-0.5 rounded bg-app border border-app text-xs"
+                          className="group flex items-center gap-1 px-2 py-0.5 rounded bg-app border border-app text-xs max-w-[240px]"
                           data-testid={`subfolder-item-${sf.id}-${it.id}`}
+                          title={it.label}
                         >
                           <TagIcon size={10} className="text-primary-earth shrink-0" />
-                          <span className="font-mono">{it.label}</span>
+                          <span className="font-mono truncate">{it.label}</span>
                           <button
                             onClick={() => onRemoveItem(sf.id, it.id)}
                             className="w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
