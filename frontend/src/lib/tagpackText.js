@@ -25,7 +25,7 @@
 // are ignored. Missing sections (e.g. no folder tags at all) are allowed.
 // Old files (no `##` headers) parse identically to v1.1.5 behavior.
 
-import { uid } from "./storage";
+import { uid } from "./storage.js";
 
 const isBlank = (l) => l.trim() === "";
 const isComment = (l) => /^\s*\/\//.test(l);

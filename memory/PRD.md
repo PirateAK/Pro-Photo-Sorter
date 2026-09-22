@@ -471,6 +471,33 @@ Files touched:
 
 **Final version bump: `1.1.0-dev` → `1.1.0`.** Kurt promoted, built the NSIS installer, uninstalled v1.0.5, installed `Pro Photo Sorter Setup 1.1.0.exe` on his PC, verified everything, tagged `v1.1.0` in git, pushed the tag, and published a GitHub Release with the installer attached. v1.0.5 release kept live for history.
 
+### Iteration 31 — v1.2.2 Sub-folder round-trip fix (2026-02-17)
+
+Kurt spent a morning building rich tag packs with sub-folders, then found:
+1. "Export pack" (JSON) silently omitted every sub-folder and its filename tags
+2. "Import text list" claimed success but discarded parsed sub-folders
+
+Good news: his "Export as text" DID include sub-folders (parser+serializer
+already worked), so nothing was lost. The bug was in
+`CategoryManager.importFromTextFile` — it copied `folderItems` and
+`filenameItems` from the parsed pack but ignored `subfolders`.
+
+Three fixes in this release:
+1. `CategoryManager.serializePack()` — includes `subfolders` array
+   (formatVersion bumped 2 → 3).
+2. `CategoryManager.importFromFile()` — reads `subfolders` from v3 files;
+   still parses v2 (folder+filename only) and legacy v1 (single `tags`).
+3. `CategoryManager.importFromTextFile()` — passes `p.subfolders` through
+   to the new category. This is the one that unblocks Kurt's restore.
+
+New regression at `frontend/tests/tagpackText.roundtrip.test.mjs`
+(20 cases, all passing) locks the round-trip contract.
+
+Files touched:
+- `frontend/src/components/CategoryManager.jsx`
+- `frontend/src/lib/tagpackText.js` (import path fix so tests run)
+- `frontend/src/buildInfo.json`, `frontend/package.json` (1.2.1 → 1.2.2)
+
 ### Iteration 30 — v1.2.1 Folder-path fix + Applied-chip highlight + Tag Manager drag-swap (2026-02-17)
 
 Kurt reported that when building tag lists during real use, the folder

@@ -2,6 +2,35 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.2 — 2026-02-17 · Sub-folder round-trip fix (Export & Import)
+
+### Fixed
+- **JSON pack export now includes sub-folders.** Previously the "Export
+  pack" button wrote `folderTags` + `filenameTags` only, silently dropping
+  every sub-folder and every filename tag inside them. Pack files now
+  carry a `subfolders: [{ name, iconType, iconName, iconData, filenameTags:[…] }]`
+  array. File-format version bumped to `formatVersion: 3`.
+- **JSON pack import now reads sub-folders.** The importer accepts the new
+  v3 field and rebuilds each sub-folder with fresh ids. v2 files (folder +
+  filename only) and legacy v1 files (single `tags` list) still import
+  cleanly — no breaking changes.
+- **Text list import now imports sub-folders.** The parser was already
+  correctly extracting `##` sub-folder blocks; the Tag Manager's
+  `importFromTextFile` handler was dropping them on the floor when copying
+  the parsed pack into a new category. One line added: `subfolders: p.subfolders`.
+  Kurt's morning of pack-building can now be restored from the text export
+  in a single click.
+- **Toasts show sub-folder counts** on both import paths so it's obvious
+  when they came across.
+
+### Under the hood
+- Added `frontend/tests/tagpackText.roundtrip.test.mjs` — 20 regression
+  cases covering parse, serialize, round-trip parity, and legacy backward
+  compatibility. All passing.
+- Fixed `frontend/src/lib/tagpackText.js` import path (`./storage` →
+  `./storage.js`) so the module runs under native Node ESM for tests.
+  Webpack build behavior unchanged.
+
 ## v1.2.1 — 2026-02-17 · Folder-path fix + Applied-chip highlight + Tag Manager drag-swap
 
 ### Fixed

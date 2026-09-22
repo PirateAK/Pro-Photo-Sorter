@@ -313,7 +313,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     setBundlePickerOpen(true);
   };
 
-  // Serialize a pack to the v1.1 export format (both lists included).
+  // Serialize a pack to the v1.2 export format — includes subfolders now.
   const serializePack = (cat) => {
     const mapTag = (it) => ({
       label: it.label,
@@ -322,13 +322,20 @@ export default function CategoryManager({ open, onClose, categories, onChange })
       iconData: it.iconData || null,
     });
     return {
-      formatVersion: 2,
+      formatVersion: 3, // v1.2.2: bumped so importers can tell subfolders are inside
       kind: "pps-tagpack",
       name: cat.name,
       description: "",
       exportedAt: new Date().toISOString(),
       folderTags: (cat.folderItems || []).map(mapTag),
       filenameTags: (cat.filenameItems || []).map(mapTag),
+      subfolders: (cat.subfolders || []).map((s) => ({
+        name: s.name,
+        iconType: s.iconType || "lucide",
+        iconName: s.iconName || "Folder",
+        iconData: s.iconData || null,
+        filenameTags: (s.filenameItems || []).map(mapTag),
+      })),
     };
   };
 
@@ -415,20 +422,32 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     if (!file) return;
     try {
       const text = await file.text();
-      const parsed = parseTagList(text); // array of { name, folderItems, filenameItems }
-      // Give every pack a unique name & fresh id, then append
+      const parsed = parseTagList(text); // array of { name, folderItems, filenameItems, subfolders }
+      // Give every pack a unique name & fresh id, then append.
+      // v1.2.2: also pass through subfolders — the parser was already emitting
+      // them from `##` blocks but this handler used to drop them on the floor.
       const newCats = parsed.map((p) => ({
         id: uid("cat"),
         name: uniqueName(p.name),
         folderItems: p.folderItems,
         filenameItems: p.filenameItems,
+        subfolders: p.subfolders || [],
       }));
       onChange([...categories, ...newCats]);
       setActiveCat(newCats[0].id);
-      const total = newCats.reduce((n, c) => n + (c.folderItems.length + c.filenameItems.length), 0);
+      const totalTags = newCats.reduce((n, c) => {
+        const subTagN = (c.subfolders || []).reduce((k, s) => k + (s.filenameItems?.length || 0), 0);
+        return n + c.folderItems.length + c.filenameItems.length + subTagN;
+      }, 0);
+      const totalSubs = newCats.reduce((n, c) => n + (c.subfolders?.length || 0), 0);
       toast.success(
         `Imported ${newCats.length} pack${newCats.length !== 1 ? "s" : ""}`,
-        { description: `${total} tags total — every tag got the default icon (edit any time).` }
+        {
+          description:
+            `${totalTags} tags total` +
+            (totalSubs > 0 ? ` · ${totalSubs} sub-folder${totalSubs !== 1 ? "s" : ""}` : "") +
+            ` — every tag got the default icon (edit any time).`,
+        }
       );
     } catch (e) {
       toast.error("Text list import failed", { description: e.message });
@@ -459,7 +478,8 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   };
 
   // ── Import a pack — always adds, auto-suffixes on name collision.
-  // Supports v2 (folderTags + filenameTags) and legacy v1 (single `tags` list).
+  // Supports v3 (folderTags + filenameTags + subfolders), v2 (folderTags +
+  // filenameTags), and legacy v1 (single `tags` list).
   const importFromFile = async (file) => {
     if (!file) return;
     try {
@@ -478,9 +498,19 @@ export default function CategoryManager({ open, onClose, categories, onChange })
       const filterValid = (arr) => arr.filter((it) => it.label);
       let folderItems = [];
       let filenameItems = [];
-      if (Array.isArray(data.folderTags) || Array.isArray(data.filenameTags)) {
+      let subfolders = [];
+      if (Array.isArray(data.folderTags) || Array.isArray(data.filenameTags) || Array.isArray(data.subfolders)) {
         folderItems = filterValid((data.folderTags || []).map(mapIn));
         filenameItems = filterValid((data.filenameTags || []).map(mapIn));
+        // v1.2.2: pull in subfolders (v3 files) with their own filename tags
+        subfolders = (data.subfolders || []).map((s) => ({
+          id: uid("sf"),
+          name: String(s.name || "Untitled sub-folder").slice(0, 60),
+          iconType: s.iconType === "image" && s.iconData ? "image" : "lucide",
+          iconName: s.iconName || "Folder",
+          iconData: s.iconType === "image" ? s.iconData : undefined,
+          filenameItems: filterValid((s.filenameTags || []).map(mapIn)),
+        }));
       } else if (Array.isArray(data.tags)) {
         // Legacy v1 format — all tags become folder tags (user can move any to filename later)
         folderItems = filterValid(data.tags.map(mapIn));
@@ -488,11 +518,16 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         throw new Error("Tag pack file has no tags to import.");
       }
       const finalName = uniqueName(String(data.name || "Imported pack").trim() || "Imported pack");
-      const newCat = { id: uid("cat"), name: finalName, folderItems, filenameItems };
+      const newCat = { id: uid("cat"), name: finalName, folderItems, filenameItems, subfolders };
       onChange([...categories, newCat]);
       setActiveCat(newCat.id);
+      const subTagTotal = subfolders.reduce((n, s) => n + s.filenameItems.length, 0);
       toast.success(`Imported "${finalName}"`, {
-        description: `${folderItems.length} folder + ${filenameItems.length} filename tags`,
+        description:
+          `${folderItems.length} folder + ${filenameItems.length} filename tags` +
+          (subfolders.length > 0
+            ? ` · ${subfolders.length} sub-folder${subfolders.length !== 1 ? "s" : ""} (${subTagTotal} tag${subTagTotal !== 1 ? "s" : ""})`
+            : ""),
       });
     } catch (e) {
       toast.error("Import failed", { description: e.message });
