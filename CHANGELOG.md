@@ -2,6 +2,137 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.3 — 2026-02-17 · Auto-update + Auto-backup + Backup All button
+
+### Added
+- **Full auto-update from GitHub Releases.** Opt-in (Settings → Auto-Update).
+  When enabled, PPS checks `github.com/PirateAK/Pro-Photo-Sorter/releases/latest`
+  on launch. If a newer version is out, a banner slides in offering a
+  one-click Download → Install & Restart flow. The user stays in control:
+  no silent downloads, no silent installs. Update mechanism:
+  `electron-updater` in the main process, `pps:update-status` IPC channel
+  streams progress to the renderer.
+- **Daily tag-pack auto-backup.** Once per calendar day, whenever a
+  destination drive is connected, PPS silently writes a timestamped
+  `pps-tagpacks_YYYY-MM-DD.pps-taglist.txt` snapshot to
+  `<destination>/.pps-backups/`. Keeps the last 7 days on rolling
+  retention. Opt-out via Settings → Auto-Backup Tag Packs. Restore any
+  snapshot via Tag Manager → Import text list.
+- **Backup All button** in Tag Manager footer. One-click download of a
+  single `.zip` containing:
+  - Every pack as a v3 JSON file (`json/<pack>.pps-tagpack.json`)
+  - A plain-text snapshot of everything (`text/pps-tagpacks_YYYY-MM-DD.pps-taglist.txt`)
+  - A `bundle.json` manifest
+  Human-readable text and machine-readable JSON, both restorable.
+
+### Electron shell changes (v1.2.3 setup)
+- Added `electron-updater` as a runtime dependency.
+- `main.js` — wires `autoUpdater` events to renderer, exposes
+  `pps:check-for-updates`, `pps:download-update`, `pps:install-update`,
+  and `pps:open-external` IPC handlers.
+- `preload.js` — exposes `window.electronAPI.checkForUpdates`,
+  `.downloadUpdate`, `.installUpdate`, `.onUpdateStatus`, `.openExternal`,
+  `.appVersion`.
+- `package.json` — new `publish: [{ provider: "github",
+  owner: "PirateAK", repo: "Pro-Photo-Sorter" }]` block so
+  `electron-builder` writes a `latest.yml` alongside the `.exe`.
+
+### Under the hood
+- New `frontend/src/lib/backups.js` — daily snapshot writer with
+  rolling 7-day retention.
+- New `frontend/src/components/UpdateBanner.jsx` — top-of-app banner
+  parallel to the trial banner. Shows only when an update is pending.
+- Extended `frontend/src/lib/electronBridge.js` — thin wrappers around the
+  new IPC channels; each is a no-op in dev-server / plain browser.
+- New default settings: `checkForUpdates: false` (opt-in),
+  `autoBackupTagPacks: true` (opt-out), `lastTagBackupDate: ""` (bookkeeping).
+
+### Publishing v1.2.3 (one-time setup on Kurt's PC)
+After pulling + `pack-app.bat`, `electron-builder` produces both
+`Pro Photo Sorter Setup 1.2.3.exe` and `latest.yml` in
+`electron-shell\dist\`. **Upload BOTH** to the GitHub Release —
+`electron-updater` uses `latest.yml` to find the correct `.exe`. This
+step is critical: without `latest.yml` alongside the `.exe`, opted-in
+users won't see the update.
+
+## v1.2.2 — 2026-02-17 · Sub-folder round-trip fix (Export & Import)
+
+### Fixed
+- **JSON pack export now includes sub-folders.** Previously the "Export
+  pack" button wrote `folderTags` + `filenameTags` only, silently dropping
+  every sub-folder and every filename tag inside them. Pack files now
+  carry a `subfolders: [{ name, iconType, iconName, iconData, filenameTags:[…] }]`
+  array. File-format version bumped to `formatVersion: 3`.
+- **JSON pack import now reads sub-folders.** The importer accepts the new
+  v3 field and rebuilds each sub-folder with fresh ids. v2 files (folder +
+  filename only) and legacy v1 files (single `tags` list) still import
+  cleanly — no breaking changes.
+- **Text list import now imports sub-folders.** The parser was already
+  correctly extracting `##` sub-folder blocks; the Tag Manager's
+  `importFromTextFile` handler was dropping them on the floor when copying
+  the parsed pack into a new category. One line added: `subfolders: p.subfolders`.
+  Kurt's morning of pack-building can now be restored from the text export
+  in a single click.
+- **Toasts show sub-folder counts** on both import paths so it's obvious
+  when they came across.
+
+### Under the hood
+- Added `frontend/tests/tagpackText.roundtrip.test.mjs` — 20 regression
+  cases covering parse, serialize, round-trip parity, and legacy backward
+  compatibility. All passing.
+- Fixed `frontend/src/lib/tagpackText.js` import path (`./storage` →
+  `./storage.js`) so the module runs under native Node ESM for tests.
+  Webpack build behavior unchanged.
+
+## v1.2.1 — 2026-02-17 · Folder-path fix + Applied-chip highlight + Tag Manager drag-swap
+
+### Fixed
+- **Folder path now puts the SUBJECT first.** Order was
+  `/[Subfolder]/[folder-tag chips]/…` — hard to browse when you had a lot
+  of packs. New order:
+  `/[Pack]/[folder-tag chips]/[Subfolder]/[filename].jpg`.
+  Example: picking Wedding → clicking Ceremony chip → picking Brides family
+  subfolder → clicking Brides mother filename tag now stores as
+  `/Wedding/Ceremony/Brides family/…_Brides mother.jpg` (was
+  `/Brides family/Ceremony/…`).
+  - Applies to normal Store, batch Store, Resize-for-Print Store, and
+    Auto-Enhance batch — all four use the same helper `composeDestFolderParts`
+  - Live path preview updates to match
+
+### Added
+- **Applied tag chips stay highlighted.** Chips in the Folders + Filename
+  bars now light up (earth-tone background + checkmark icon) when they've
+  been used to tag the active image. Click a lit chip to remove it —
+  clicking a dim chip still applies as before.
+  - Works in batch mode too (highlights show chips applied to the current
+    image; toggle-off applies to every selected image at once)
+- **Drag any icon onto any tag chip in the Tag Manager to swap its icon.**
+  Works from both the Built-in Icons grid and the Custom Image preview
+  tile. Targets both main-pack chips (folder + filename lists) and every
+  subfolder's filename tag chips.
+- **Copy or move chips between sub-folders.** Three flavors:
+  1. **Drag a chip** from one expanded sub-folder → drop on another
+     sub-folder's expanded panel → **moved**
+  2. **Ctrl+drag** the same way → **copied** (new chip gets a fresh id,
+     same label + icon)
+  3. **Right-click** any sub-folder chip → context menu with
+     **Move to…** / **Copy to…** submenus listing every other sub-folder in
+     the pack, plus a Remove item
+
+### Under the hood
+- New helper `composeDestFolderParts(activePack, folderParts, activeSub)`
+  in `App.js` — single source of truth for destination folder ordering.
+  Regression test at `frontend/tests/folderPath.test.mjs` (8 cases,
+  all passing).
+- `IconPalette` now accepts `appliedIds: Set<string>` + `onRemoveApplied`
+  props. Palette chips read `appliedIds.has(it.id)` to decide their state.
+- `CategoryManager` gained three new handlers: `swapItemIcon`,
+  `swapSubfolderItemIcon`, `moveSubfolderItem` (`"move" | "copy"`).
+- New drag payload types: `application/x-pps-iconswap` (icon drops) and
+  `application/x-pps-sfitem` (subfolder item drags). Namespaced so they
+  don't collide with the existing `application/x-pps-icon` (main image
+  drops) or `application/x-pps-tagmgr` (folder ↔ filename list moves).
+
 ## v1.2.0 — 2026-02-17 · Trial Mode + Gumroad license activation
 
 ### Added

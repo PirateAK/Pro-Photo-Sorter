@@ -64,7 +64,9 @@ import CullMode from "@/components/CullMode";
 import DrivesPanel from "@/components/DrivesPanel";
 import HelpModal from "@/components/HelpModal";
 import TrialBanner from "@/components/TrialBanner";
+import UpdateBanner from "@/components/UpdateBanner";
 import { isTrialMode, applyTrialSuffix, TRIAL_WATERMARK_TEXT } from "@/lib/license";
+import { maybeAutoBackup } from "@/lib/backups";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
 import { isElectron, totalFreeBytes, formatBytes } from "@/lib/electronBridge";
 
@@ -100,6 +102,21 @@ function extToLower(name) {
 function baseName(name) {
   const i = name.lastIndexOf(".");
   return i > 0 ? name.slice(0, i) : name;
+}
+
+/**
+ * v1.2.1 — Compose destination folder parts.
+ * Order: [Pack name] / [folder-tag chips clicked] / [active subfolder name]
+ * The pack name becomes the outermost folder so photos stay grouped by
+ * subject (e.g. /Wedding/Ceremony/Brides family/…). Any null/empty part
+ * is dropped so packs with no name or no active subfolder still work.
+ */
+function composeDestFolderParts(activePack, folderPartsFromTemplate, activeSub) {
+  return [
+    activePack?.name,
+    ...(folderPartsFromTemplate || []),
+    activeSub?.name,
+  ].filter((p) => p && String(p).trim().length > 0);
 }
 
 export default function App() {
@@ -495,6 +512,32 @@ export default function App() {
     } catch { /* ignore */ }
   }, []);
 
+  // v1.2.3 — Auto-backup all tag packs to <destRoot>/.pps-backups/ once per
+  // calendar day whenever a destination drive is connected. Runs silently
+  // in the background; only surfaces a toast on the day of the first write.
+  useEffect(() => {
+    if (!destRoot) return;
+    if (!settings.autoBackupTagPacks) return;
+    let cancelled = false;
+    (async () => {
+      const res = await maybeAutoBackup({
+        destRoot,
+        categories,
+        settings,
+        updateSettings: (next) => { if (!cancelled) setSettings(next); },
+      });
+      if (!cancelled && res.ok && res.wrote) {
+        toast.success("Tag packs auto-backed up", {
+          description: `Saved ${res.wrote} in your destination drive · restore anytime from Tag Manager → Import text list`,
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+    // Only runs when destRoot first appears or categories change meaningfully.
+    // Guarded internally to no-op if it already ran today.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [destRoot]);
+
   // Show a friendly toast for folder-picker errors. For the "stuck picker"
   // family of errors (which need a page reload to fully recover), include
   // a "Restart" action button that reloads the app window — resets
@@ -762,6 +805,28 @@ export default function App() {
     });
   };
 
+  // v1.2.1 — remove ALL instances of a chip (by its palette id) from the
+  // current image's row. Used when clicking a lit chip in the palette to
+  // toggle it off. In batch mode, applies to every selected image.
+  const removeChipFromCurrentImage = useCallback((chipId, row) => {
+    if (!chipId) return;
+    setAppliedByImage((cur) => {
+      const targets = batchMode && batchSelected.size > 0
+        ? [...batchSelected]
+        : currentImage ? [currentImage.name] : [];
+      if (targets.length === 0) return cur;
+      const next = { ...cur };
+      for (const name of targets) {
+        const prev = getOverlay(cur, name);
+        next[name] = {
+          folders: row === "folders" ? prev.folders.filter((i) => i.id !== chipId) : prev.folders,
+          tags: row === "tags" ? prev.tags.filter((i) => i.id !== chipId) : prev.tags,
+        };
+      }
+      return next;
+    });
+  }, [batchMode, batchSelected, currentImage]);
+
   // Drop directly onto the image (not on a row).
   // The drag payload now carries { item, role } — honor the source bar's role.
   // Fallback to "tags" (Filename) for legacy drops without a role.
@@ -1009,10 +1074,11 @@ export default function App() {
         exifDate: imgExifDate,
         stars,
       });
-      // v1.1.6: prepend active sub-folder name to path (e.g. "Sports/Baseball/…")
+      // v1.2.1: folder path is [Pack]/[folder-tag chips]/[Subfolder].
+      // See composeDestFolderParts() near top of file.
       const activePack = categories.find((c) => c.id === foldersCatId);
       const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
-      const effectiveFolderParts = activeSub ? [activeSub.name, ...folderParts] : folderParts;
+      const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, activeSub);
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
       try {
@@ -1182,7 +1248,11 @@ export default function App() {
 
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
-      const targetDir = await getOrCreateSubdir(anchor, folderParts);
+      // v1.2.1: same [Pack]/[folder tags]/[Subfolder] structure as storeCurrent.
+      const activePack = categories.find((c) => c.id === foldersCatId);
+      const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
+      const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, activeSub);
+      const targetDir = await getOrCreateSubdir(anchor, effectiveFolderParts);
 
       const wmEnabled = isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`) || trial;
       const wmText = trial
@@ -1204,7 +1274,7 @@ export default function App() {
         } : null,
       });
       const writtenName = await writeBlobTo(blob, targetDir, fileName);
-      const fullPath = [anchorPath, ...folderParts].filter(Boolean).join("/");
+      const fullPath = [anchorPath, ...effectiveFolderParts].filter(Boolean).join("/");
       setSessionStats((s) => ({ ...s, stored: s.stored + 1 }));
       setHistory((h) => [
         { type: "store", op: "keep", entries: [{ destDirHandle: targetDir, destPath: fullPath, destName: writtenName, sourceHandle: currentImage.handle, sourceName: currentImage.name }] },
@@ -1398,7 +1468,13 @@ export default function App() {
             exifDate: null,
             stars: 0,
           });
-          targetDir = await getOrCreateSubdir(anchor, folderParts);
+          // v1.2.1: keep the same [Pack]/[folder tags]/[Subfolder] structure
+          // as the normal store flow so auto-enhanced files land alongside
+          // manually-stored ones.
+          const activePack = categories.find((c) => c.id === foldersCatId);
+          const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
+          const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, activeSub);
+          targetDir = await getOrCreateSubdir(anchor, effectiveFolderParts);
         } else {
           // Save into the selected destination-tree folder
           targetDir = destSelected.handle;
@@ -1524,6 +1600,19 @@ export default function App() {
 
   const fsSupported = isFSAccessSupported();
 
+  // v1.2.1 — id-only sets of chips currently applied to the active image,
+  // by role. IconPalette uses these to render chips in a lit/checked state
+  // and, when the user clicks a lit chip, we call removeChipFromCurrentImage
+  // to toggle it off.
+  const appliedFolderIds = useMemo(
+    () => new Set((currentOverlay?.folders || []).map((i) => i.id).filter(Boolean)),
+    [currentOverlay]
+  );
+  const appliedTagIds = useMemo(
+    () => new Set((currentOverlay?.tags || []).map((i) => i.id).filter(Boolean)),
+    [currentOverlay]
+  );
+
   // Preview path for the current image (destination string preview)
   const previewPath = useMemo(() => {
     if (!currentImage) return null;
@@ -1535,17 +1624,22 @@ export default function App() {
       exifDate: exif?.DateTimeOriginal || exif?.CreateDate || null,
       stars,
     });
-    // v1.1.6: prepend active sub-folder to preview path too
+    // v1.2.1: preview mirrors the storeCurrent layout —
+    //   [dest root] / [Pack] / [folder tags] / [Subfolder] / [filename]
     const activePack = categories.find((c) => c.id === foldersCatId);
     const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
-    const hasSubFolderOnly = activeSub && !hasAnyIcons;
-    if (!hasAnyIcons && !activeSub) return null;
+    // Show preview whenever ANY of: pack selected, folder tags applied,
+    // filename tags applied, or subfolder chosen.
+    if (!activePack && !hasAnyIcons && !activeSub) return null;
     const root = destSelected?.path || destRootName || "…";
-    const prefix = activeSub ? `${activeSub.name}/` : "";
-    // Even if no icons are dragged yet, showing the subfolder alone still
-    // gives the user a preview of where the photo will land.
-    const rest = hasAnyIcons ? rendered.pathPreview : "(pick tags to build path)";
-    return `${root} / ${prefix}${rest}`;
+    const folderChain = composeDestFolderParts(activePack, rendered.folderParts || [], activeSub);
+    const filePart = hasAnyIcons
+      ? (rendered.fileName || "(pick filename tags)")
+      : "(pick filename tags)";
+    const joined = folderChain.length > 0
+      ? `${folderChain.join("/")}/${filePart}`
+      : filePart;
+    return `${root} / ${joined}`;
   }, [currentOverlay, hasAnyIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif, categories, foldersCatId, activeSubfolderId]);
 
   // ------------------------------------------------------------------------
@@ -1572,6 +1666,7 @@ export default function App() {
       <TrialBanner
         onActivateClick={() => { setHelpInitialTab("license"); setShowHelp(true); }}
       />
+      <UpdateBanner enabled={!!settings.checkForUpdates} />
       <div className="app-grid" data-testid="app-root">
       <Toaster theme={settings.theme || "dark"} position="bottom-right" richColors closeButton />
 
@@ -2019,6 +2114,8 @@ export default function App() {
                 activeCatId={foldersCatId}
                 onSetCat={setFoldersCatId}
                 onApply={applyIcon}
+                onRemoveApplied={removeChipFromCurrentImage}
+                appliedIds={appliedFolderIds}
                 onCategoriesChange={setCategories}
                 onOpenManager={() => setShowCatMgr(true)}
               />
@@ -2047,6 +2144,8 @@ export default function App() {
                       activeCatId={foldersCatId}
                       onSetCat={setFoldersCatId}
                       onApply={applyIcon}
+                      onRemoveApplied={removeChipFromCurrentImage}
+                      appliedIds={appliedTagIds}
                       onCategoriesChange={setCategories}
                       onOpenManager={() => setShowCatMgr(true)}
                       hidePicker

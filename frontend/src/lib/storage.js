@@ -32,6 +32,16 @@ const DEFAULT_SETTINGS = {
   // photo has no per-image location override (v1.1.7). Empty string means
   // "no default — show whatever EXIF GPS translates to (usually nothing)".
   defaultLocation: "",
+  // v1.2.3 — Auto-update opt-in. On launch, if true AND the app is inside
+  // Electron, we ping GitHub Releases (via electron-updater) once per
+  // launch and surface an in-app banner when a newer version is out.
+  checkForUpdates: false,
+  // v1.2.3 — Auto-backup tag packs to <destination>/.pps-backups/
+  // Keep last 7 snapshots. Fires at most once per calendar day.
+  autoBackupTagPacks: true,
+  // Bookkeeping — last successful backup date (YYYY-MM-DD). Never edit by
+  // hand; the backups helper writes this after a successful snapshot.
+  lastTagBackupDate: "",
 };
 
 const DEFAULT_STATE = {

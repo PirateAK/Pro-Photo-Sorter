@@ -5,6 +5,9 @@
   "main": "main.js",
   "author": "Captain Kurt",
   "license": "UNLICENSED",
+  "dependencies": {
+    "electron-updater": "^6.3.9"
+  },
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "^24.13.3"
@@ -37,6 +40,14 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Pro Photo Sorter"
-    }
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "PirateAK",
+        "repo": "Pro-Photo-Sorter",
+        "releaseType": "release"
+      }
+    ]
   }
 }

@@ -471,6 +471,131 @@ Files touched:
 
 **Final version bump: `1.1.0-dev` → `1.1.0`.** Kurt promoted, built the NSIS installer, uninstalled v1.0.5, installed `Pro Photo Sorter Setup 1.1.0.exe` on his PC, verified everything, tagged `v1.1.0` in git, pushed the tag, and published a GitHub Release with the installer attached. v1.0.5 release kept live for history.
 
+### Iteration 32 — v1.2.3 Auto-update + Auto-backup + Backup All (2026-02-17)
+
+Kurt asked for a scalable path to push updates as he ramps sales — plus
+belt-and-suspenders data safety after nearly losing a morning of tag
+work. All three shipped in one release:
+
+1. **Full auto-update via `electron-updater`** targeting
+   `github.com/PirateAK/Pro-Photo-Sorter/releases/latest`. Opt-in per user.
+   Non-silent: user sees a Download button, then an Install & Restart
+   button. All user data survives.
+2. **Daily tag-pack auto-backup** — plain-text snapshot to
+   `<destRoot>/.pps-backups/pps-tagpacks_YYYY-MM-DD.pps-taglist.txt`,
+   7-day rolling retention. Opt-out via Settings.
+3. **Backup All button** in Tag Manager — one-click zip of every pack
+   as JSON + text-list snapshot + bundle manifest.
+
+Files touched:
+- `electron-additions/main.js` — rewrote to add `autoUpdater` wiring,
+  new IPC handlers: `pps:check-for-updates`, `pps:download-update`,
+  `pps:install-update`, `pps:open-external`, `pps:app-version`.
+- `electron-additions/preload.js` — exposed the update APIs via
+  `window.electronAPI.*` + `onUpdateStatus(cb)` subscription.
+- `electron-additions/package.json` — added `electron-updater` dep +
+  `publish: [{ provider: "github", owner: "PirateAK",
+  repo: "Pro-Photo-Sorter" }]` block so `electron-builder` writes a
+  `latest.yml` alongside the `.exe`.
+- `frontend/src/lib/electronBridge.js` — thin wrappers over the update
+  IPC channels; degrade to no-ops outside Electron.
+- `frontend/src/lib/backups.js` — new module. `maybeAutoBackup()`
+  guarded by `settings.lastTagBackupDate` so it only writes once per
+  calendar day. Retention loop keeps the newest 7.
+- `frontend/src/components/UpdateBanner.jsx` — new. Renders inside the
+  app-shell alongside the Trial banner. Progress %, Download button,
+  Install & Restart button, dismiss X.
+- `frontend/src/App.js` — imports and renders UpdateBanner; kicks off
+  `maybeAutoBackup()` when destRoot first appears.
+- `frontend/src/lib/storage.js` — new default settings:
+  `checkForUpdates: false`, `autoBackupTagPacks: true`,
+  `lastTagBackupDate: ""`.
+- `frontend/src/components/SettingsModal.jsx` — two new sections:
+  Auto-Update (opt-in) + Auto-Backup Tag Packs (opt-out).
+- `frontend/src/components/CategoryManager.jsx` — new `backupEverything()`
+  handler + Backup All button in the footer, next to Bundle…
+- `ELECTRON-SETUP.md` — rewritten for v1.2.3 with the critical new step:
+  upload BOTH `.exe` and `latest.yml` to every GitHub Release.
+
+**Critical publishing note baked into the release-day workflow:**
+`electron-builder` outputs `latest.yml` alongside `Pro Photo Sorter
+Setup X.Y.Z.exe`. Attach BOTH to the GitHub Release. Without
+`latest.yml`, `electron-updater` can't discover the new version.
+
+### Iteration 31 — v1.2.2 Sub-folder round-trip fix (2026-02-17)
+
+Kurt spent a morning building rich tag packs with sub-folders, then found:
+1. "Export pack" (JSON) silently omitted every sub-folder and its filename tags
+2. "Import text list" claimed success but discarded parsed sub-folders
+
+Good news: his "Export as text" DID include sub-folders (parser+serializer
+already worked), so nothing was lost. The bug was in
+`CategoryManager.importFromTextFile` — it copied `folderItems` and
+`filenameItems` from the parsed pack but ignored `subfolders`.
+
+Three fixes in this release:
+1. `CategoryManager.serializePack()` — includes `subfolders` array
+   (formatVersion bumped 2 → 3).
+2. `CategoryManager.importFromFile()` — reads `subfolders` from v3 files;
+   still parses v2 (folder+filename only) and legacy v1 (single `tags`).
+3. `CategoryManager.importFromTextFile()` — passes `p.subfolders` through
+   to the new category. This is the one that unblocks Kurt's restore.
+
+New regression at `frontend/tests/tagpackText.roundtrip.test.mjs`
+(20 cases, all passing) locks the round-trip contract.
+
+Files touched:
+- `frontend/src/components/CategoryManager.jsx`
+- `frontend/src/lib/tagpackText.js` (import path fix so tests run)
+- `frontend/src/buildInfo.json`, `frontend/package.json` (1.2.1 → 1.2.2)
+
+### Iteration 30 — v1.2.1 Folder-path fix + Applied-chip highlight + Tag Manager drag-swap (2026-02-17)
+
+Kurt reported that when building tag lists during real use, the folder
+structure came out reversed: `/Brides family/Ceremony/…` instead of
+`/Wedding/Ceremony/Brides family/…`. He also wanted applied chips to stay
+highlighted for at-a-glance "what did I tag this photo with?" plus faster
+tag-manager UX (drag icon onto chip to swap; copy/move chips between
+sub-folders).
+
+**Ships (all four asks landed):**
+1. Destination folder order fixed → `[Pack]/[folder tags]/[Subfolder]/`
+   via new `composeDestFolderParts()` helper. All 4 store paths use it
+   (normal, batch, resize-print, auto-enhance) so files always land at
+   the same place. Preview line mirrors the order.
+2. Palette chips light up when applied to the current image (earth-tone
+   background + checkmark). Click a lit chip to remove it. Applies to
+   both Folders and Filename bars, works in batch mode too.
+3. Drag from icon picker → drop on any chip → chip's icon swaps in place.
+   Works from built-in icon grid AND from the custom image preview tile.
+   Targets: main-pack chips + every sub-folder's filename tag chips.
+4. Move/copy chips between sub-folders — drag (move), Ctrl+drag (copy),
+   right-click for a Move-to.../Copy-to... submenu with every sibling
+   sub-folder listed.
+
+**Files touched:**
+- `frontend/src/App.js` — new `composeDestFolderParts`, new
+  `removeChipFromCurrentImage`, `appliedFolderIds` + `appliedTagIds`
+  memos, wired into both IconPalette instances. All 4 store paths patched.
+- `frontend/src/components/IconPalette.jsx` — added `appliedIds` +
+  `onRemoveApplied` props, lit-chip render, toggle-on-click behavior.
+- `frontend/src/components/CategoryManager.jsx` — new handlers
+  (`swapItemIcon`, `swapSubfolderItemIcon`, `moveSubfolderItem`), new
+  `ChipRow` and `SubfolderItemChip` sub-components, new
+  `SubfolderItemContextMenu`. Built-in icon grid + custom image preview
+  are now draggable.
+- `frontend/src/buildInfo.json` — v1.2.0 → v1.2.1
+- `frontend/package.json` — v1.2.0 → v1.2.1
+- Regression test at `frontend/tests/folderPath.test.mjs` — 8 cases
+  covering the new composer.
+
+**Backward-compat note (from Kurt's chair):** existing files already on
+disk under the old `/Subfolder/Pack-folder-chips/…` paths stay where they
+are. New stores from v1.2.1 forward go into the new tree
+`/Pack/Pack-folder-chips/Subfolder/…`. Kurt can move old files by hand or
+leave them — no automatic migration is attempted (would need
+FSA-recursive-move which we don't have).
+
 ### Iteration 29 — v1.2.0 P0 Trial Mode + Gumroad Licensing shipped (2026-02-17)
 
 **Monetization enforcement is live.** Unlicensed installs run in **Trial Mode**:
@@ -511,6 +636,13 @@ in Settings.watermarkText can't accidentally launder trial photos.
 ### On-deck for v1.2 (deferred by Kurt at end of v1.1.0 session)
 
 - ~~**P0 · Trial-mode enforcement & Licensing**~~ ✅ Shipped v1.2.0 (2026-02-17).
+- **🎯 P1 · Manual "People" Tag Pack** *(Kurt, 2026-02-17, v2 stepping stone)* —
+  hand-typed list of names that becomes a special tag pack. Same
+  drag-onto-photo ergonomics as normal packs, seeded with people's names
+  instead of subjects. Zero AI, ships in a day. **When v2.0 face
+  recognition launches, this same "People" pack auto-populates with
+  detected faces — no lost user data, smooth upgrade path.** Ship target:
+  v1.2.5.
 - **P1 · Default EXIF Location in Settings** *(Kurt, 2026-02-15)* — new field
   in Settings so a user working on a single shoot can set the location value
   once (e.g. "Kenai, Alaska") and have every photo inherit it, without
@@ -586,6 +718,85 @@ Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, 
 ---
 
 ### v2 Ideas Bin (post-v1.2, longer-term)
+
+## 🎯 v2.0 Flagship Feature — Face Recognition AI Sort *(Kurt, 2026-02-17)*
+
+**Locked in as the top v2.0 priority.** This is the killer feature that
+turns the app from a $30 culling tool into a $100+ workflow accelerator.
+Justifies a paid v2 upgrade / PRO tier separate from v1.x lifetime buyers.
+
+### Tech stack
+- **`face-api.js`** (TensorFlow.js under the hood) — mature, offline, runs
+  on CPU, MIT-licensed. Ships with pre-trained models bundled in the
+  installer (~15 MB adds to installer size; ~75 MB → ~90 MB).
+- No cloud, no internet ever needed for detection or recognition.
+- Descriptors are 128-dim Float32Array (~512 bytes/face). 100 known
+  people = ~50 KB local storage. IndexedDB persists everything.
+
+### User experience Kurt described
+1. User loads a folder → filmstrip populates as usual
+2. Background job progressively detects faces on each image (200-500ms/img)
+3. Halo circle overlaid on each face in the viewer (transforms with the
+   existing ZoomablePreview zoom/pan matrix)
+4. Known face → **name tag** floats next to the halo automatically
+5. Unknown face → **text-fill input** floats next to the halo — user
+   types a name, hits Enter → new Person entry saved
+6. Once named, that person is auto-matched on every future image scan
+7. **Search by person** — filter filmstrip to only images containing X
+   (or X+Y, or X|Y)
+8. **Auto-generated "People" tag pack** — every named person becomes a
+   draggable chip with their face thumbnail as the icon; works as a
+   normal filename tag pack
+
+### Data model additions
+```
+people: [
+  { id, name, descriptors: [Float32Array], thumbUrl?, notes?, seenIn: [imagePaths] }
+]
+faceIndex: {
+  [absoluteImagePath]: [
+    { box: {x,y,w,h}, descriptorHash, personId?, confidence? }, ...
+  ]
+}
+```
+
+### Phased build plan (10-15 focused workdays total)
+- **Phase 1** (2-3d) — Detection + halos + naming UI + IndexedDB persistence
+- **Phase 2** (2-3d) — Recognition + auto-tagging + confidence indicators
+- **Phase 3** (1-2d) — Search-by-person filter for filmstrip
+- **Phase 4** (1d)   — Auto-generated People tag pack
+- **Phase 5** (1-2d) — People manager panel (rename, merge, delete, count)
+- **Phase 6** (2-3d) — Polish, performance, edge cases (sunglasses, side
+  profiles, group photos, low-power hardware toggle)
+
+### Known constraints / decisions to make
+- **RAW files can't be scanned** without conversion → JPEG/PNG/HEIC/WebP
+  only in v2.0. Add "convert on-the-fly for face scan" as a v2.1 nice-to-have.
+- **False positives** — always require confirm on tentative matches
+  (confidence < 0.8). Show percentage.
+- **Privacy note** — small mention added to Trial pitch + About page
+  ("faces detected locally, never leave your PC")
+- **Legal jurisdictions** — some places require face-recog disclosure
+  even for personal photos. Keep the "everything local" language front
+  and center.
+- **Performance toggle** — Settings gains "Face detection: Off / Idle
+  only / Always" so old hardware users can opt out.
+
+### Sales / pricing plan
+- v1.x lifetime updates stay honored for existing buyers (as promised on Gumroad)
+- v2.0 launches as either:
+  - **Paid upgrade** (~$XX-$XX above v1.x price, with founder discount for early v1 buyers), OR
+  - **PRO tier** ($$$/yr subscription for v2+ features, v1.x stays perpetual)
+- **Waitlist strategy** — announce "v2 coming: cull by person, 100% offline" on the Gumroad page NOW to build anticipation while v1.x sales continue
+
+### Stepping stones from v1.x → v2.0
+- **v1.2.5 target: manual People tag pack** — no AI, just a hand-typed
+  list of names that becomes a special tag pack with the same
+  drag-onto-photo ergonomics. Zero risk. When v2.0 face-detection
+  launches, the same "People" pack auto-populates with detected faces —
+  no lost user data.
+
+---
 
 **Kurt's v2 additions, captured 2026-02-15 while chatting between sessions:**
 
