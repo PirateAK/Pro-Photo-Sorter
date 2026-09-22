@@ -84,6 +84,17 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.8 — 2026-02-16 · Visual Sub-Folder Editor
+- ✅ **SUB-FOLDERS section** in Tag Manager (`SubfolderSection` component)
+  below the Filename tags list. Full CRUD: add (Enter or button), rename
+  (double-click name or pencil), reorder (up/down arrows), delete (with
+  confirm if it has tags). Chevron expands each row to reveal a mini
+  filename-tags editor (Enter to add, hover-x to remove). Empty-state hint
+  guides new users. New packs seeded with empty `subfolders: []`. Files
+  touched: `frontend/src/components/CategoryManager.jsx` (CRUD handlers
+  + `SubfolderSection` component, ~250 lines).
+- Version bumped to 1.1.8.
+
 ### v1.1.7 — 2026-02-16 · Default Location + Date-Tag Dropdowns + sub-folder migration
 - ✅ **Default EXIF Location** in Settings (`settings.defaultLocation`). Fallback
   chain on the Location chip: per-photo override → Settings default → EXIF GPS.

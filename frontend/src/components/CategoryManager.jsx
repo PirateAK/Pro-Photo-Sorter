@@ -1,6 +1,6 @@
 import React, { useState, useRef } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste, ChevronDown, ChevronRight, ArrowUp, ArrowDown, FolderPlus } from "lucide-react";
 import JSZip from "jszip";
 import { uid } from "../lib/storage";
 import { totalCount } from "../lib/tags";
@@ -68,7 +68,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   const addCategory = () => {
     const name = newCatName.trim();
     if (!name) return;
-    const cat = { id: uid("cat"), name, folderItems: [], filenameItems: [] };
+    const cat = { id: uid("cat"), name, folderItems: [], filenameItems: [], subfolders: [] };
     onChange([...categories, cat]);
     setActiveCat(cat.id);
     setNewCatName("");
@@ -105,6 +105,74 @@ export default function CategoryManager({ open, onClose, categories, onChange })
       c.id === current.id ? { ...c, [listKey]: (c[listKey] || []).filter((it) => it.id !== itemId) } : c
     );
     onChange(next);
+  };
+
+  // ── Sub-folder CRUD (v1.1.8) ────────────────────────────────────────────
+  // Sub-folders live inside a pack (`current.subfolders`) and each has its
+  // own `filenameItems` list. The parent pack's folderItems are inherited
+  // (see main-window SUB-FOLDER bar).
+  const updateCurrentPack = (patch) => {
+    if (!current) return;
+    const next = categories.map((c) => (c.id === current.id ? patch(c) : c));
+    onChange(next);
+  };
+  const addSubfolder = (name) => {
+    const nm = (name || "").trim();
+    if (!nm) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: [
+        ...(c.subfolders || []),
+        { id: uid("sf"), name: nm, iconType: "lucide", iconName: "Folder", filenameItems: [] },
+      ],
+    }));
+  };
+  const removeSubfolder = (sfId) => {
+    const sf = (current?.subfolders || []).find((s) => s.id === sfId);
+    if (!sf) return;
+    const n = (sf.filenameItems || []).length;
+    if (n > 0 && !window.confirm(`Delete sub-folder "${sf.name}" and its ${n} filename tag${n > 1 ? "s" : ""}?`)) return;
+    updateCurrentPack((c) => ({ ...c, subfolders: (c.subfolders || []).filter((s) => s.id !== sfId) }));
+  };
+  const renameSubfolder = (sfId, newName) => {
+    const nm = (newName || "").trim();
+    if (!nm) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) => (s.id === sfId ? { ...s, name: nm } : s)),
+    }));
+  };
+  const moveSubfolder = (sfId, dir /* -1 = up, +1 = down */) => {
+    updateCurrentPack((c) => {
+      const list = [...(c.subfolders || [])];
+      const idx = list.findIndex((s) => s.id === sfId);
+      if (idx < 0) return c;
+      const to = idx + dir;
+      if (to < 0 || to >= list.length) return c;
+      const [item] = list.splice(idx, 1);
+      list.splice(to, 0, item);
+      return { ...c, subfolders: list };
+    });
+  };
+  const addSubfolderItem = (sfId, label) => {
+    const lbl = (label || "").trim();
+    if (!lbl) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) =>
+        s.id === sfId
+          ? { ...s, filenameItems: [...(s.filenameItems || []), { id: uid("it"), label: lbl.slice(0, 60), iconType: "lucide", iconName: "Tag" }] }
+          : s
+      ),
+    }));
+  };
+  const removeSubfolderItem = (sfId, itemId) => {
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) =>
+        s.id === sfId ? { ...s, filenameItems: (s.filenameItems || []).filter((it) => it.id !== itemId) } : s
+      ),
+    }));
   };
 
   // Move a tag between the two lists of the CURRENT pack.
@@ -584,6 +652,16 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "filenameItems", itemId)}
                     onBulkPaste={(text) => bulkAddLabels("filenameItems", text)}
                   />
+                  <div className="h-px bg-app/60 mx-4" />
+                  <SubfolderSection
+                    pack={current}
+                    onAddSubfolder={addSubfolder}
+                    onRemoveSubfolder={removeSubfolder}
+                    onRenameSubfolder={renameSubfolder}
+                    onMoveSubfolder={moveSubfolder}
+                    onAddItem={addSubfolderItem}
+                    onRemoveItem={removeSubfolderItem}
+                  />
                 </div>
               </>
             ) : (
@@ -964,6 +1042,229 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * SubfolderSection (v1.1.8)
+ * Renders the SUB-FOLDERS block inside the Tag Manager for the active pack.
+ * Each subfolder is a compact row: chevron toggle · name (double-click to
+ * rename) · item count · up/down/delete controls. Expanding shows a mini
+ * filename-tags editor for that subfolder.
+ * ────────────────────────────────────────────────────────────────────── */
+function SubfolderSection({
+  pack,
+  onAddSubfolder,
+  onRemoveSubfolder,
+  onRenameSubfolder,
+  onMoveSubfolder,
+  onAddItem,
+  onRemoveItem,
+}) {
+  const subs = Array.isArray(pack?.subfolders) ? pack.subfolders : [];
+  const [draft, setDraft] = useState("");
+  const [expandedId, setExpandedId] = useState(null);
+  const [renamingId, setRenamingId] = useState(null);
+  const [renameDraft, setRenameDraft] = useState("");
+  const [itemDrafts, setItemDrafts] = useState({}); // { [sfId]: label }
+
+  const commitRename = () => {
+    if (renamingId) onRenameSubfolder(renamingId, renameDraft);
+    setRenamingId(null);
+    setRenameDraft("");
+  };
+  const startRename = (sf) => {
+    setRenamingId(sf.id);
+    setRenameDraft(sf.name);
+  };
+
+  const submitAdd = () => {
+    const nm = draft.trim();
+    if (!nm) return;
+    onAddSubfolder(nm);
+    setDraft("");
+  };
+
+  return (
+    <div className="p-4">
+      <div className="flex items-center justify-between mb-2">
+        <div className="flex items-center gap-2">
+          <FolderPlus size={14} className="text-primary-earth" />
+          <h4 className="text-xs font-heading font-semibold uppercase tracking-wider">Sub-Folders</h4>
+          <span className="text-[10px] text-dim">({subs.length})</span>
+        </div>
+      </div>
+      <p className="text-xs text-dim mb-3">
+        Sub-folders show as chips in the main window's SUB-FOLDER bar. Picking one prepends its name to the destination path (e.g. <span className="text-primary-earth">Sports/Baseball/…</span>) and swaps the Filename bar to its own filename tags. Parent pack's folder tags stay inherited.
+      </p>
+
+      {/* Add sub-folder form */}
+      <div className="flex items-center gap-1 mb-3">
+        <input
+          type="text"
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }}
+          placeholder="New sub-folder name…"
+          className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
+          data-testid="subfolder-new-name"
+        />
+        <button
+          onClick={submitAdd}
+          disabled={!draft.trim()}
+          className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium disabled:opacity-40 flex items-center gap-1"
+          data-testid="subfolder-add-btn"
+          title="Add a new sub-folder to this pack"
+        >
+          <Plus size={12} /> Add
+        </button>
+      </div>
+
+      {/* Subfolder list */}
+      {subs.length === 0 ? (
+        <div className="text-xs text-dim italic px-1 py-2">
+          No sub-folders yet. Add one above to build a hierarchy like Sports → Baseball → team names.
+        </div>
+      ) : (
+        <div className="space-y-1">
+          {subs.map((sf, i) => {
+            const expanded = expandedId === sf.id;
+            const items = sf.filenameItems || [];
+            const itDraft = itemDrafts[sf.id] || "";
+            return (
+              <div key={sf.id} className="rounded border border-app bg-app/40" data-testid={`subfolder-row-${sf.id}`}>
+                <div className="flex items-center gap-1 px-2 py-1.5">
+                  <button
+                    onClick={() => setExpandedId(expanded ? null : sf.id)}
+                    className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth"
+                    data-testid={`subfolder-toggle-${sf.id}`}
+                    title={expanded ? "Collapse" : "Expand to edit filename tags"}
+                  >
+                    {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                  </button>
+                  {renamingId === sf.id ? (
+                    <input
+                      autoFocus
+                      value={renameDraft}
+                      onChange={(e) => setRenameDraft(e.target.value)}
+                      onBlur={commitRename}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") commitRename();
+                        if (e.key === "Escape") { setRenamingId(null); setRenameDraft(""); }
+                      }}
+                      className="flex-1 bg-app border border-primary-earth rounded px-1.5 py-0.5 text-sm focus-ring"
+                      data-testid={`subfolder-rename-${sf.id}`}
+                    />
+                  ) : (
+                    <button
+                      onDoubleClick={() => startRename(sf)}
+                      className="flex-1 text-left text-sm font-medium truncate hover:text-primary-earth"
+                      title="Double-click to rename"
+                      data-testid={`subfolder-name-${sf.id}`}
+                    >
+                      {sf.name}
+                    </button>
+                  )}
+                  <span className="text-[10px] text-dim shrink-0 mx-1">{items.length} tag{items.length !== 1 ? "s" : ""}</span>
+                  <button
+                    onClick={() => startRename(sf)}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-primary-earth"
+                    data-testid={`subfolder-rename-btn-${sf.id}`}
+                    title="Rename"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                  <button
+                    onClick={() => onMoveSubfolder(sf.id, -1)}
+                    disabled={i === 0}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed"
+                    data-testid={`subfolder-up-${sf.id}`}
+                    title="Move up"
+                  >
+                    <ArrowUp size={11} />
+                  </button>
+                  <button
+                    onClick={() => onMoveSubfolder(sf.id, +1)}
+                    disabled={i === subs.length - 1}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed"
+                    data-testid={`subfolder-down-${sf.id}`}
+                    title="Move down"
+                  >
+                    <ArrowDown size={11} />
+                  </button>
+                  <button
+                    onClick={() => onRemoveSubfolder(sf.id)}
+                    className="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-danger-earth"
+                    data-testid={`subfolder-delete-${sf.id}`}
+                    title="Delete sub-folder"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+
+                {expanded && (
+                  <div className="px-3 pb-2 pt-1 border-t border-app/40">
+                    <div className="text-[10px] uppercase tracking-wider text-dim font-heading mb-1.5">
+                      Filename tags for “{sf.name}”
+                    </div>
+                    <div className="flex flex-wrap gap-1 mb-2">
+                      {items.length === 0 ? (
+                        <span className="text-xs text-dim italic">No filename tags yet. Add some below (e.g. team names for Baseball).</span>
+                      ) : items.map((it) => (
+                        <div
+                          key={it.id}
+                          className="group flex items-center gap-1 px-2 py-0.5 rounded bg-app border border-app text-xs"
+                          data-testid={`subfolder-item-${sf.id}-${it.id}`}
+                        >
+                          <TagIcon size={10} className="text-primary-earth shrink-0" />
+                          <span className="font-mono">{it.label}</span>
+                          <button
+                            onClick={() => onRemoveItem(sf.id, it.id)}
+                            className="w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
+                            data-testid={`subfolder-item-remove-${sf.id}-${it.id}`}
+                            title="Remove"
+                          >
+                            <X size={10} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <input
+                        type="text"
+                        value={itDraft}
+                        onChange={(e) => setItemDrafts({ ...itemDrafts, [sf.id]: e.target.value })}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            onAddItem(sf.id, itDraft);
+                            setItemDrafts({ ...itemDrafts, [sf.id]: "" });
+                          }
+                        }}
+                        placeholder="New filename tag…"
+                        className="flex-1 bg-app border border-app rounded px-2 py-1 text-xs focus-ring"
+                        data-testid={`subfolder-item-input-${sf.id}`}
+                      />
+                      <button
+                        onClick={() => {
+                          onAddItem(sf.id, itDraft);
+                          setItemDrafts({ ...itemDrafts, [sf.id]: "" });
+                        }}
+                        disabled={!itDraft.trim()}
+                        className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs disabled:opacity-40 flex items-center gap-1"
+                        data-testid={`subfolder-item-add-${sf.id}`}
+                      >
+                        <Plus size={11} /> Add
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

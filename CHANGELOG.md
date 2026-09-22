@@ -2,6 +2,22 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.8 — 2026-02-16 · Visual Sub-Folder Editor in Tag Manager
+
+### Added
+- **SUB-FOLDERS section** in the Tag Manager, below the Filename tags list.
+  Complete visual CRUD — no more hand-editing text files:
+  - **Add** — type name, hit Enter or click Add
+  - **Rename** — double-click the name or click the pencil icon
+  - **Reorder** — up/down arrows on each row
+  - **Delete** — trash icon (with confirm if the sub-folder has tags)
+  - **Expand** — chevron reveals a mini filename-tags editor inside each
+    sub-folder (add tag by Enter, remove with hover-x)
+- Empty state hints new users toward the pattern
+  ("build a hierarchy like Sports → Baseball → team names").
+- New pack creation now seeds an empty `subfolders: []` list (previously
+  was missing).
+
 ## v1.1.7 — 2026-02-16 · Default Location · Date-Tag Dropdowns · Sub-folder migration
 
 ### Added
