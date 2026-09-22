@@ -2,6 +2,16 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.4 — 2026-02-17 · Applied-chip highlight prominence
+
+### Fixed
+- **Applied tag chips now use the full earth-tone fill** (same styling as
+  the active sub-folder button) instead of a 25%-tinted variant that was
+  easy to miss at a glance. Clicking a lit chip still toggles it off,
+  same behavior — just visually loud enough to actually stand out.
+  Reported by Kurt via screenshot: "Ceremony" and "Bride" chips had subtle
+  checkmarks but the fill needed to match how "Brides family" popped.
+
 ## v1.2.3 — 2026-02-17 · Auto-update + Auto-backup + Backup All button
 
 ### Added
