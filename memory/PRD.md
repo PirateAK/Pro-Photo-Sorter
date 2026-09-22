@@ -588,6 +588,17 @@ Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, 
   sub-folder items. Same behavior on IconPalette bars in the main window
   would be excellent but optional.
 
+#### 🔒 Lock zoom across filmstrip navigation *(Kurt, 2026-02-16, late-night)*
+- Today: `ZoomablePreview.jsx` auto-resets to Fit whenever the filmstrip
+  advances (`resetKey` = current image path). Great default, but breaks
+  the workflow of pixel-peeping the same corner across a burst of frames.
+- v2 UX: add a small padlock toggle beside the on-screen Fit button
+  (bottom-right of the viewer). Off by default so nothing changes. When
+  ON, the current `scale` + `tx` + `ty` values persist across filmstrip
+  navigation — you can compare the same detail area frame-to-frame.
+  Auto-unlock on any manual Fit click. Consider a subtle status hint in
+  the zoom badge ("1.4× locked") to make the state visible.
+
 #### 🏷️ Third "Tags" bar — Lightroom-style keyword database (P1 for v2)
 
 Add a **third palette row** below the existing Folders and Filename bars,
