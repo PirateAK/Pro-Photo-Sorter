@@ -84,6 +84,31 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.6 — 2026-02-16 · Sub-folders (Inherit model) + A-Z pack sort
+- ✅ **Nested Tag Packs**: pack shape gains optional `subfolders: [{ id, name,
+  iconName, filenameItems }]`. When the picked pack has sub-folders, a new
+  middle **SUB-FOLDER** bar renders between FOLDERS and FILENAME (new
+  component `SubfolderBar.jsx`). Clicking a chip sets `activeSubfolderId`
+  in App.js; the FILENAME bar swaps to that sub-folder's items via a new
+  `overrideItems`/`overrideLabel` prop on IconPalette. Path builder in
+  `storeCurrent` and the destination preview both prepend the sub-folder
+  name (e.g. `Sports/Baseball/…`). Parent's folder tags stay in the top
+  bar (Inherit model — Kurt's pick).
+- ✅ **Sports starter pack demo**: Baseball, Basketball, Football sub-folders
+  seeded with team-name filename tags so the feature works on first install.
+- ✅ **Text-list `##` sub-folder headers** in `tagpackText.js`. Backwards
+  compatible: old v1.1.5 files parse identically (no `##` = no sub-folders).
+  Round-trip verified via `/app/backend/tests/tagpackText_test.mjs`.
+- ✅ **Pack list A→Z sort** everywhere: Tag Manager sidebar AND every
+  IconPalette FOLDERS/FILENAME dropdown. Cures Kurt's OCD.
+- Files touched: `frontend/src/lib/storage.js` (subfolders on Sports pack +
+  defensive migration), `frontend/src/components/SubfolderBar.jsx` (new),
+  `frontend/src/App.js` (activeSubfolderId state, SubfolderBar injection,
+  path prepend), `frontend/src/components/IconPalette.jsx` (overrideItems
+  + overrideLabel + A-Z dropdown), `frontend/src/components/CategoryManager.jsx`
+  (A-Z pack sidebar), `frontend/src/lib/tagpackText.js` (## parser +
+  subfolder serialize), version bumped to 1.1.6.
+
 ### v1.1.5 — 2026-02-15 · Repeat Tags, safer Editor Done, A-Z tag sort
 - ✅ **Repeat Last Tags** button + `R` keyboard shortcut. Snapshots the tag
   overlay from the most recently stored photo (folder + filename tags),
