@@ -471,6 +471,53 @@ Files touched:
 
 **Final version bump: `1.1.0-dev` → `1.1.0`.** Kurt promoted, built the NSIS installer, uninstalled v1.0.5, installed `Pro Photo Sorter Setup 1.1.0.exe` on his PC, verified everything, tagged `v1.1.0` in git, pushed the tag, and published a GitHub Release with the installer attached. v1.0.5 release kept live for history.
 
+### Iteration 30 — v1.2.1 Folder-path fix + Applied-chip highlight + Tag Manager drag-swap (2026-02-17)
+
+Kurt reported that when building tag lists during real use, the folder
+structure came out reversed: `/Brides family/Ceremony/…` instead of
+`/Wedding/Ceremony/Brides family/…`. He also wanted applied chips to stay
+highlighted for at-a-glance "what did I tag this photo with?" plus faster
+tag-manager UX (drag icon onto chip to swap; copy/move chips between
+sub-folders).
+
+**Ships (all four asks landed):**
+1. Destination folder order fixed → `[Pack]/[folder tags]/[Subfolder]/`
+   via new `composeDestFolderParts()` helper. All 4 store paths use it
+   (normal, batch, resize-print, auto-enhance) so files always land at
+   the same place. Preview line mirrors the order.
+2. Palette chips light up when applied to the current image (earth-tone
+   background + checkmark). Click a lit chip to remove it. Applies to
+   both Folders and Filename bars, works in batch mode too.
+3. Drag from icon picker → drop on any chip → chip's icon swaps in place.
+   Works from built-in icon grid AND from the custom image preview tile.
+   Targets: main-pack chips + every sub-folder's filename tag chips.
+4. Move/copy chips between sub-folders — drag (move), Ctrl+drag (copy),
+   right-click for a Move-to.../Copy-to... submenu with every sibling
+   sub-folder listed.
+
+**Files touched:**
+- `frontend/src/App.js` — new `composeDestFolderParts`, new
+  `removeChipFromCurrentImage`, `appliedFolderIds` + `appliedTagIds`
+  memos, wired into both IconPalette instances. All 4 store paths patched.
+- `frontend/src/components/IconPalette.jsx` — added `appliedIds` +
+  `onRemoveApplied` props, lit-chip render, toggle-on-click behavior.
+- `frontend/src/components/CategoryManager.jsx` — new handlers
+  (`swapItemIcon`, `swapSubfolderItemIcon`, `moveSubfolderItem`), new
+  `ChipRow` and `SubfolderItemChip` sub-components, new
+  `SubfolderItemContextMenu`. Built-in icon grid + custom image preview
+  are now draggable.
+- `frontend/src/buildInfo.json` — v1.2.0 → v1.2.1
+- `frontend/package.json` — v1.2.0 → v1.2.1
+- Regression test at `frontend/tests/folderPath.test.mjs` — 8 cases
+  covering the new composer.
+
+**Backward-compat note (from Kurt's chair):** existing files already on
+disk under the old `/Subfolder/Pack-folder-chips/…` paths stay where they
+are. New stores from v1.2.1 forward go into the new tree
+`/Pack/Pack-folder-chips/Subfolder/…`. Kurt can move old files by hand or
+leave them — no automatic migration is attempted (would need
+FSA-recursive-move which we don't have).
+
 ### Iteration 29 — v1.2.0 P0 Trial Mode + Gumroad Licensing shipped (2026-02-17)
 
 **Monetization enforcement is live.** Unlicensed installs run in **Trial Mode**:

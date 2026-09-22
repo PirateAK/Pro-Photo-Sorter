@@ -2,6 +2,55 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.1 — 2026-02-17 · Folder-path fix + Applied-chip highlight + Tag Manager drag-swap
+
+### Fixed
+- **Folder path now puts the SUBJECT first.** Order was
+  `/[Subfolder]/[folder-tag chips]/…` — hard to browse when you had a lot
+  of packs. New order:
+  `/[Pack]/[folder-tag chips]/[Subfolder]/[filename].jpg`.
+  Example: picking Wedding → clicking Ceremony chip → picking Brides family
+  subfolder → clicking Brides mother filename tag now stores as
+  `/Wedding/Ceremony/Brides family/…_Brides mother.jpg` (was
+  `/Brides family/Ceremony/…`).
+  - Applies to normal Store, batch Store, Resize-for-Print Store, and
+    Auto-Enhance batch — all four use the same helper `composeDestFolderParts`
+  - Live path preview updates to match
+
+### Added
+- **Applied tag chips stay highlighted.** Chips in the Folders + Filename
+  bars now light up (earth-tone background + checkmark icon) when they've
+  been used to tag the active image. Click a lit chip to remove it —
+  clicking a dim chip still applies as before.
+  - Works in batch mode too (highlights show chips applied to the current
+    image; toggle-off applies to every selected image at once)
+- **Drag any icon onto any tag chip in the Tag Manager to swap its icon.**
+  Works from both the Built-in Icons grid and the Custom Image preview
+  tile. Targets both main-pack chips (folder + filename lists) and every
+  subfolder's filename tag chips.
+- **Copy or move chips between sub-folders.** Three flavors:
+  1. **Drag a chip** from one expanded sub-folder → drop on another
+     sub-folder's expanded panel → **moved**
+  2. **Ctrl+drag** the same way → **copied** (new chip gets a fresh id,
+     same label + icon)
+  3. **Right-click** any sub-folder chip → context menu with
+     **Move to…** / **Copy to…** submenus listing every other sub-folder in
+     the pack, plus a Remove item
+
+### Under the hood
+- New helper `composeDestFolderParts(activePack, folderParts, activeSub)`
+  in `App.js` — single source of truth for destination folder ordering.
+  Regression test at `frontend/tests/folderPath.test.mjs` (8 cases,
+  all passing).
+- `IconPalette` now accepts `appliedIds: Set<string>` + `onRemoveApplied`
+  props. Palette chips read `appliedIds.has(it.id)` to decide their state.
+- `CategoryManager` gained three new handlers: `swapItemIcon`,
+  `swapSubfolderItemIcon`, `moveSubfolderItem` (`"move" | "copy"`).
+- New drag payload types: `application/x-pps-iconswap` (icon drops) and
+  `application/x-pps-sfitem` (subfolder item drags). Namespaced so they
+  don't collide with the existing `application/x-pps-icon` (main image
+  drops) or `application/x-pps-tagmgr` (folder ↔ filename list moves).
+
 ## v1.2.0 — 2026-02-17 · Trial Mode + Gumroad license activation
 
 ### Added

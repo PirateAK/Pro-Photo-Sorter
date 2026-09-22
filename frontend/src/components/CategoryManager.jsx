@@ -1,6 +1,6 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste, ChevronDown, ChevronRight, ArrowUp, ArrowDown, FolderPlus } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste, ChevronDown, ChevronRight, ArrowUp, ArrowDown, FolderPlus, Copy } from "lucide-react";
 import JSZip from "jszip";
 import { uid } from "../lib/storage";
 import { totalCount } from "../lib/tags";
@@ -173,6 +173,86 @@ export default function CategoryManager({ open, onClose, categories, onChange })
         s.id === sfId ? { ...s, filenameItems: (s.filenameItems || []).filter((it) => it.id !== itemId) } : s
       ),
     }));
+  };
+
+  // v1.2.1 — Swap the icon on a main-pack tag by dropping an icon from the
+  // picker grid onto its chip. `iconPayload` = { iconType, iconName } or
+  // { iconType: "image", iconData }.
+  const swapItemIcon = (listKey, itemId, iconPayload) => {
+    if (!current || !iconPayload) return;
+    const next = categories.map((c) => {
+      if (c.id !== current.id) return c;
+      return {
+        ...c,
+        [listKey]: (c[listKey] || []).map((it) => {
+          if (it.id !== itemId) return it;
+          if (iconPayload.iconType === "image" && iconPayload.iconData) {
+            return { ...it, iconType: "image", iconData: iconPayload.iconData, iconName: undefined };
+          }
+          return { ...it, iconType: "lucide", iconName: iconPayload.iconName || "Tag", iconData: undefined };
+        }),
+      };
+    });
+    onChange(next);
+  };
+
+  // v1.2.1 — same, but for a filename tag inside a subfolder.
+  const swapSubfolderItemIcon = (sfId, itemId, iconPayload) => {
+    if (!current || !iconPayload) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) =>
+        s.id !== sfId ? s : {
+          ...s,
+          filenameItems: (s.filenameItems || []).map((it) => {
+            if (it.id !== itemId) return it;
+            if (iconPayload.iconType === "image" && iconPayload.iconData) {
+              return { ...it, iconType: "image", iconData: iconPayload.iconData, iconName: undefined };
+            }
+            return { ...it, iconType: "lucide", iconName: iconPayload.iconName || "Tag", iconData: undefined };
+          }),
+        }
+      ),
+    }));
+  };
+
+  // v1.2.1 — Move OR copy a filename tag between subfolders of the current
+  // pack. mode = "move" | "copy". Copy assigns a fresh id.
+  const moveSubfolderItem = (fromSfId, toSfId, itemId, mode = "move") => {
+    if (!current || !fromSfId || !toSfId || !itemId) return;
+    if (fromSfId === toSfId && mode === "move") return;
+    const fromSub = (current.subfolders || []).find((s) => s.id === fromSfId);
+    const item = fromSub?.filenameItems?.find((it) => it.id === itemId);
+    if (!item) return;
+    const toSub = (current.subfolders || []).find((s) => s.id === toSfId);
+    if (!toSub) return;
+    // Guard: same-name duplicate in target
+    const alreadyThere = (toSub.filenameItems || []).some(
+      (it) => it.label.toLowerCase() === item.label.toLowerCase()
+    );
+    if (alreadyThere) {
+      toast.error(`"${item.label}" already exists in "${toSub.name}"`);
+      return;
+    }
+    const cloneOrItem = mode === "copy"
+      ? { ...item, id: uid("it") }
+      : item;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) => {
+        if (s.id === fromSfId && mode === "move") {
+          return { ...s, filenameItems: (s.filenameItems || []).filter((it) => it.id !== itemId) };
+        }
+        if (s.id === toSfId) {
+          return { ...s, filenameItems: [...(s.filenameItems || []), cloneOrItem] };
+        }
+        return s;
+      }),
+    }));
+    toast.success(
+      mode === "copy" ? `Copied "${item.label}"` : `Moved "${item.label}"`,
+      { description: `${fromSub.name} → ${toSub.name}` }
+    );
   };
 
   // Move a tag between the two lists of the CURRENT pack.
@@ -635,6 +715,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onImagePick={(e) => handleImagePick("folderItems", e)}
                     onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "folderItems", itemId)}
                     onBulkPaste={(text) => bulkAddLabels("folderItems", text)}
+                    onSwapIcon={swapItemIcon}
                   />
                   <div className="h-px bg-app/60 mx-4" />
                   <ListSection
@@ -651,6 +732,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onImagePick={(e) => handleImagePick("filenameItems", e)}
                     onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "filenameItems", itemId)}
                     onBulkPaste={(text) => bulkAddLabels("filenameItems", text)}
+                    onSwapIcon={swapItemIcon}
                   />
                   <div className="h-px bg-app/60 mx-4" />
                   <SubfolderSection
@@ -661,6 +743,8 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onMoveSubfolder={moveSubfolder}
                     onAddItem={addSubfolderItem}
                     onRemoveItem={removeSubfolderItem}
+                    onSwapItemIcon={swapSubfolderItemIcon}
+                    onMoveSubfolderItem={moveSubfolderItem}
                   />
                 </div>
               </>
@@ -801,7 +885,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
  *  Supports drag-and-drop MOVE of tags in/out via `onMoveIn(fromKey, itemId)`.
  *  Drop data type: "application/x-pps-tagmgr" carrying { fromKey, itemId }.
  */
-function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick, onMoveIn, onBulkPaste }) {
+function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, setDraft, fileRef, onAdd, onRemove, onImagePick, onMoveIn, onBulkPaste, onSwapIcon }) {
   const [dropOver, setDropOver] = React.useState(false);
   const [pasteOpen, setPasteOpen] = React.useState(false);
   const [pasteText, setPasteText] = React.useState("");
@@ -864,15 +948,25 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
         </div>
 
         {draft.pickerMode === "builtin" ? (
-          <div className="grid grid-cols-12 gap-1 max-h-32 overflow-auto pane rounded p-2">
+          <div className="grid grid-cols-12 gap-1 max-h-32 overflow-auto pane rounded p-2" data-testid={`${listKey}-icon-grid`}>
             {BUILTIN_ICONS.map((n) => (
               <button
                 key={n}
                 onClick={() => setDraft({ selectedBuiltin: n })}
-                className={`w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover ${
+                draggable
+                onDragStart={(e) => {
+                  // v1.2.1 — drag an icon from the picker onto any chip's
+                  // icon area to swap its icon in place.
+                  e.dataTransfer.setData(
+                    "application/x-pps-iconswap",
+                    JSON.stringify({ iconType: "lucide", iconName: n })
+                  );
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                className={`w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover cursor-grab active:cursor-grabbing ${
                   draft.selectedBuiltin === n ? "bg-primary-earth/30 text-primary-earth" : "text-app"
                 }`}
-                title={n}
+                title={`${n} — drag onto any chip to swap its icon`}
                 data-testid={`${listKey}-icon-${n}`}
               >
                 <BuiltinIcon name={n} size={16} />
@@ -881,7 +975,20 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
           </div>
         ) : (
           <div className="flex items-center gap-3">
-            <div className="w-16 h-16 rounded border border-app bg-surface flex items-center justify-center overflow-hidden">
+            <div
+              className={`w-16 h-16 rounded border border-app bg-surface flex items-center justify-center overflow-hidden ${draft.selectedImage ? "cursor-grab active:cursor-grabbing" : ""}`}
+              draggable={!!draft.selectedImage}
+              onDragStart={(e) => {
+                if (!draft.selectedImage) return;
+                e.dataTransfer.setData(
+                  "application/x-pps-iconswap",
+                  JSON.stringify({ iconType: "image", iconData: draft.selectedImage })
+                );
+                e.dataTransfer.effectAllowed = "copy";
+              }}
+              title={draft.selectedImage ? "Drag this image onto any chip to swap its icon" : ""}
+              data-testid={`${listKey}-custom-preview`}
+            >
               {draft.selectedImage ? (
                 <img src={draft.selectedImage} alt="preview" className="w-full h-full object-cover" />
               ) : (
@@ -1007,41 +1114,81 @@ function ListSection({ listKey, listLabel, ListIcon, helpText, items, draft, set
         ) : (
           <div className="grid grid-cols-4 gap-2">
             {items.map((it) => (
-              <div
+              <ChipRow
                 key={it.id}
-                className="pane rounded p-2 flex items-center gap-2 group cursor-grab active:cursor-grabbing"
-                draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData(
-                    "application/x-pps-tagmgr",
-                    JSON.stringify({ fromKey: listKey, itemId: it.id })
-                  );
-                  e.dataTransfer.effectAllowed = "move";
-                }}
-                title={`${it.label} — drag to the ${listKey === "folderItems" ? "Filename" : "Folder"} section to reassign`}
-                data-testid={`${listKey}-item-${it.id}`}
-              >
-                <div className="w-9 h-9 rounded bg-app border border-app flex items-center justify-center text-primary-earth shrink-0">
-                  <IconPreview item={it} size={20} />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs font-medium truncate">{it.label}</div>
-                  <div className="text-[10px] text-dim truncate">
-                    {it.iconType === "image" ? "custom" : it.iconName}
-                  </div>
-                </div>
-                <button
-                  onClick={() => onRemove(it.id)}
-                  className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-danger-earth"
-                  data-testid={`${listKey}-remove-${it.id}`}
-                >
-                  <Trash2 size={12} />
-                </button>
-              </div>
+                it={it}
+                listKey={listKey}
+                onRemove={onRemove}
+                onSwapIcon={onSwapIcon}
+              />
             ))}
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+/**
+ * A single chip in the ListSection tag grid.
+ * v1.2.1: accepts a drop of an icon from the picker grid to swap its icon
+ * in place (data type "application/x-pps-iconswap").
+ * Also draggable to move between folder/filename lists (existing behavior).
+ */
+function ChipRow({ it, listKey, onRemove, onSwapIcon }) {
+  const [dropOver, setDropOver] = React.useState(false);
+  return (
+    <div
+      className={`pane rounded p-2 flex items-center gap-2 group cursor-grab active:cursor-grabbing transition-colors ${
+        dropOver ? "ring-2 ring-primary-earth bg-primary-earth/10" : ""
+      }`}
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(
+          "application/x-pps-tagmgr",
+          JSON.stringify({ fromKey: listKey, itemId: it.id })
+        );
+        e.dataTransfer.effectAllowed = "move";
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-pps-iconswap")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDropOver(true);
+        }
+      }}
+      onDragLeave={() => setDropOver(false)}
+      onDrop={(e) => {
+        setDropOver(false);
+        const raw = e.dataTransfer.getData("application/x-pps-iconswap");
+        if (!raw) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try {
+          const payload = JSON.parse(raw);
+          onSwapIcon?.(listKey, it.id, payload);
+        } catch { /* ignore */ }
+      }}
+      title={`${it.label} — drag to the ${listKey === "folderItems" ? "Filename" : "Folder"} section to reassign, or drop an icon here to swap`}
+      data-testid={`${listKey}-item-${it.id}`}
+    >
+      <div className="w-9 h-9 rounded bg-app border border-app flex items-center justify-center text-primary-earth shrink-0">
+        <IconPreview item={it} size={20} />
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs font-medium truncate">{it.label}</div>
+        <div className="text-[10px] text-dim truncate">
+          {it.iconType === "image" ? "custom" : it.iconName}
+        </div>
+      </div>
+      <button
+        onClick={() => onRemove(it.id)}
+        className="opacity-0 group-hover:opacity-100 w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-danger-earth"
+        data-testid={`${listKey}-remove-${it.id}`}
+      >
+        <Trash2 size={12} />
+      </button>
     </div>
   );
 }
@@ -1062,6 +1209,8 @@ function SubfolderSection({
   onMoveSubfolder,
   onAddItem,
   onRemoveItem,
+  onSwapItemIcon,          // v1.2.1 — fn(sfId, itemId, iconPayload)
+  onMoveSubfolderItem,     // v1.2.1 — fn(fromSfId, toSfId, itemId, "move"|"copy")
 }) {
   const subs = Array.isArray(pack?.subfolders) ? pack.subfolders : [];
   const [draft, setDraft] = useState("");
@@ -1069,6 +1218,23 @@ function SubfolderSection({
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [itemDrafts, setItemDrafts] = useState({}); // { [sfId]: label }
+  // v1.2.1 — right-click "Move to…/Copy to…" menu on a subfolder item.
+  // menu = { x, y, sfId, itemId, item }
+  const [ctxMenu, setCtxMenu] = useState(null);
+  // v1.2.1 — which subfolder is being drag-hovered over (for highlight)
+  const [dropOverSfId, setDropOverSfId] = useState(null);
+
+  useEffect(() => {
+    if (!ctxMenu) return;
+    const onDoc = () => setCtxMenu(null);
+    const onKey = (e) => { if (e.key === "Escape") setCtxMenu(null); };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [ctxMenu]);
 
   const commitRename = () => {
     if (renamingId) onRenameSubfolder(renamingId, renameDraft);
@@ -1205,31 +1371,55 @@ function SubfolderSection({
                 </div>
 
                 {expanded && (
-                  <div className="px-3 pb-2 pt-1 border-t border-app/40">
-                    <div className="text-[10px] uppercase tracking-wider text-dim font-heading mb-1.5">
-                      Filename tags for “{sf.name}”
+                  <div
+                    className={`px-3 pb-2 pt-1 border-t border-app/40 transition-colors ${
+                      dropOverSfId === sf.id ? "bg-primary-earth/10 ring-1 ring-primary-earth/50 rounded-b" : ""
+                    }`}
+                    onDragOver={(e) => {
+                      if (e.dataTransfer.types.includes("application/x-pps-sfitem")) {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                        setDropOverSfId(sf.id);
+                      }
+                    }}
+                    onDragLeave={(e) => {
+                      if (!e.currentTarget.contains(e.relatedTarget)) setDropOverSfId(null);
+                    }}
+                    onDrop={(e) => {
+                      setDropOverSfId(null);
+                      const raw = e.dataTransfer.getData("application/x-pps-sfitem");
+                      if (!raw) return;
+                      e.preventDefault();
+                      try {
+                        const { fromSfId, itemId } = JSON.parse(raw);
+                        if (!fromSfId || !itemId) return;
+                        const mode = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                        onMoveSubfolderItem?.(fromSfId, sf.id, itemId, mode);
+                      } catch { /* ignore */ }
+                    }}
+                  >
+                    <div className="text-[10px] uppercase tracking-wider text-dim font-heading mb-1.5 flex items-center justify-between">
+                      <span>Filename tags for "{sf.name}"</span>
+                      <span className="text-[9px] normal-case tracking-normal italic text-dim">
+                        Drag chip = move · Ctrl+drag = copy · Right-click = menu
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {items.length === 0 ? (
                         <span className="text-xs text-dim italic">No filename tags yet. Add some below (e.g. team names for Baseball).</span>
                       ) : items.map((it) => (
-                        <div
+                        <SubfolderItemChip
                           key={it.id}
-                          className="group flex items-center gap-1 px-2 py-0.5 rounded bg-app border border-app text-xs max-w-[240px]"
-                          data-testid={`subfolder-item-${sf.id}-${it.id}`}
-                          title={it.label}
-                        >
-                          <TagIcon size={10} className="text-primary-earth shrink-0" />
-                          <span className="font-mono truncate">{it.label}</span>
-                          <button
-                            onClick={() => onRemoveItem(sf.id, it.id)}
-                            className="w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
-                            data-testid={`subfolder-item-remove-${sf.id}-${it.id}`}
-                            title="Remove"
-                          >
-                            <X size={10} />
-                          </button>
-                        </div>
+                          it={it}
+                          sfId={sf.id}
+                          onRemove={() => onRemoveItem(sf.id, it.id)}
+                          onSwapIcon={(payload) => onSwapItemIcon?.(sf.id, it.id, payload)}
+                          onContext={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCtxMenu({ x: e.clientX, y: e.clientY, sfId: sf.id, itemId: it.id, item: it });
+                          }}
+                        />
                       ))}
                     </div>
                     <div className="flex items-center gap-1">
@@ -1266,6 +1456,151 @@ function SubfolderSection({
           })}
         </div>
       )}
+
+      {/* v1.2.1 — Right-click context menu on subfolder items */}
+      {ctxMenu && (
+        <SubfolderItemContextMenu
+          x={ctxMenu.x}
+          y={ctxMenu.y}
+          item={ctxMenu.item}
+          fromSfId={ctxMenu.sfId}
+          allSubs={subs}
+          onPick={(toSfId, mode) => {
+            onMoveSubfolderItem?.(ctxMenu.sfId, toSfId, ctxMenu.itemId, mode);
+            setCtxMenu(null);
+          }}
+          onRemove={() => {
+            onRemoveItem(ctxMenu.sfId, ctxMenu.itemId);
+            setCtxMenu(null);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+/**
+ * Draggable chip for a filename tag inside a subfolder.
+ * v1.2.1: draggable payload "application/x-pps-sfitem" carries { fromSfId, itemId };
+ * drop target for "application/x-pps-iconswap" to change its icon;
+ * right-click opens a Move-to / Copy-to menu.
+ */
+function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext }) {
+  const [dropOver, setDropOver] = React.useState(false);
+  return (
+    <div
+      draggable
+      onDragStart={(e) => {
+        e.dataTransfer.setData(
+          "application/x-pps-sfitem",
+          JSON.stringify({ fromSfId: sfId, itemId: it.id })
+        );
+        e.dataTransfer.effectAllowed = "copyMove";
+      }}
+      onDragOver={(e) => {
+        if (e.dataTransfer.types.includes("application/x-pps-iconswap")) {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "copy";
+          setDropOver(true);
+        }
+      }}
+      onDragLeave={() => setDropOver(false)}
+      onDrop={(e) => {
+        setDropOver(false);
+        const raw = e.dataTransfer.getData("application/x-pps-iconswap");
+        if (!raw) return;
+        e.preventDefault();
+        e.stopPropagation();
+        try { onSwapIcon?.(JSON.parse(raw)); } catch { /* ignore */ }
+      }}
+      onContextMenu={onContext}
+      className={`group flex items-center gap-1 px-2 py-0.5 rounded bg-app border text-xs max-w-[240px] cursor-grab active:cursor-grabbing transition-colors ${
+        dropOver ? "ring-2 ring-primary-earth bg-primary-earth/15 border-primary-earth" : "border-app"
+      }`}
+      data-testid={`subfolder-item-${sfId}-${it.id}`}
+      title={`${it.label}  ·  Drag to another sub-folder to move (Ctrl+drag to copy). Drop an icon here to swap. Right-click for menu.`}
+    >
+      <span className="text-primary-earth shrink-0 flex items-center">
+        <IconPreview item={it} size={12} />
+      </span>
+      <span className="font-mono truncate">{it.label}</span>
+      <button
+        onClick={onRemove}
+        className="w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
+        data-testid={`subfolder-item-remove-${sfId}-${it.id}`}
+        title="Remove"
+      >
+        <X size={10} />
+      </button>
+    </div>
+  );
+}
+
+/**
+ * v1.2.1 — Context menu for a subfolder item.
+ * Shows the current subfolder + a list of every OTHER subfolder as
+ * Move-to and Copy-to targets, plus a Remove item.
+ */
+function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRemove }) {
+  const others = (allSubs || []).filter((s) => s.id !== fromSfId);
+  const style = {
+    position: "fixed",
+    top: Math.min(y, window.innerHeight - Math.min(400, 120 + others.length * 30)),
+    left: Math.min(x, window.innerWidth - 260),
+    zIndex: 100,
+  };
+  return (
+    <div
+      style={style}
+      className="pane rounded-md shadow-2xl border border-app min-w-[240px] py-1"
+      data-testid="subfolder-item-ctxmenu"
+      onMouseDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
+      <div className="px-3 py-1 text-[10px] uppercase tracking-widest text-dim font-heading truncate">
+        {item?.label}
+      </div>
+      {others.length === 0 ? (
+        <div className="px-3 py-2 text-xs text-dim italic">
+          No other sub-folders in this pack. Add one to enable copy/move.
+        </div>
+      ) : (
+        <>
+          <div className="px-3 pt-1 pb-0.5 text-[10px] font-heading text-dim">Move to…</div>
+          {others.map((s) => (
+            <button
+              key={`move-${s.id}`}
+              onClick={() => onPick(s.id, "move")}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-surface-hover text-app"
+              data-testid={`subfolder-item-move-${s.id}`}
+            >
+              <FolderPlus size={12} className="text-primary-earth shrink-0" />
+              <span className="truncate">{s.name}</span>
+            </button>
+          ))}
+          <div className="h-px bg-app/60 my-1" />
+          <div className="px-3 pt-1 pb-0.5 text-[10px] font-heading text-dim">Copy to…</div>
+          {others.map((s) => (
+            <button
+              key={`copy-${s.id}`}
+              onClick={() => onPick(s.id, "copy")}
+              className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-surface-hover text-app"
+              data-testid={`subfolder-item-copy-${s.id}`}
+            >
+              <Copy size={12} className="text-primary-earth shrink-0" />
+              <span className="truncate">{s.name}</span>
+            </button>
+          ))}
+        </>
+      )}
+      <div className="h-px bg-app/60 my-1" />
+      <button
+        onClick={onRemove}
+        className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-surface-hover text-[color:var(--danger,#c0392b)]"
+        data-testid="subfolder-item-ctx-remove"
+      >
+        <Trash2 size={12} /> Remove
+      </button>
     </div>
   );
 }

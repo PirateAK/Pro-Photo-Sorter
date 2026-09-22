@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { IconPreview } from "./CategoryManager";
-import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine, ArrowDownAZ, Copy } from "lucide-react";
+import { ChevronDown, FolderTree, Tag, Plus, Pencil, Trash2, Settings2, ArrowLeftFromLine, ArrowRightFromLine, ArrowDownAZ, Copy, Check } from "lucide-react";
 import { uid } from "../lib/storage";
 import { getItems, getListKey } from "../lib/tags";
 import { toast } from "sonner";
@@ -17,6 +17,8 @@ export default function IconPalette({
   activeCatId,
   onSetCat,
   onApply, // fn(icon, "folders" | "tags")
+  onRemoveApplied, // v1.2.1 — fn(chipId, "folders" | "tags"); called when a lit chip is clicked
+  appliedIds,      // v1.2.1 — Set<string> of chip ids applied to the current image for this role
   onCategoriesChange, // fn(nextCategories) — for quick edits
   onOpenManager,       // fn() — opens the full Category Manager modal
   hidePicker = false,  // when true, show pack name as read-only label instead of a <select>
@@ -313,10 +315,13 @@ export default function IconPalette({
             No {roleLabel.toLowerCase()} tags in this pack — right-click to add one, or open Tag Manager.
           </span>
         )}
-        {items.map((it) => (
+        {items.map((it) => {
+          const isApplied = appliedIds?.has(it.id) || false;
+          return (
           <button
             key={it.id}
             data-chip="1"
+            data-applied={isApplied ? "1" : "0"}
             draggable
             onDragStart={(e) => {
               // sourceRole tells the drop target which list this chip came from,
@@ -327,22 +332,37 @@ export default function IconPalette({
               );
               e.dataTransfer.effectAllowed = "copyMove";
             }}
-            onClick={() => onApply(it, applyRow)}
+            onClick={() => {
+              // v1.2.1 — click a lit chip to remove it from the current image;
+              // click a dim chip to apply it.
+              if (isApplied && onRemoveApplied) onRemoveApplied(it.id, applyRow);
+              else onApply(it, applyRow);
+            }}
             onContextMenu={(e) => openChipMenu(e, it)}
             onAuxClick={(e) => {
               // Middle-click = quick delete with undo
               if (e.button === 1) { e.preventDefault(); deleteItem(it); }
             }}
-            className="shrink-0 flex items-center gap-1.5 px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app hover:border-primary-earth/60 text-xs transition-colors group cursor-grab active:cursor-grabbing"
-            title={`${it.label}  ·  Drag to a row or click to add. Right-click to edit.`}
+            className={`shrink-0 flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-colors group cursor-grab active:cursor-grabbing ${
+              isApplied
+                ? "bg-primary-earth/25 border-primary-earth text-primary-earth ring-1 ring-primary-earth/40"
+                : "bg-app hover:bg-surface-hover border-app hover:border-primary-earth/60"
+            }`}
+            title={isApplied
+              ? `${it.label}  ·  Applied — click to remove from this photo`
+              : `${it.label}  ·  Click to apply, drag onto a photo, or right-click to edit.`}
             data-testid={`palette-${role}-item-${it.id}`}
           >
             <span className="text-primary-earth">
               <IconPreview item={it} size={14} />
             </span>
-            <span className="font-mono text-app group-hover:text-primary-earth">{it.label}</span>
+            <span className={`font-mono ${isApplied ? "text-primary-earth" : "text-app group-hover:text-primary-earth"}`}>{it.label}</span>
+            {isApplied && (
+              <Check size={11} className="text-primary-earth -mr-0.5 shrink-0" data-testid={`palette-${role}-check-${it.id}`} />
+            )}
           </button>
-        ))}
+          );
+        })}
       </div>
 
       {/* Context menu */}
