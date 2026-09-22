@@ -2,6 +2,49 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.0 — 2026-02-17 · Trial Mode + Gumroad license activation
+
+### Added
+- **Trial Mode** — every unlicensed install now runs in Trial Mode. Stored
+  photos automatically get:
+  - A forced watermark reading `TRIAL - Pro Photo Sorter (unlicensed)`
+    (overrides any custom watermark text the user may have set)
+  - A `_TRIAL` suffix appended before the extension of every stored filename
+    (e.g. `wedding_bride_smiling.jpg` → `wedding_bride_smiling_TRIAL.jpg`)
+  - Both apply to normal store, batch store, and Resize-for-Print store flows
+- **Trial banner** across the top of the app when unlicensed, with a
+  one-click **"Activate License"** button that jumps straight to the
+  License tab in the Help modal.
+- **License tab in Help modal** with:
+  - License key input (accepts Gumroad's `XXXXXXXX-XXXXXXXX-XXXXXXXX-XXXXXXXX` format)
+  - **Activate** button — POSTs once to Gumroad's public
+    `/v2/licenses/verify` endpoint, checks refund/dispute/subscription
+    status and product identity, caches result in `localStorage` forever
+  - **Buy Now** button — opens the Gumroad product page
+    (`https://muskegman.gumroad.com/l/gvmaas`) in the system browser
+  - **Deactivate on this PC** button (shown when licensed) — clears the
+    local cache so the license can be moved to a new machine. If the user
+    hits the Gumroad use-count limit later, a single email to
+    `leaderteamk@gmail.com` resets it in 30 seconds.
+- **`frontend/src/lib/license.js`** — new module owning:
+  - localStorage schema `gvmaas.license.v1`
+  - `activateLicense()`, `deactivateLicense()`, `isTrialMode()`,
+    `applyTrialSuffix()`, `subscribeLicense()`
+  - Hard-coded product ID `sxHfeHU-l7nk1-LAdVrQZA==`
+- **Regression test** at `frontend/tests/license.trial.test.mjs`
+  (10 cases, plain-node runnable).
+
+### Design notes
+- Activation is the ONLY internet call the app ever makes, and only once
+  per install. After that, the app is 100% offline forever (matches Kurt's
+  bush-plane / satellite / boat use cases).
+- Trial output is intentionally hard to launder — both a visible watermark
+  AND a filename suffix. Users buying a license get clean output.
+- Deactivation client-side does NOT decrement Gumroad's use counter
+  (that endpoint requires the seller's OAuth token, which cannot safely
+  ship in an Electron app). This is a deliberate trade-off to keep the
+  app 100% infra-free — no FastAPI proxy, no cloud services.
+
 ## v1.1.11 — 2026-02-16 · Main preview zoom+pan + Duplicate tag chip
 
 ### Added

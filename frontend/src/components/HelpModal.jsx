@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
-import { HelpCircle, X as XIcon, Printer, ExternalLink, FileText, Rocket, Keyboard, History, Info } from "lucide-react";
+import { HelpCircle, X as XIcon, Printer, ExternalLink, FileText, Rocket, Keyboard, History, Info, KeyRound } from "lucide-react";
 import buildInfo from "../buildInfo.json";
+import LicenseSection from "@/components/LicenseSection";
 
 /**
  * In-app Help / About modal.
@@ -16,17 +17,23 @@ const TABS = [
   { key: "guide",      label: "User Guide",  icon: FileText,    docPath: "USER_GUIDE.md" },
   { key: "shortcuts",  label: "Shortcuts",   icon: Keyboard,    docPath: null }, // hard-coded table below
   { key: "changelog",  label: "Changelog",   icon: History,     docPath: "CHANGELOG.md" },
+  { key: "license",    label: "License",     icon: KeyRound,    docPath: null },
   { key: "about",      label: "About",       icon: Info,        docPath: null },
 ];
 
 // docPath → cached markdown text (per session)
 const docCache = new Map();
 
-export default function HelpModal({ open, onClose }) {
-  const [tab, setTab] = useState("quickstart");
+export default function HelpModal({ open, onClose, initialTab }) {
+  const [tab, setTab] = useState(initialTab || "quickstart");
   const [docText, setDocText] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState("");
+
+  // When the modal is opened, jump to the requested initialTab (if any).
+  useEffect(() => {
+    if (open && initialTab) setTab(initialTab);
+  }, [open, initialTab]);
 
   const activeTab = useMemo(() => TABS.find((t) => t.key === tab) || TABS[0], [tab]);
 
@@ -129,14 +136,16 @@ ${bodyHtml}
             <span className="text-[10px] font-mono text-dim ml-1">v{buildInfo.version}</span>
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={handlePrint}
-              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
-              data-testid="help-print-btn"
-              title="Print the current tab"
-            >
-              <Printer size={12} /> Print
-            </button>
+            {tab !== "license" && (
+              <button
+                onClick={handlePrint}
+                className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+                data-testid="help-print-btn"
+                title="Print the current tab"
+              >
+                <Printer size={12} /> Print
+              </button>
+            )}
             <button
               onClick={onClose}
               className="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover"
@@ -176,6 +185,8 @@ ${bodyHtml}
               <ShortcutsView />
             ) : tab === "about" ? (
               <AboutView />
+            ) : tab === "license" ? (
+              <LicenseSection />
             ) : loading ? (
               <div className="text-dim italic text-sm">Loading…</div>
             ) : err ? (

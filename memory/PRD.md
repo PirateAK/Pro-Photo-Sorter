@@ -471,9 +471,46 @@ Files touched:
 
 **Final version bump: `1.1.0-dev` → `1.1.0`.** Kurt promoted, built the NSIS installer, uninstalled v1.0.5, installed `Pro Photo Sorter Setup 1.1.0.exe` on his PC, verified everything, tagged `v1.1.0` in git, pushed the tag, and published a GitHub Release with the installer attached. v1.0.5 release kept live for history.
 
+### Iteration 29 — v1.2.0 P0 Trial Mode + Gumroad Licensing shipped (2026-02-17)
+
+**Monetization enforcement is live.** Unlicensed installs run in **Trial Mode**:
+every stored photo now gets a forced watermark ("TRIAL - Pro Photo Sorter
+(unlicensed)") and a `_TRIAL` filename suffix (applies to normal store, batch
+store, and Resize-for-Print flows).
+
+Activation is handled entirely client-side against Gumroad's public
+`/v2/licenses/verify` endpoint (no server, no OAuth token in Electron, no
+FastAPI proxy — keeps the app 100% infra-free). Product ID
+`sxHfeHU-l7nk1-LAdVrQZA==` is hard-coded. One internet ping per install;
+result cached in `localStorage` (`gvmaas.license.v1`) forever after.
+
+New files:
+- `frontend/src/lib/license.js` — activate / deactivate / trial-suffix
+- `frontend/src/components/TrialBanner.jsx` — top-of-app strip when unlicensed
+- `frontend/src/components/LicenseSection.jsx` — Help modal License tab
+- `frontend/tests/license.trial.test.mjs` — 10-case regression (all passing)
+
+Modified: `frontend/src/App.js` (imports + trial enforcement in both store
+flows + banner render + Help-modal open-to-License-tab), `HelpModal.jsx`
+(new License tab, print button hidden on License tab), `App.css`
+(app-shell wrapper so the banner sits above the grid without breaking the
+100vh layout), `frontend/package.json` (v1.1.11 → v1.2.0).
+
+**Deactivation trade-off explicitly chosen (option A):** the in-app
+"Deactivate on this PC" button clears local storage only. It does NOT hit
+Gumroad's decrement endpoint (that requires the seller's OAuth token,
+unshippable in Electron). If a user hits Gumroad's use-count limit after
+moving PCs, they email `leaderteamk@gmail.com` and the seller resets it
+from the Gumroad Sales dashboard in 30 seconds. Chosen over the cloud-proxy
+option (b) to keep the app zero-infra.
+
+Trial watermark deliberately OVERRIDES the user's own watermark text so
+trial output is unmistakably trial output — a user setting their own name
+in Settings.watermarkText can't accidentally launder trial photos.
+
 ### On-deck for v1.2 (deferred by Kurt at end of v1.1.0 session)
 
-- **P0 · Trial-mode enforcement & Licensing** — Gumroad key entry in Help modal; force watermark ON + `_TRIAL` filename suffix until verified. Blocks monetization otherwise.
+- ~~**P0 · Trial-mode enforcement & Licensing**~~ ✅ Shipped v1.2.0 (2026-02-17).
 - **P1 · Default EXIF Location in Settings** *(Kurt, 2026-02-15)* — new field
   in Settings so a user working on a single shoot can set the location value
   once (e.g. "Kenai, Alaska") and have every photo inherit it, without
@@ -587,6 +624,17 @@ Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, 
   intact. Works for both the pack's Folder/Filename lists AND for
   sub-folder items. Same behavior on IconPalette bars in the main window
   would be excellent but optional.
+
+#### 🔒 Lock zoom across filmstrip navigation *(Kurt, 2026-02-16, late-night)*
+- Today: `ZoomablePreview.jsx` auto-resets to Fit whenever the filmstrip
+  advances (`resetKey` = current image path). Great default, but breaks
+  the workflow of pixel-peeping the same corner across a burst of frames.
+- v2 UX: add a small padlock toggle beside the on-screen Fit button
+  (bottom-right of the viewer). Off by default so nothing changes. When
+  ON, the current `scale` + `tx` + `ty` values persist across filmstrip
+  navigation — you can compare the same detail area frame-to-frame.
+  Auto-unlock on any manual Fit click. Consider a subtle status hint in
+  the zoom badge ("1.4× locked") to make the state visible.
 
 #### 🏷️ Third "Tags" bar — Lightroom-style keyword database (P1 for v2)
 
