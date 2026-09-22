@@ -2303,6 +2303,17 @@ export default function App() {
                 containerRef={imageAreaRef}
                 folders={currentOverlay.folders}
                 tags={currentOverlay.tags}
+                contextFolders={(() => {
+                  // v1.2.5 — read-only chips in the FOLDERS overlay row for
+                  // pack + subfolder so the panel reflects the full path
+                  // (matches the "Will store to: …" preview).
+                  const pack = categories.find((c) => c.id === foldersCatId);
+                  const sub = activeSubfolderId && pack?.subfolders?.find((s) => s.id === activeSubfolderId);
+                  const out = [];
+                  if (pack?.name) out.push({ id: `ctx-pack-${pack.id}`, label: pack.name, iconType: "lucide", iconName: "Package", source: "pack", position: "leading" });
+                  if (sub?.name) out.push({ id: `ctx-sub-${sub.id}`, label: sub.name, iconType: sub.iconType || "lucide", iconName: sub.iconName || "Folder", iconData: sub.iconData, source: "subfolder", position: "trailing" });
+                  return out;
+                })()}
                 onReorderFolders={(nl) => reorderRow("folders", nl)}
                 onReorderTags={(nl) => reorderRow("tags", nl)}
                 onRemoveFolder={(u) => removeFromRow("folders", u)}

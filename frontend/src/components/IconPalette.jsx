@@ -345,7 +345,7 @@ export default function IconPalette({
             }}
             className={`shrink-0 flex items-center gap-1.5 px-2 py-1 rounded border text-xs transition-colors group cursor-grab active:cursor-grabbing ${
               isApplied
-                ? "bg-primary-earth/25 border-primary-earth text-primary-earth ring-1 ring-primary-earth/40"
+                ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth shadow-sm"
                 : "bg-app hover:bg-surface-hover border-app hover:border-primary-earth/60"
             }`}
             title={isApplied
@@ -353,12 +353,16 @@ export default function IconPalette({
               : `${it.label}  ·  Click to apply, drag onto a photo, or right-click to edit.`}
             data-testid={`palette-${role}-item-${it.id}`}
           >
-            <span className="text-primary-earth">
+            <span className={isApplied ? "text-[color:var(--text-inverse)]" : "text-primary-earth"}>
               <IconPreview item={it} size={14} />
             </span>
-            <span className={`font-mono ${isApplied ? "text-primary-earth" : "text-app group-hover:text-primary-earth"}`}>{it.label}</span>
+            <span className={`font-mono ${
+              isApplied
+                ? "text-[color:var(--text-inverse)]"
+                : "text-app group-hover:text-primary-earth"
+            }`}>{it.label}</span>
             {isApplied && (
-              <Check size={11} className="text-primary-earth -mr-0.5 shrink-0" data-testid={`palette-${role}-check-${it.id}`} />
+              <Check size={11} className="text-[color:var(--text-inverse)] -mr-0.5 shrink-0" data-testid={`palette-${role}-check-${it.id}`} />
             )}
           </button>
           );
