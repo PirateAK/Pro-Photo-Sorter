@@ -1,7 +1,30 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, Reorder } from "framer-motion";
-import { GripVertical, X, FolderTree, Tag } from "lucide-react";
+import { GripVertical, X, FolderTree, Tag, Pin } from "lucide-react";
 import { IconPreview } from "./CategoryManager";
+
+/**
+ * v1.2.5 — Small read-only "context" chip used to show the active pack +
+ * subfolder inside the FOLDERS overlay row. Looks similar to a normal
+ * applied chip but with a pin icon, no remove button, no drag reorder,
+ * and a dashed border so the user can tell it's not per-image state.
+ */
+function ContextChip({ ctx, separator }) {
+  return (
+    <span
+      className="flex items-center gap-1 px-2 py-1 rounded bg-app/40 border border-dashed border-primary-earth/50 text-primary-earth/90 select-none"
+      data-testid={`overlay-context-${ctx.source}`}
+      title={`From ${ctx.source === "pack" ? "the active pack" : "the active sub-folder"} — set at the top toolbar, not per image`}
+    >
+      <Pin size={10} className="opacity-70 shrink-0" />
+      <span className="text-primary-earth">
+        <IconPreview item={ctx} size={14} />
+      </span>
+      <span className="text-xs font-mono">{ctx.label}</span>
+      {separator && <span className="text-dim text-xs ml-0.5">{separator}</span>}
+    </span>
+  );
+}
 
 /**
  * Overlay showing TWO rows of icons applied to the current image:
@@ -11,8 +34,10 @@ import { IconPreview } from "./CategoryManager";
  * The whole overlay can be dragged around the image.
  * Each row supports drop from the palette, drag-to-reorder, and per-icon remove.
  */
-function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, onDropFolders, onDropTags, separator }) {
+function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, onDropFolders, onDropTags, separator, leadingContext, trailingContext }) {
   const [isOver, setIsOver] = useState(false);
+  const hasContext = (leadingContext?.length || 0) > 0 || (trailingContext?.length || 0) > 0;
+  const totallyEmpty = icons.length === 0 && !hasContext;
   return (
     <div
       className={`flex items-center gap-2 rounded transition-colors ${isOver ? "bg-primary-earth/25" : ""}`}
@@ -34,8 +59,6 @@ function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, onDr
           const role = parsed?.role;
           e.preventDefault();
           e.stopPropagation();
-          // Source bar wins over drop location: route via role if provided,
-          // otherwise fall back to this row's default onDrop.
           if (role === "folders" && onDropFolders) onDropFolders(item);
           else if (role === "tags" && onDropTags) onDropTags(item);
           else onDrop(item);
@@ -46,44 +69,66 @@ function IconRow({ label, Icon, testid, icons, onReorder, onRemove, onDrop, onDr
       <div className="flex items-center gap-1 shrink-0 text-[10px] uppercase tracking-widest font-heading text-dim min-w-[68px]">
         <Icon size={11} /> {label}
       </div>
-      {icons.length === 0 ? (
-        <span className={`text-[10px] italic ${isOver ? "text-primary-earth" : "text-dim/60"}`}>
-          {isOver ? "drop here" : "drag icons here…"}
-        </span>
-      ) : (
-        <Reorder.Group axis="x" values={icons} onReorder={onReorder} className="flex items-center gap-1">
-          {icons.map((ic, idx) => (
-            <React.Fragment key={ic.uid}>
-              <Reorder.Item
-                value={ic}
-                data-icon-item
-                className="relative group flex items-center gap-1 px-2 py-1 rounded bg-app/60 hover:bg-app cursor-grab active:cursor-grabbing"
-                data-testid={`overlay-icon-${ic.uid}`}
-                whileDrag={{ scale: 1.08 }}
-              >
-                <div className="text-primary-earth">
-                  <IconPreview item={ic} size={16} />
-                </div>
-                <span className="text-xs font-mono text-app">{ic.label}</span>
-                <button
-                  data-remove
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onRemove(ic.uid);
-                  }}
-                  className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
-                  data-testid={`remove-overlay-icon-${ic.uid}`}
+      <div className="flex items-center gap-1 flex-wrap min-w-0">
+        {(leadingContext || []).map((ctx, i) => (
+          <ContextChip
+            key={ctx.id}
+            ctx={ctx}
+            separator={
+              // Show separator when there's another leading context after this,
+              // or when there are applied icons after all leading context.
+              (i < (leadingContext.length - 1) || icons.length > 0 || (trailingContext?.length || 0) > 0)
+                ? separator
+                : null
+            }
+          />
+        ))}
+        {totallyEmpty ? (
+          <span className={`text-[10px] italic ${isOver ? "text-primary-earth" : "text-dim/60"}`}>
+            {isOver ? "drop here" : "drag icons here…"}
+          </span>
+        ) : icons.length > 0 ? (
+          <Reorder.Group axis="x" values={icons} onReorder={onReorder} className="flex items-center gap-1 flex-wrap">
+            {icons.map((ic, idx) => (
+              <React.Fragment key={ic.uid}>
+                <Reorder.Item
+                  value={ic}
+                  data-icon-item
+                  className="relative group flex items-center gap-1 px-2 py-1 rounded bg-app/60 hover:bg-app cursor-grab active:cursor-grabbing"
+                  data-testid={`overlay-icon-${ic.uid}`}
+                  whileDrag={{ scale: 1.08 }}
                 >
-                  <X size={11} />
-                </button>
-              </Reorder.Item>
-              {separator && idx < icons.length - 1 && (
-                <span className="text-dim text-xs select-none">{separator}</span>
-              )}
-            </React.Fragment>
-          ))}
-        </Reorder.Group>
-      )}
+                  <div className="text-primary-earth">
+                    <IconPreview item={ic} size={16} />
+                  </div>
+                  <span className="text-xs font-mono text-app">{ic.label}</span>
+                  <button
+                    data-remove
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRemove(ic.uid);
+                    }}
+                    className="ml-0.5 w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
+                    data-testid={`remove-overlay-icon-${ic.uid}`}
+                  >
+                    <X size={11} />
+                  </button>
+                </Reorder.Item>
+                {separator && (idx < icons.length - 1 || (trailingContext?.length || 0) > 0) && (
+                  <span className="text-dim text-xs select-none">{separator}</span>
+                )}
+              </React.Fragment>
+            ))}
+          </Reorder.Group>
+        ) : null}
+        {(trailingContext || []).map((ctx, i) => (
+          <ContextChip
+            key={ctx.id}
+            ctx={ctx}
+            separator={i < (trailingContext.length - 1) ? separator : null}
+          />
+        ))}
+      </div>
     </div>
   );
 }
@@ -92,6 +137,7 @@ export default function IconOverlay({
   containerRef,
   folders,
   tags,
+  contextFolders,   // v1.2.5 — read-only chips (pack, subfolder) shown in FOLDERS row
   onReorderFolders,
   onReorderTags,
   onRemoveFolder,
@@ -136,8 +182,15 @@ export default function IconOverlay({
     } catch {}
   };
 
-  // Hide overlay entirely only when neither row has icons
-  if ((folders?.length || 0) === 0 && (tags?.length || 0) === 0) return null;
+  // v1.2.5 — Split context chips into leading (before applied chips) and
+  // trailing (after applied chips) so path order stays natural:
+  // pack → folder-chips → subfolder
+  const leadingCtx = (contextFolders || []).filter((c) => c.position === "leading");
+  const trailingCtx = (contextFolders || []).filter((c) => c.position === "trailing");
+
+  // Hide overlay entirely only when NOTHING would show (no icons AND no context).
+  const totalFolderContent = (folders?.length || 0) + leadingCtx.length + trailingCtx.length;
+  if (totalFolderContent === 0 && (tags?.length || 0) === 0) return null;
 
   return (
     <motion.div
@@ -163,6 +216,8 @@ export default function IconOverlay({
           onDropFolders={onDropFolder}
           onDropTags={onDropTag}
           separator="/"
+          leadingContext={leadingCtx}
+          trailingContext={trailingCtx}
         />
       </div>
       <div className="flex items-center gap-1">

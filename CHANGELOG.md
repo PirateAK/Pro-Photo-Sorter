@@ -2,6 +2,32 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.5 — 2026-02-17 · Full-path chips in the on-image overlay
+
+### Added
+- **On-image overlay panel now shows every piece of the destination path**,
+  not just the chips you dragged. The FOLDERS row now reads left-to-right
+  in real path order:
+  `[Pack] / [applied folder chips] / [Sub-folder]`
+  So a photo tagged with the Wedding pack, Ceremony chip, and Brides
+  family sub-folder shows all three inside the overlay next to the image
+  — matching what the "Will store to:" preview line has been showing all
+  along.
+- **Context chips** (pack + sub-folder) look visually distinct from
+  clicked chips: dashed border, small pin icon, muted background, no
+  remove × button. Clear visual language that these are "from the top
+  toolbar / active pack" rather than "I dropped this on this photo."
+- Applies only to the FOLDERS row — pack and sub-folder don't contribute
+  to filename, so the FILENAME row is unchanged.
+
+### Under the hood
+- New `contextFolders` prop on `IconOverlay`, split into `leading` (pack)
+  and `trailing` (sub-folder) so path order stays natural
+- New `ContextChip` sub-component with the read-only styling
+- Overlay visibility check updated so the panel appears whenever there's
+  ANY contributor (context or applied), instead of only when applied
+  icons exist
+
 ## v1.2.4 — 2026-02-17 · Applied-chip highlight prominence
 
 ### Fixed
