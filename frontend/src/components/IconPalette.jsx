@@ -310,7 +310,7 @@ export default function IconPalette({
               if (e.button === 1) { e.preventDefault(); deleteItem(it); }
             }}
             className="shrink-0 flex items-center gap-1.5 px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app hover:border-primary-earth/60 text-xs transition-colors group cursor-grab active:cursor-grabbing"
-            title={`Drag to a row, click to add. Right-click to edit "${it.label}".`}
+            title={`${it.label}  ·  Drag to a row or click to add. Right-click to edit.`}
             data-testid={`palette-${role}-item-${it.id}`}
           >
             <span className="text-primary-earth">

@@ -2,6 +2,18 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.9 — 2026-02-16 · Full-label tooltips on every tag chip
+
+### Changed
+- **Tag chip tooltips now show the full label first.** Hover any chip in
+  the Tag Manager (main lists AND sub-folder lists) or the palette bars
+  and the browser tooltip pops the whole label — critical when you have
+  similar tags like `Groom's Father` and `Groom's Brother` that both
+  clip to `Groom's…` in the card.
+- Sub-folder inline tag chips also gained a subtle `max-w-[240px]` +
+  `truncate` so long labels wrap cleanly to the tooltip rather than
+  stretching the row.
+
 ## v1.1.8 — 2026-02-16 · Visual Sub-Folder Editor in Tag Manager
 
 ### Added

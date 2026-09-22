@@ -84,6 +84,16 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.9 — 2026-02-16 · Full-label tooltips on tag chips
+- ✅ Every tag chip's `title` attribute now leads with the full label so
+  clipped chips (e.g. `Groom's…` on a Wedding pack) reveal the whole name
+  on hover. Three renderers touched:
+  1. `CategoryManager.jsx` — main pack Folder/Filename tag cards
+  2. `CategoryManager.jsx` — SubfolderSection inline chips (also got
+     `max-w-[240px]` + `truncate` so long labels stay visually tidy)
+  3. `IconPalette.jsx` — palette bar chips in the main window
+- Version bumped to 1.1.9.
+
 ### v1.1.8 — 2026-02-16 · Visual Sub-Folder Editor
 - ✅ **SUB-FOLDERS section** in Tag Manager (`SubfolderSection` component)
   below the Filename tags list. Full CRUD: add (Enter or button), rename
@@ -545,6 +555,17 @@ Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, 
 - Should show the embedded JPEG preview instantly (all RAW files carry a
   full-size JPEG) for filmstrip + viewer performance, then do the slow
   full-RAW decode only on demand for the editor.
+
+#### 🎨 Drag-to-swap icon on a tag chip *(Kurt, 2026-02-16, late-night)*
+- Today: to fix a wrong icon on a tag, you have to delete the tag and
+  re-create it with the right icon. That loses the tag's ID and any
+  drag-drop associations.
+- v2 UX: while inside Tag Manager, allow dragging a Lucide icon (from the
+  built-in icon grid, or a custom image from the Custom Image tab) onto
+  an existing tag chip. The chip picks up the new icon; label + ID stay
+  intact. Works for both the pack's Folder/Filename lists AND for
+  sub-folder items. Same behavior on IconPalette bars in the main window
+  would be excellent but optional.
 
 #### 🏷️ Third "Tags" bar — Lightroom-style keyword database (P1 for v2)
 
