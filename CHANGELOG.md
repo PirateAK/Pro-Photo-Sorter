@@ -2,6 +2,28 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.1.11 — 2026-02-16 · Main preview zoom+pan + Duplicate tag chip
+
+### Added
+- **Main preview zoom + pan** (`ZoomablePreview.jsx`) — Lightroom-style Loupe
+  behavior on the main image viewer:
+  - **Mouse wheel** zooms in/out toward the cursor position (clamped 0.25× to 8×)
+  - **`=` / `+`** and **`-`** keys zoom in/out (no modifier — Ctrl+`=` still adjusts UI text size)
+  - **Left-click drag** or **middle-click drag** pans when zoomed
+  - **Small zoom badge** in the top-right of the viewer fades in on any zoom change
+  - **Zoom controls** (bottom-right of viewer): ZoomOut · Fit · ZoomIn buttons
+  - **Auto-reset to fit** whenever you navigate to a new image in the filmstrip
+  - Cursor becomes grab/grabbing when zoomed
+- **Duplicate tag chip** — right-click any tag chip in the palette bars →
+  new "Duplicate chip" menu item. Creates a copy with same icon + label
+  suffixed " (copy)" right after the original, then auto-opens the inline
+  rename popover so you can tweak. Perfect for "Bride's Father" →
+  "Groom's Father" pairs.
+
+### Notes
+- Zoom key `0` is NOT bound (kept free for the "clear star rating"
+  shortcut). Use the on-screen Fit button (Maximize icon) to reset.
+
 ## v1.1.9 — 2026-02-16 · Full-label tooltips on every tag chip
 
 ### Changed

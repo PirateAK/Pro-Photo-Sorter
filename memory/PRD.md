@@ -84,6 +84,27 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - ✅ **Preset Looks**: Save the current Brightness/Contrast/Saturation/Sharpen combination as a named "look" (localStorage). One-click apply, hover-delete, inline save with Enter/Escape. Persisted under `looks: []` in `pps.state.v2`.
 - ✅ **Auto-Enhance (single image)**: Inside the editor, `Wand2` button runs histogram analysis on the current image and sets the sliders to suggested values with an info toast.
 
+### v1.1.10 → v1.1.11 — 2026-02-16 · Zoom+Pan main preview + Duplicate tag chip
+- ✅ **`ZoomablePreview.jsx`** (new component) wraps the main-viewer `<img>`:
+  - Mouse wheel zooms toward cursor (0.25× .. 8×, 1.15× per notch)
+  - `=`/`+` and `-` keyboard shortcuts (no modifier)
+  - Left-click OR middle-click drag pans when zoomed
+  - `zoom-badge` in top-right fades in/out on any change (900ms)
+  - `zoom-controls` at bottom-right of viewer: ZoomOut / Fit / ZoomIn buttons
+  - Auto-resets to fit on `resetKey` change (wired to `currentImagePath` so
+    filmstrip navigation resets zoom)
+  - Imperative ref API: `zoomIn()` / `zoomOut()` / `fit()` / `getScale()`
+- ✅ Wired into `App.js`: `zoomRef` ref, keyboard handler branches for
+  `=`/`+`/`-` (guarded to not fight Ctrl+= UI-scale), zoom-controls JSX,
+  replaced raw `<img>` with `<ZoomablePreview>` while preserving the
+  watermark right-click toggle. Kept `0` key free for star-rating clear.
+- ✅ **Duplicate tag chip** (right-click chip → Duplicate chip).
+  `IconPalette.jsx` `duplicateItem()`: copies item at index+1 with new
+  `uid`, label suffixed " (copy)" (60-char cap), then opens the inline
+  rename popover so user can tweak immediately. Toast confirms with
+  hint. Wired via new `onDuplicate` prop on `ContextMenu`.
+- Versions bumped: v1.1.10 (zoom+pan) then combined with copy-chip → v1.1.11.
+
 ### v1.1.9 — 2026-02-16 · Full-label tooltips on tag chips
 - ✅ Every tag chip's `title` attribute now leads with the full label so
   clipped chips (e.g. `Groom's…` on a Wedding pack) reveal the whole name
