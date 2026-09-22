@@ -636,6 +636,13 @@ in Settings.watermarkText can't accidentally launder trial photos.
 ### On-deck for v1.2 (deferred by Kurt at end of v1.1.0 session)
 
 - ~~**P0 · Trial-mode enforcement & Licensing**~~ ✅ Shipped v1.2.0 (2026-02-17).
+- **🎯 P1 · Manual "People" Tag Pack** *(Kurt, 2026-02-17, v2 stepping stone)* —
+  hand-typed list of names that becomes a special tag pack. Same
+  drag-onto-photo ergonomics as normal packs, seeded with people's names
+  instead of subjects. Zero AI, ships in a day. **When v2.0 face
+  recognition launches, this same "People" pack auto-populates with
+  detected faces — no lost user data, smooth upgrade path.** Ship target:
+  v1.2.5.
 - **P1 · Default EXIF Location in Settings** *(Kurt, 2026-02-15)* — new field
   in Settings so a user working on a single shoot can set the location value
   once (e.g. "Kenai, Alaska") and have every photo inherit it, without
@@ -711,6 +718,85 @@ Kurt is going to hand v1.1.0 to fellow photographers and expects "enhancements, 
 ---
 
 ### v2 Ideas Bin (post-v1.2, longer-term)
+
+## 🎯 v2.0 Flagship Feature — Face Recognition AI Sort *(Kurt, 2026-02-17)*
+
+**Locked in as the top v2.0 priority.** This is the killer feature that
+turns the app from a $30 culling tool into a $100+ workflow accelerator.
+Justifies a paid v2 upgrade / PRO tier separate from v1.x lifetime buyers.
+
+### Tech stack
+- **`face-api.js`** (TensorFlow.js under the hood) — mature, offline, runs
+  on CPU, MIT-licensed. Ships with pre-trained models bundled in the
+  installer (~15 MB adds to installer size; ~75 MB → ~90 MB).
+- No cloud, no internet ever needed for detection or recognition.
+- Descriptors are 128-dim Float32Array (~512 bytes/face). 100 known
+  people = ~50 KB local storage. IndexedDB persists everything.
+
+### User experience Kurt described
+1. User loads a folder → filmstrip populates as usual
+2. Background job progressively detects faces on each image (200-500ms/img)
+3. Halo circle overlaid on each face in the viewer (transforms with the
+   existing ZoomablePreview zoom/pan matrix)
+4. Known face → **name tag** floats next to the halo automatically
+5. Unknown face → **text-fill input** floats next to the halo — user
+   types a name, hits Enter → new Person entry saved
+6. Once named, that person is auto-matched on every future image scan
+7. **Search by person** — filter filmstrip to only images containing X
+   (or X+Y, or X|Y)
+8. **Auto-generated "People" tag pack** — every named person becomes a
+   draggable chip with their face thumbnail as the icon; works as a
+   normal filename tag pack
+
+### Data model additions
+```
+people: [
+  { id, name, descriptors: [Float32Array], thumbUrl?, notes?, seenIn: [imagePaths] }
+]
+faceIndex: {
+  [absoluteImagePath]: [
+    { box: {x,y,w,h}, descriptorHash, personId?, confidence? }, ...
+  ]
+}
+```
+
+### Phased build plan (10-15 focused workdays total)
+- **Phase 1** (2-3d) — Detection + halos + naming UI + IndexedDB persistence
+- **Phase 2** (2-3d) — Recognition + auto-tagging + confidence indicators
+- **Phase 3** (1-2d) — Search-by-person filter for filmstrip
+- **Phase 4** (1d)   — Auto-generated People tag pack
+- **Phase 5** (1-2d) — People manager panel (rename, merge, delete, count)
+- **Phase 6** (2-3d) — Polish, performance, edge cases (sunglasses, side
+  profiles, group photos, low-power hardware toggle)
+
+### Known constraints / decisions to make
+- **RAW files can't be scanned** without conversion → JPEG/PNG/HEIC/WebP
+  only in v2.0. Add "convert on-the-fly for face scan" as a v2.1 nice-to-have.
+- **False positives** — always require confirm on tentative matches
+  (confidence < 0.8). Show percentage.
+- **Privacy note** — small mention added to Trial pitch + About page
+  ("faces detected locally, never leave your PC")
+- **Legal jurisdictions** — some places require face-recog disclosure
+  even for personal photos. Keep the "everything local" language front
+  and center.
+- **Performance toggle** — Settings gains "Face detection: Off / Idle
+  only / Always" so old hardware users can opt out.
+
+### Sales / pricing plan
+- v1.x lifetime updates stay honored for existing buyers (as promised on Gumroad)
+- v2.0 launches as either:
+  - **Paid upgrade** (~$XX-$XX above v1.x price, with founder discount for early v1 buyers), OR
+  - **PRO tier** ($$$/yr subscription for v2+ features, v1.x stays perpetual)
+- **Waitlist strategy** — announce "v2 coming: cull by person, 100% offline" on the Gumroad page NOW to build anticipation while v1.x sales continue
+
+### Stepping stones from v1.x → v2.0
+- **v1.2.5 target: manual People tag pack** — no AI, just a hand-typed
+  list of names that becomes a special tag pack with the same
+  drag-onto-photo ergonomics. Zero risk. When v2.0 face-detection
+  launches, the same "People" pack auto-populates with detected faces —
+  no lost user data.
+
+---
 
 **Kurt's v2 additions, captured 2026-02-15 while chatting between sessions:**
 
