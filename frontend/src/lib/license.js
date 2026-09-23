@@ -21,7 +21,11 @@
 // All state changes fire a `license:changed` event so React components using
 // the useLicense() hook re-render instantly.
 
-const STORAGE_KEY = "gvmaas.license.v1";
+// v1.2.9 — exported so storage.js can hand it to the safety mirror.
+export const LICENSE_STORAGE_KEY = "gvmaas.license.v1";
+const STORAGE_KEY = LICENSE_STORAGE_KEY;
+
+import { safetyWrite } from "./electronBridge.js";
 
 export const GUMROAD_PRODUCT_ID = "sxHfeHU-l7nk1-LAdVrQZA==";
 export const GUMROAD_PRODUCT_URL = "https://muskegman.gumroad.com/l/gvmaas";
@@ -42,11 +46,22 @@ export function getLicense() {
 
 function saveLicense(record) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(record));
+  // v1.2.9 — mirror license to Documents\Pro Photo Sorter\Safety-Backups\.
+  try {
+    const state = localStorage.getItem("pps.state.v1_1");
+    safetyWrite({ stateKey: "pps.state.v1_1", state, licenseKey: STORAGE_KEY, license: record });
+  } catch { /* mirror is best-effort */ }
   notify();
 }
 
 function clearLicense() {
   localStorage.removeItem(STORAGE_KEY);
+  // v1.2.9 — also clear license from the safety mirror so a reinstall
+  // doesn't silently reactivate a key the user chose to deactivate.
+  try {
+    const state = localStorage.getItem("pps.state.v1_1");
+    safetyWrite({ stateKey: "pps.state.v1_1", state, licenseKey: STORAGE_KEY, license: null });
+  } catch { /* mirror is best-effort */ }
   notify();
 }
 

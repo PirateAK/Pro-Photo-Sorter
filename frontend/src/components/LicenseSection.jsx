@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut } from "lucide-react";
+import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen } from "lucide-react";
 import {
   getLicense,
   isTrialMode,
@@ -8,7 +8,7 @@ import {
   subscribeLicense,
   GUMROAD_PRODUCT_URL,
 } from "@/lib/license";
-import { isElectron } from "@/lib/electronBridge";
+import { isElectron, safetyInfo, safetyOpenFolder } from "@/lib/electronBridge";
 
 /**
  * License management panel rendered inside the Help modal.
@@ -22,8 +22,19 @@ export default function LicenseSection() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
+  const [safety, setSafety] = useState(null);
 
   useEffect(() => subscribeLicense(() => setLicense(getLicense())), []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const res = await safetyInfo();
+      if (!cancelled && res?.ok) setSafety(res);
+    })();
+    return () => { cancelled = true; };
+  }, [license]);
+
+  const openSafetyFolder = async () => { await safetyOpenFolder(); };
 
   const openBuyPage = () => {
     // Electron: main process opens in default browser via preload bridge if
@@ -80,6 +91,27 @@ export default function LicenseSection() {
           <div><span className="text-dim">Activated:</span> {activated.toLocaleDateString()} {activated.toLocaleTimeString()}</div>
           <div><span className="text-dim">Key:</span> <span title={license.key}>{maskKey(license.key)}</span></div>
         </div>
+
+        {isElectron() && safety?.safetyDir && (
+          <div className="pane rounded p-3 space-y-2 text-xs" data-testid="license-safety-backup">
+            <div className="flex items-center gap-2 text-sm">
+              <ShieldCheck size={16} className="text-green-600 dark:text-green-400" />
+              <strong>Safety-Backup: {safety.latestExists ? "Active" : "Waiting for first save"}</strong>
+            </div>
+            <p className="text-dim leading-relaxed">
+              Your license + tag packs are mirrored to a stable folder outside <code className="font-mono">%APPDATA%</code>.
+              This means <strong>updates, reinstalls, and userData renames can no longer wipe your data</strong> — on next launch the app auto-restores from here.
+            </p>
+            <div className="font-mono text-dim break-all">{safety.safetyDir}</div>
+            <button
+              onClick={openSafetyFolder}
+              data-testid="license-open-safety-btn"
+              className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+            >
+              <FolderOpen size={12} /> Open Safety-Backup folder
+            </button>
+          </div>
+        )}
 
         {okMsg && (
           <div className="text-xs text-green-700 dark:text-green-400" data-testid="license-msg-ok">{okMsg}</div>

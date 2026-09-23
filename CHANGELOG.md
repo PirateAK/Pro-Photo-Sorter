@@ -2,6 +2,73 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.9 — 2026-02-20 · Data-loss-proof updates (license + tag pack persistence)
+
+### Fixed (CRITICAL)
+- **Update wiped tag lists and license key.** v1.2.8 renamed the app's
+  `productName`, which silently moved Electron's `userData` folder from
+  `%APPDATA%\electron-shell\` to `%APPDATA%\Pro Photo Sorter\`. The new
+  folder was empty, so Chromium's Local Storage + IndexedDB (your tag
+  packs AND your Gumroad license) appeared to vanish on next launch.
+  Data was never deleted — just orphaned in the old folder.
+  v1.2.9 fixes this **three ways**, in layers, so it can never happen
+  again regardless of what we (or Windows) do to the app in future:
+
+  1. **Pinned `userData` path.** `main.js` now calls
+     `app.setPath('userData', <appData>/Pro Photo Sorter)` synchronously,
+     BEFORE `app.whenReady()`. Renaming `productName` in any future
+     release will no longer move the storage folder.
+  2. **One-time auto-migration on boot.** If the pinned folder has no
+     `Local Storage` yet, but a legacy `%APPDATA%\electron-shell\` folder
+     exists, we copy `Local Storage`, `Session Storage` and `IndexedDB`
+     across. A sentinel file (`.pps-migrated-from-electron-shell`)
+     guarantees we never migrate twice. This means anyone who already
+     installed v1.2.8 and thought they lost their tag packs will get
+     them back automatically on the next launch.
+  3. **Safety-Backup mirror outside `%APPDATA%`.** Every state save +
+     license change also writes to
+     `%USERPROFILE%\Documents\Pro Photo Sorter\Safety-Backups\latest.json`
+     (plus one dated snapshot per day, last 30 kept). On boot, if
+     localStorage is empty and this file exists, the app hydrates
+     itself from the mirror before React even mounts. Uninstall,
+     reinstall, disk cleanup, a wiped `%APPDATA%` — none of these can
+     lose your tag packs or your license anymore.
+
+### Added
+- **License panel now shows Safety-Backup status.** Help → License lists
+  the backup folder path, an "Active / Waiting for first save" indicator,
+  and an **Open Safety-Backup folder** button so you can see the mirror
+  and copy it to another drive if you want a belt-and-braces backup.
+
+### Tests
+- `frontend/tests/safetyBackup.test.mjs` — 6 new regression tests covering
+  legacy migration (runs once, idempotent, refuses to clobber), safety
+  mirror (writes latest + daily snapshots, prunes to 30-day window), and
+  boot-restore (hydrates missing keys only, never overwrites existing
+  data). All prior test suites still passing (44/44 total).
+
+### Files touched
+- `electron-additions/main.js` — pinned userData path + migration +
+  safety IPC handlers.
+- `electron-additions/preload.js` — exposed `safetyWrite / safetyRead /
+  safetyInfo / safetyOpenFolder`.
+- `frontend/src/lib/electronBridge.js` — safety helpers.
+- `frontend/src/lib/storage.js` — export `STATE_KEY`, mirror on save.
+- `frontend/src/lib/license.js` — export `LICENSE_STORAGE_KEY`, mirror on
+  save + clear.
+- `frontend/src/lib/bootRestore.js` — new; runs before React mounts.
+- `frontend/src/index.js` — awaits `bootRestoreFromSafetyIfEmpty()` first.
+- `frontend/src/components/LicenseSection.jsx` — safety-status card.
+
+### Release checklist for Kurt
+1. `cd /d C:\Pro-Photo-Sorter && git reset --hard HEAD && git clean -fd && git pull && pack-app.bat`
+2. Upload BOTH `Pro Photo Sorter Setup 1.2.9.exe` AND `latest.yml` to the
+   GitHub release. Without `latest.yml`, `electron-updater` will silently
+   fail for your existing customers.
+3. This is the last time anyone will lose data on an update. From v1.2.9
+   forward, the pinned path + safety mirror handle it automatically.
+
+
 ## v1.2.8 — 2026-02-17 · Resizable Tag Manager + Batch All/None state
 
 ### Added
