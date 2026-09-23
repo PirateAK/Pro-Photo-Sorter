@@ -16,7 +16,40 @@ A professional photographer needs software to sort thousands of digital photos.
   `pack-app.bat` to silently ship builds without my updated `main.js`.
   Repo now has one canonical build source.
 
-## v1.2.9 (pass 3) — 2026-02-20 · Watermark chip + toggle moved off the photo
+## Backlog captured 2026-02-20 evening (Kurt, sign-off notes)
+
+### Cheer & personality (v2 flavor pass)
+- **Lighten the load** — audit copy, empty states, toasts, and hover text to
+  add warmth. Fewer "Click Open to browse", more "Ready when you are ⛅".
+  Small wins: seasonal footer hints, occasional friendly emoji on
+  success toasts, playful loading strings.
+- **Two new color themes** (v2):
+  - **🌅 Sunrise** — subdued blues/grays, cool morning palette, sunrise
+    icon in the theme switcher. Pairs with 5am boat-deck culling.
+  - **🌇 Sunset** — warm golden theme built around the primary-earth
+    tone, sunset icon in the switcher. Complements the wildlife /
+    landscape work PPS is used for.
+  - Both should honor the existing CSS-var token system so no component
+    styles need touching — just new `[data-theme="sunrise"]` /
+    `[data-theme="sunset"]` blocks in `index.css`.
+
+### Print services (v2 → v3)
+- **v2**: One-click "Send to print" from the destination pane. Start with
+  a single vendor integration (candidate: Bay Photo or Mpix — both have
+  a documented order API and pro-photographer market). Payload = the
+  selected photo(s) + resize preset + a shipping profile stored in
+  Settings. Watermark toggle honored.
+- **v3 flagship — "Super PPS"** — an all-in-one shop for working pro
+  photographers, PPS as the daily hub:
+  - Multiple print-lab integrations (Bay Photo, Mpix, WHCC, ProDPI)
+  - Client galleries — publish a batch to a private share link
+  - Invoicing hooks (QuickBooks / Stripe) tied to a shoot folder
+  - License-and-release capture (embed model releases with photos)
+  - Session budgets (frames-per-hour, storage-cost tracking)
+  - Optional cloud mirror of the safety-backup (for photographers who
+    trust a cloud provider). Keep 100% offline mode as the default.
+
+
 - ✅ Removed the top-left `© WM` chip and the top-right WM ON/OFF toggle
   from the image overlay. Both now sit side-by-side in the toolbar row,
   right-aligned directly under the 16×20 resize button. The chip shows
