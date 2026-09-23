@@ -2,6 +2,24 @@
 
 ## Original Problem Statement
 A professional photographer needs software to sort thousands of digital photos.
+## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
+- ✅ Tag Manager reshaped from parallel two-list model to a cascading
+  three-level hierarchy: **Category → Sub-Folder → Filename Tag**.
+- ✅ Left rail relabeled **"Categories"**. Main pane now shows Sub-Folders
+  list at top + dedicated **Filename Tags editor pane** below, populated
+  from whichever sub-folder is currently selected.
+- ✅ Silent one-shot migration on next load: every legacy folder-path-tag
+  becomes an empty sub-folder; existing sub-folders preserved untouched;
+  orphan pack-level filename tags land in `_Unsorted filenames`. Zero
+  data loss. Idempotent.
+- ✅ Header counts auto-update (`N sub-folders · M filename tags`).
+- ✅ Regression suite: `frontend/tests/cascadeMigration.test.mjs` (4
+  assertions). Full suite 53/53 across 6 files.
+- Deferred to v1.3.1: cross-Category chip drag; hide empty FOLDERS chip
+  row in main window when no folder-path chips remain (currently just
+  shows the Category dropdown alone).
+
+
 ## v1.2.9 (pass 4) — 2026-02-20 · Dockable filmstrip + folder consolidation
 - ✅ **Fixed invisible arrows in light mode** — filmstrip prev/next buttons
   now use explicit `text-white` so the chevrons read on every theme.

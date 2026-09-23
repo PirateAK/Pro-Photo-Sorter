@@ -106,3 +106,4 @@ electron-additions/node_modules/electron/dist/electron
 frontend/node_modules/.cache/default-development/16.pack
 frontend/node_modules/.cache/default-development/10.pack
 frontend/node_modules/.cache/default-development/18.pack
+electron-shell/node_modules/electron/dist/electron
