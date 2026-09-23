@@ -4,6 +4,7 @@ import {
   Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
   Wand2, Palette, Trash2, Plus, ChevronLeft, ChevronRight,
   ChevronUp, ChevronDown, PanelBottom, PanelTop, PanelLeft, PanelRight,
+  EyeOff, Film,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
@@ -1105,13 +1106,14 @@ const EDITOR_STRIP_POS_KEY = "pps.editorstrip.position.v1";
 function readEditorStripPos() {
   try {
     const v = localStorage.getItem(EDITOR_STRIP_POS_KEY);
-    return ["bottom", "top", "left", "right"].includes(v) ? v : "bottom";
+    return ["bottom", "top", "left", "right", "hidden"].includes(v) ? v : "bottom";
   } catch { return "bottom"; }
 }
 
 function EditorFilmstrip({ images, currentIdx, onPick, onPrev, onNext }) {
   const stripRef = useRef(null);
   const [dockPos, setDockPos] = useState(() => readEditorStripPos());
+  const hidden = dockPos === "hidden";
   const vertical = dockPos === "left" || dockPos === "right";
 
   useEffect(() => {
@@ -1149,7 +1151,22 @@ function EditorFilmstrip({ images, currentIdx, onPick, onPrev, onNext }) {
     { key: "top",    Icon: PanelTop,    label: "Dock top" },
     { key: "left",   Icon: PanelLeft,   label: "Dock left (vertical)" },
     { key: "right",  Icon: PanelRight,  label: "Dock right (vertical)" },
+    { key: "hidden", Icon: EyeOff,      label: "Hide filmstrip" },
   ];
+
+  // Hidden mode — render just a compact "Show filmstrip" pill in the corner.
+  if (hidden) {
+    return (
+      <button
+        onClick={() => setDockPos("bottom")}
+        className="absolute bottom-3 right-3 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-primary-earth text-white border border-app shadow-2xl backdrop-blur text-xs font-medium transition-colors"
+        data-testid="editor-strip-show-btn"
+        title="Show editor filmstrip"
+      >
+        <Film size={12} /> Show filmstrip
+      </button>
+    );
+  }
 
   return (
     <div
