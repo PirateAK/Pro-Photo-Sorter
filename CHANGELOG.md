@@ -2,7 +2,66 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.2.9 (pass 7) — 2026-02-20 · Dropped main filmstrip dock feature
+## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
+
+### Reshaped
+- **Tag Manager now cascades.** Every Category (renamed from "Tag Pack")
+  has exactly ONE child list: Sub-Folders. Each Sub-Folder owns its own
+  Filename Tags. The destination path is always
+  `Category\Sub-Folder\originalname_filenameTags.jpg` — no more parallel
+  pack-level folder-path-tags and pack-level filename-tags.
+
+### Changed
+- **Left rail label** "Tag Packs" → **"Categories"** with a "CATEGORIES"
+  section header above the list. Placeholder in the new-pack input reads
+  `New category…`.
+- **Main pane top** is now the **Sub-Folders** list (was Folder Path
+  Tags). Click a sub-folder row → it highlights orange and its filename
+  tags load into the dedicated **Filename Tags editor pane below** with
+  add / delete / trash chip controls. The old inline chevron-expand
+  editor is still available for peeking.
+- **Header counts auto-update** — "N sub-folders · M filename tags"
+  reflows on every state change.
+- **Footer legend** rewritten: "Cascade: pick a Category → pick a
+  Sub-Folder → its Filename tags load in the editor below."
+
+### Migration
+- **Zero data loss, silent one-shot on next load.** For every legacy pack:
+  - each old **Folder Path Tag** becomes a new empty **Sub-Folder** (icon
+    carries over)
+  - existing **Sub-Folders** are preserved untouched with all their
+    filename tags
+  - orphan pack-level **Filename Tags** land in a new sub-folder called
+    **`_Unsorted filenames`** (leading underscore sorts to top so it's
+    easy to spot and drag-merge)
+  - legacy `folderItems` / `filenameItems` fields are stripped from
+    subsequent saves so state stays clean
+- Migration is **idempotent** — running it twice does nothing extra.
+- Duplicates (e.g. old Christmas folder-tag + existing Christmas
+  sub-folder) are intentionally left side-by-side; the user drag-merges
+  at their own pace.
+
+### Files touched
+- `frontend/src/lib/storage.js` — new starter defaults (cascade shape) +
+  load-time migration function
+- `frontend/src/lib/tags.js` — `totalCount()` now counts sub-folders +
+  their filename tags; legacy `getItems / getListKey / withItems`
+  retained as safe no-ops for the FOLDERS-role palette
+- `frontend/src/components/CategoryManager.jsx` — deleted the two
+  pack-level ListSection blocks, added `selectedSubId` state, added
+  `SubfolderFilenameEditor` pane, added `onSelectSubfolder` prop to
+  SubfolderSection, renamed left rail label
+- `frontend/tests/cascadeMigration.test.mjs` — new regression suite
+  (4 assertions covering fold, preserve, idempotency, empty)
+
+### Backlog captured
+- Cross-Category drag (drag a chip from Wildlife's sub-folder over to
+  Holidays' sub-folder in Section A) — deferred to v1.3.1
+- Main window bars still show empty FOLDERS chip row alongside the
+  dropdown; polish to hide it entirely when the Category has no
+  folder-path chips left — v1.3.1
+
+
 
 ### Reverted
 - **Main filmstrip dock picker removed.** Left/right positions covered

@@ -228,6 +228,10 @@ export default function App() {
   // the user can one-click re-apply it to the current photo. Great for shoots
   // where 90% of frames share the same folder + filename tags.
   const [lastAppliedTags, setLastAppliedTags] = useState(null); // { folders, tags } | null
+  // v1.3.1 — name of the just-stored photo. Used to grey out "Repeat last tags"
+  // when the user is still parked on that same photo (nothing new to repeat).
+  // Cleared/updated by storeCurrent and reset when the user advances.
+  const [lastStoredPhotoName, setLastStoredPhotoName] = useState(null);
 
   // Session stats — counters reset on manual reset (Iter 8, Feb 2026)
   const [sessionStats, setSessionStats] = useState({
@@ -327,10 +331,17 @@ export default function App() {
   // Repeat Tags (v1.1.5) — one-click re-apply the last-stored photo's tag
   // overlay to the current photo. Great for shoots where every frame gets
   // the same folder/filename combo.
+  // v1.3.1 — if the user is still on the just-stored photo (which happens on
+  // the last image of a filmstrip in keep-mode), bail out politely instead
+  // of re-applying the same overlay to the same image.
   const repeatLastTags = () => {
     if (!currentImage) { toast.error("No photo selected"); return; }
     if (!lastAppliedTags || (lastAppliedTags.folders.length + lastAppliedTags.tags.length === 0)) {
       toast.info("No previous tags to repeat", { description: "Store a photo with tags first, then Repeat becomes available." });
+      return;
+    }
+    if (lastStoredPhotoName && currentImage.name === lastStoredPhotoName) {
+      toast.info("Nothing new to repeat", { description: "Advance to the next photo, then press R again." });
       return;
     }
     const cur = getOverlay(appliedByImage, currentImage.name);
@@ -1173,6 +1184,9 @@ export default function App() {
             tags:    ov.tags.map((f)    => ({ ...f, uid: undefined })),
           });
         }
+        // v1.3.1 — remember which photo was just stored so the "Repeat last
+        // tags" button greys out until the user advances to a different one.
+        setLastStoredPhotoName(snapshotSrc.name);
       }
       // Auto-advance on single-photo store (Iter 14): move to next photo in filmstrip
       if (!isBatch && settings.autoAdvanceOnStore !== false && removedFromFilmstrip.length === 0) {
@@ -1822,7 +1836,11 @@ export default function App() {
               }}
               placeholder="e.g. Canon EOS R5"
             />
-            <div className="flex-1" />
+          </div>
+          {/* v1.3.1 — Row 1b: Edit → Date-stamp action buttons on their own line
+              so the EXIF strip above can breathe (Kurt's ask: "insufficient
+              space for the next line"). */}
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowEditor(true)}
               disabled={!currentImage}
@@ -2145,20 +2163,13 @@ export default function App() {
             />
           </div>
 
-          {/* Row 2: icon palette (folders) + Row 3: icon palette (filename) + actions */}
+          {/* v1.3.0 — Compact 2-row toolbar:
+              Row 1 = Category picker (dropdown/header only, chip strip
+                      gone since folder-path-tags no longer exist)
+                      + Sub-Folder chips inline next to it
+              Row 2 = Filename tag chips of the active sub-folder */}
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 pane rounded px-2 py-1 flex flex-col gap-1">
-              <IconPalette
-                role="folders"
-                categories={categories}
-                activeCatId={foldersCatId}
-                onSetCat={setFoldersCatId}
-                onApply={applyIcon}
-                onRemoveApplied={removeChipFromCurrentImage}
-                appliedIds={appliedFolderIds}
-                onCategoriesChange={setCategories}
-                onOpenManager={() => setShowCatMgr(true)}
-              />
               {(() => {
                 const activePack = categories.find((c) => c.id === foldersCatId);
                 const hasSubs = activePack?.subfolders?.length > 0;
@@ -2167,16 +2178,29 @@ export default function App() {
                   : null;
                 return (
                   <>
-                    {hasSubs && (
-                      <>
-                        <div className="h-px bg-app/60" />
-                        <SubfolderBar
-                          active={activePack}
-                          activeSubfolderId={activeSubfolderId}
-                          onSetSubfolder={setActiveSubfolderId}
-                        />
-                      </>
-                    )}
+                    <div className="flex items-stretch gap-2 min-w-0">
+                      <IconPalette
+                        role="folders"
+                        categories={categories}
+                        activeCatId={foldersCatId}
+                        onSetCat={setFoldersCatId}
+                        onApply={applyIcon}
+                        onRemoveApplied={removeChipFromCurrentImage}
+                        appliedIds={appliedFolderIds}
+                        onCategoriesChange={setCategories}
+                        onOpenManager={() => setShowCatMgr(true)}
+                        compactHeaderOnly
+                      />
+                      {hasSubs && (
+                        <div className="flex-1 min-w-0 flex items-center pl-2 border-l border-app/60">
+                          <SubfolderBar
+                            active={activePack}
+                            activeSubfolderId={activeSubfolderId}
+                            onSetSubfolder={setActiveSubfolderId}
+                          />
+                        </div>
+                      )}
+                    </div>
                     <div className="h-px bg-app/60" />
                     <IconPalette
                       role="filename"
@@ -2197,19 +2221,29 @@ export default function App() {
               })()}
             </div>
             <div className="grid grid-cols-2 gap-1 shrink-0">
-              <button
-                onClick={repeatLastTags}
-                disabled={!lastAppliedTags || !currentImage}
-                className="col-span-2 px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-primary-earth/40 text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
-                data-testid="btn-repeat-tags"
-                title={
-                  lastAppliedTags
-                    ? `Repeat tags from last stored photo (R) — ${lastAppliedTags.folders.length} folder + ${lastAppliedTags.tags.length} filename`
-                    : "Store a photo with tags first — then Repeat becomes available"
-                }
-              >
-                <Repeat size={13} className="text-primary-earth" /> Repeat last tags <span className="kbd ml-1">R</span>
-              </button>
+              {(() => {
+                const isSameAsLastStored =
+                  !!(currentImage && lastStoredPhotoName && currentImage.name === lastStoredPhotoName);
+                const repeatDisabled = !lastAppliedTags || !currentImage || isSameAsLastStored;
+                const repeatTitle = !currentImage
+                  ? "Load a photo first"
+                  : !lastAppliedTags
+                  ? "Store a photo with tags first — then Repeat becomes available"
+                  : isSameAsLastStored
+                  ? "Nothing new to repeat — advance to the next photo"
+                  : `Repeat tags from last stored photo (R) — ${lastAppliedTags.folders.length} folder + ${lastAppliedTags.tags.length} filename`;
+                return (
+                  <button
+                    onClick={repeatLastTags}
+                    disabled={repeatDisabled}
+                    className="col-span-2 px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-primary-earth/40 text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                    data-testid="btn-repeat-tags"
+                    title={repeatTitle}
+                  >
+                    <Repeat size={13} className="text-primary-earth" /> Repeat last tags <span className="kbd ml-1">R</span>
+                  </button>
+                );
+              })()}
               <button
                 onClick={removeCurrentFromView}
                 className="px-2.5 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"

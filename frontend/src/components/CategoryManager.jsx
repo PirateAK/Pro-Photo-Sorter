@@ -89,11 +89,18 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     try { localStorage.setItem(SIZE_KEY, JSON.stringify(size)); } catch { /* ignore */ }
   };
   const [newCatName, setNewCatName] = useState("");
-  // Two independent add-form drafts — one per list
+  // v1.3 — the cascade model has only ONE draft (filename tags for the
+  // currently-selected sub-folder). Old folderItems/filenameItems drafts
+  // are gone. Retained here just to satisfy legacy ListSection references
+  // that haven't been ripped out yet — safe no-ops.
   const [drafts, setDrafts] = useState({
     folderItems: { label: "", pickerMode: "builtin", selectedBuiltin: "Folder", selectedImage: null },
     filenameItems: { label: "", pickerMode: "builtin", selectedBuiltin: "Tag", selectedImage: null },
   });
+  // v1.3 — which sub-folder is currently selected? Drives the Filename Tags
+  // editor that renders below the Sub-Folders list. Reset when the Category
+  // switches.
+  const [selectedSubId, setSelectedSubId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
@@ -106,11 +113,14 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   if (!open) return null;
 
   const current = categories.find((c) => c.id === activeCat) || categories[0];
+  // Auto-clear selection when switching category or when the selected sub-folder disappears.
+  const currentSubs = current?.subfolders || [];
+  const selectedSub = currentSubs.find((s) => s.id === selectedSubId) || null;
 
   const addCategory = () => {
     const name = newCatName.trim();
     if (!name) return;
-    const cat = { id: uid("cat"), name, folderItems: [], filenameItems: [], subfolders: [] };
+    const cat = { id: uid("cat"), name, subfolders: [] };
     onChange([...categories, cat]);
     setActiveCat(cat.id);
     setNewCatName("");
@@ -678,7 +688,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   value={newCatName}
                   onChange={(e) => setNewCatName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && addCategory()}
-                  placeholder="New tag pack…"
+                  placeholder="New category…"
                   className="flex-1 bg-app border border-app rounded px-2 py-1 text-sm focus-ring"
                   data-testid="new-category-input"
                 />
@@ -686,7 +696,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   onClick={addCategory}
                   className="w-8 h-8 rounded bg-primary-earth text-[color:var(--text-inverse)] flex items-center justify-center hover:opacity-90"
                   data-testid="add-category-btn"
-                  title="Create a new empty tag pack"
+                  title="Create a new empty Category"
                 >
                   <Plus size={16} />
                 </button>
@@ -733,6 +743,10 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   <FileText size={12} /> Import text list…
                 </button>
               </div>
+            </div>
+            {/* v1.3 — "Categories" section label above the list */}
+            <div className="px-3 pt-2 pb-1 text-[10px] font-heading font-semibold uppercase tracking-widest text-dim border-b border-app/40">
+              Categories
             </div>
             <div className="flex-1 overflow-auto p-1">
               {/* v1.1.6 — pack list is auto-sorted A→Z. Fixes Kurt's OCD ask
@@ -799,8 +813,11 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-2 bg-surface sticky top-0 z-20 shadow-sm">
                   <div className="min-w-0">
                     <h3 className="font-heading font-semibold truncate">{current.name}</h3>
-                    <p className="text-xs text-dim mt-0.5">
-                      {(current.folderItems?.length || 0)} folder tags · {(current.filenameItems?.length || 0)} filename tags
+                    <p className="text-xs text-dim mt-0.5" data-testid="category-header-counts">
+                      {(current.subfolders?.length || 0)} sub-folder{(current.subfolders?.length || 0) === 1 ? "" : "s"}
+                      {" · "}
+                      {(current.subfolders || []).reduce((n, s) => n + (s.filenameItems?.length || 0), 0)} filename tag
+                      {((current.subfolders || []).reduce((n, s) => n + (s.filenameItems?.length || 0), 0)) === 1 ? "" : "s"}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -825,32 +842,30 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   </div>
                 </div>
 
-                {/* Two-section paired list editor
-                    v1.2.9 — order is Folders → Sub-Folders → Filename so the
-                    editor reads left-to-right in the same shape as the
-                    destination path it builds. */}
+                {/* v1.3 CASCADE MODEL — Category → Sub-Folders → Filename Tags.
+                    The old pack-level "Folder Path Tags" and "Filename Tags"
+                    ListSections are gone; every Category now has exactly one
+                    child list (Sub-Folders), and each Sub-Folder owns its
+                    own Filename Tags list, which is edited in the pane
+                    beneath the Sub-Folders list. */}
                 <div className="flex-1 overflow-auto">
-                  <ListSection
-                    listKey="folderItems"
-                    listLabel="Folder path tags"
-                    ListIcon={FolderTree}
-                    helpText="Dropped onto the Folders bar → build the destination folder path (joined by /)."
-                    items={current.folderItems || []}
-                    draft={drafts.folderItems}
-                    setDraft={(patch) => setDrafts((cur) => ({ ...cur, folderItems: { ...cur.folderItems, ...patch } }))}
-                    fileRef={folderFileRef}
-                    onAdd={() => addItem("folderItems")}
-                    onRemove={(id) => removeItem("folderItems", id)}
-                    onImagePick={(e) => handleImagePick("folderItems", e)}
-                    onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "folderItems", itemId)}
-                    onBulkPaste={(text) => bulkAddLabels("folderItems", text)}
-                    onSwapIcon={swapItemIcon}
-                  />
-                  <div className="h-px bg-app/60 mx-4" />
                   <SubfolderSection
                     pack={current}
-                    onAddSubfolder={addSubfolder}
-                    onRemoveSubfolder={removeSubfolder}
+                    selectedSubId={selectedSub?.id || null}
+                    onSelectSubfolder={setSelectedSubId}
+                    onAddSubfolder={(name) => {
+                      addSubfolder(name);
+                      // Auto-select the freshly added sub-folder so the
+                      // editor below is ready to accept filename tags.
+                      setTimeout(() => {
+                        const latest = (current.subfolders || [])[(current.subfolders || []).length];
+                        if (latest) setSelectedSubId(latest.id);
+                      }, 0);
+                    }}
+                    onRemoveSubfolder={(id) => {
+                      if (selectedSubId === id) setSelectedSubId(null);
+                      removeSubfolder(id);
+                    }}
                     onRenameSubfolder={renameSubfolder}
                     onMoveSubfolder={moveSubfolder}
                     onAddItem={addSubfolderItem}
@@ -858,23 +873,34 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onSwapItemIcon={swapSubfolderItemIcon}
                     onMoveSubfolderItem={moveSubfolderItem}
                   />
+
+                  {/* Dedicated Filename Tags editor for the currently
+                      selected sub-folder. Renders an inline hint when no
+                      sub-folder is selected so Kurt sees where to click. */}
                   <div className="h-px bg-app/60 mx-4" />
-                  <ListSection
-                    listKey="filenameItems"
-                    listLabel="Filename tags"
-                    ListIcon={TagIcon}
-                    helpText="Dropped onto the Filename bar → appended to the destination filename (joined by _)."
-                    items={current.filenameItems || []}
-                    draft={drafts.filenameItems}
-                    setDraft={(patch) => setDrafts((cur) => ({ ...cur, filenameItems: { ...cur.filenameItems, ...patch } }))}
-                    fileRef={filenameFileRef}
-                    onAdd={() => addItem("filenameItems")}
-                    onRemove={(id) => removeItem("filenameItems", id)}
-                    onImagePick={(e) => handleImagePick("filenameItems", e)}
-                    onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "filenameItems", itemId)}
-                    onBulkPaste={(text) => bulkAddLabels("filenameItems", text)}
-                    onSwapIcon={swapItemIcon}
-                  />
+                  <div className="px-4 py-4" data-testid="filename-editor-pane">
+                    <div className="flex items-center gap-2 mb-2">
+                      <TagIcon size={14} className="text-primary-earth" />
+                      <h4 className="text-xs font-heading font-semibold uppercase tracking-wider">Filename Tags</h4>
+                      {selectedSub ? (
+                        <span className="text-xs text-dim">
+                          for <span className="text-primary-earth font-medium">{selectedSub.name}</span>
+                          {" · "}
+                          <span className="font-mono">{selectedSub.filenameItems?.length || 0}</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-dim italic">Select a sub-folder above to edit its filename tags</span>
+                      )}
+                    </div>
+                    {selectedSub && (
+                      <SubfolderFilenameEditor
+                        sub={selectedSub}
+                        onAddItem={(label) => addSubfolderItem(selectedSub.id, label)}
+                        onRemoveItem={(itemId) => removeSubfolderItem(selectedSub.id, itemId)}
+                        onSwapItemIcon={(itemId, patch) => swapSubfolderItemIcon(selectedSub.id, itemId, patch)}
+                      />
+                    )}
+                  </div>
                 </div>
               </>
             ) : (
@@ -887,9 +913,7 @@ export default function CategoryManager({ open, onClose, categories, onChange })
 
         <div className="px-5 py-3 border-t border-app flex items-center justify-between text-xs text-dim gap-3">
           <div className="flex-1">
-            Each pack holds two lists: <span className="text-primary-earth">Folder path tags</span> shape the destination
-            folder tree, <span className="text-primary-earth">Filename tags</span> shape the final filename. Pick a pack
-            from the Folders bar and both rows fill together.
+            Cascade: pick a <span className="text-primary-earth">Category</span> → pick a <span className="text-primary-earth">Sub-Folder</span> → its <span className="text-primary-earth">Filename tags</span> load in the editor below. Destination path = <span className="font-mono">Category\Sub-Folder\filename_tags.jpg</span>.
           </div>
           <button
             onClick={backupEverything}
@@ -1365,6 +1389,8 @@ function SubfolderSection({
   onRemoveItem,
   onSwapItemIcon,          // v1.2.1 — fn(sfId, itemId, iconPayload)
   onMoveSubfolderItem,     // v1.2.1 — fn(fromSfId, toSfId, itemId, "move"|"copy")
+  selectedSubId,           // v1.3 — currently selected sub-folder (highlights the row)
+  onSelectSubfolder,       // v1.3 — (sfId) => void — click a row to load its filename tags into the editor below
 }) {
   const subs = Array.isArray(pack?.subfolders) ? pack.subfolders : [];
   const [draft, setDraft] = useState("");
@@ -1479,15 +1505,25 @@ function SubfolderSection({
             const expanded = expandedId === sf.id;
             const items = sf.filenameItems || [];
             const itDraft = itemDrafts[sf.id] || "";
+            // v1.3 — highlight when this row is the currently-selected
+            // sub-folder (drives the Filename Tags editor pane below).
+            const isSelected = selectedSubId === sf.id;
             return (
               <div
                 key={sf.id}
-                className={`rounded border bg-app/40 transition-colors ${
-                  springTargetRef.current === sf.id && !expanded
+                className={`rounded border transition-colors ${
+                  isSelected
+                    ? "border-primary-earth bg-primary-earth/10"
+                    : springTargetRef.current === sf.id && !expanded
                     ? "border-primary-earth/70 bg-primary-earth/5"
-                    : "border-app"
+                    : "border-app bg-app/40"
                 }`}
                 data-testid={`subfolder-row-${sf.id}`}
+                onClick={(e) => {
+                  // v1.3 — clicking anywhere on the row (except the row's
+                  // interactive controls that stopPropagation) selects it.
+                  onSelectSubfolder?.(sf.id);
+                }}
                 onDragOver={(e) => {
                   // v1.2.9 — spring-load if a draggable payload is present
                   // (any chip type: subfolder-item, palette icon, folder tag)
@@ -1814,4 +1850,85 @@ function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRem
       </button>
     </div>
   );
+}
+
+
+/**
+ * SubfolderFilenameEditor (v1.3)
+ * Dedicated editor pane that appears below the Sub-Folders list in the Tag
+ * Manager. Populated with the filename tags of whichever sub-folder is
+ * currently selected. Add / remove / icon-swap wire through the same
+ * addSubfolderItem / removeSubfolderItem / swapSubfolderItemIcon handlers
+ * the inline chevron-expand editor uses, so state stays perfectly in sync.
+ */
+function SubfolderFilenameEditor({ sub, onAddItem, onRemoveItem, onSwapItemIcon }) {
+  const [draft, setDraft] = useState("");
+  const items = sub?.filenameItems || [];
+
+  const add = () => {
+    const lbl = draft.trim();
+    if (!lbl) return;
+    onAddItem(lbl);
+    setDraft("");
+  };
+
+  return (
+    <div className="space-y-2" data-testid="subfolder-filename-editor">
+      <div className="flex gap-2">
+        <input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={`New filename tag for "${sub.name}"…`}
+          className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
+          data-testid="subfolder-filename-input"
+        />
+        <button
+          onClick={add}
+          disabled={!draft.trim()}
+          className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
+          data-testid="subfolder-filename-add-btn"
+        >
+          <Plus size={12} /> Add
+        </button>
+      </div>
+      {items.length === 0 ? (
+        <p className="text-xs text-dim italic px-1">No filename tags yet. Add one above to get started.</p>
+      ) : (
+        <div className="grid grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
+          {items.map((it) => (
+            <div
+              key={it.id}
+              className="flex items-center gap-2 px-2 py-1.5 rounded border border-app bg-app/40 group"
+              data-testid={`subfolder-filename-item-${it.id}`}
+            >
+              <TagChipIcon item={it} />
+              <span className="flex-1 text-sm truncate">{it.label}</span>
+              <button
+                onClick={() => onRemoveItem(it.id)}
+                className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] opacity-0 group-hover:opacity-100 transition-opacity"
+                data-testid={`subfolder-filename-remove-${it.id}`}
+                title="Remove this filename tag"
+              >
+                <Trash2 size={11} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Tiny icon renderer used by SubfolderFilenameEditor. Reads the item's
+ * iconType/iconName/imageDataUrl and renders the correct visual. Falls
+ * back to a generic Tag icon.
+ */
+function TagChipIcon({ item }) {
+  if (item?.iconType === "image" && item?.imageDataUrl) {
+    return <img src={item.imageDataUrl} alt="" className="w-4 h-4 rounded object-cover" />;
+  }
+  const Icon = (item?.iconType === "lucide" && item?.iconName && Lucide[item.iconName]) || TagIcon;
+  return <Icon size={12} className="text-primary-earth shrink-0" />;
 }

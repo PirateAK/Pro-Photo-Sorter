@@ -24,6 +24,7 @@ export default function IconPalette({
   hidePicker = false,  // when true, show pack name as read-only label instead of a <select>
   overrideItems = null, // v1.1.6: when non-null, this list replaces the pack's list for rendering
   overrideLabel = null, // v1.1.6: replaces the pack's name when hidePicker mode is on
+  compactHeaderOnly = false, // v1.3.0: render just the pack picker + label (no chip strip). Used by the FOLDERS bar now that folder-path-tags no longer live at the pack level.
 }) {
   const active = categories.find((c) => c.id === activeCatId) || categories[0];
   const roleLabel = role === "folders" ? "Folders" : "Filename";
@@ -313,7 +314,7 @@ export default function IconPalette({
           </button>
         )}
       </div>
-      <div className="flex items-center gap-1 overflow-x-auto min-w-0 flex-1">
+      <div className={`flex items-center gap-1 overflow-x-auto min-w-0 flex-1 ${compactHeaderOnly ? "hidden" : ""}`}>
         {(!active || items.length === 0) && (
           <span className="text-xs text-dim italic">
             No {roleLabel.toLowerCase()} tags in this pack — right-click to add one, or open Tag Manager.

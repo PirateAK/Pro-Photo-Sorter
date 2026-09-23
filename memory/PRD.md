@@ -2,6 +2,43 @@
 
 ## Original Problem Statement
 A professional photographer needs software to sort thousands of digital photos.
+
+## v1.3.1 — 2026-02-23 · Housekeeping (Repeat-tag auto-disable + toolbar split)
+- ✅ **Repeat last tags auto-disable** — button now greys out (with friendly
+  tooltip: *"Nothing new to repeat — advance to the next photo"*) whenever
+  the user is still parked on the just-stored photo. Fixes Kurt's report
+  that the button kept re-firing on the last image of a filmstrip. Also
+  keeps existing disable-when-no-snapshot behavior. R key shortcut is
+  guarded with a matching toast.
+- ✅ **New state** `lastStoredPhotoName` set in `storeCurrent` alongside
+  `setLastAppliedTags`. Naturally re-enables the moment the user clicks
+  a different filmstrip thumb (React handles it — no manual reset).
+- ✅ **Top toolbar split into two rows**: Row 1 = EXIF (Date · Location ·
+  Cam) on its own line; Row 2 = Edit → Auto-Rate → Rename → Sheet → Tags
+  → Batch → Search → Cull → Theme → Settings → Help → Date-stamp. Same
+  font/size as before; only vertical layout changed so the EXIF strip
+  has breathing room ("insufficient space for the next line" fix).
+- ✅ Regression tests: `frontend/tests/repeatDisable.test.mjs` (5/5).
+  Full suite: 58/58 across 7 files.
+
+## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
+- ✅ Tag Manager reshaped from parallel two-list model to a cascading
+  three-level hierarchy: **Category → Sub-Folder → Filename Tag**.
+- ✅ Left rail relabeled **"Categories"**. Main pane now shows Sub-Folders
+  list at top + dedicated **Filename Tags editor pane** below, populated
+  from whichever sub-folder is currently selected.
+- ✅ Silent one-shot migration on next load: every legacy folder-path-tag
+  becomes an empty sub-folder; existing sub-folders preserved untouched;
+  orphan pack-level filename tags land in `_Unsorted filenames`. Zero
+  data loss. Idempotent.
+- ✅ Header counts auto-update (`N sub-folders · M filename tags`).
+- ✅ Regression suite: `frontend/tests/cascadeMigration.test.mjs` (4
+  assertions). Full suite 53/53 across 6 files.
+- Deferred to v1.3.1: cross-Category chip drag; hide empty FOLDERS chip
+  row in main window when no folder-path chips remain (currently just
+  shows the Category dropdown alone).
+
+
 ## v1.2.9 (pass 4) — 2026-02-20 · Dockable filmstrip + folder consolidation
 - ✅ **Fixed invisible arrows in light mode** — filmstrip prev/next buttons
   now use explicit `text-white` so the chevrons read on every theme.
@@ -16,7 +53,40 @@ A professional photographer needs software to sort thousands of digital photos.
   `pack-app.bat` to silently ship builds without my updated `main.js`.
   Repo now has one canonical build source.
 
-## v1.2.9 (pass 3) — 2026-02-20 · Watermark chip + toggle moved off the photo
+## Backlog captured 2026-02-20 evening (Kurt, sign-off notes)
+
+### Cheer & personality (v2 flavor pass)
+- **Lighten the load** — audit copy, empty states, toasts, and hover text to
+  add warmth. Fewer "Click Open to browse", more "Ready when you are ⛅".
+  Small wins: seasonal footer hints, occasional friendly emoji on
+  success toasts, playful loading strings.
+- **Two new color themes** (v2):
+  - **🌅 Sunrise** — subdued blues/grays, cool morning palette, sunrise
+    icon in the theme switcher. Pairs with 5am boat-deck culling.
+  - **🌇 Sunset** — warm golden theme built around the primary-earth
+    tone, sunset icon in the switcher. Complements the wildlife /
+    landscape work PPS is used for.
+  - Both should honor the existing CSS-var token system so no component
+    styles need touching — just new `[data-theme="sunrise"]` /
+    `[data-theme="sunset"]` blocks in `index.css`.
+
+### Print services (v2 → v3)
+- **v2**: One-click "Send to print" from the destination pane. Start with
+  a single vendor integration (candidate: Bay Photo or Mpix — both have
+  a documented order API and pro-photographer market). Payload = the
+  selected photo(s) + resize preset + a shipping profile stored in
+  Settings. Watermark toggle honored.
+- **v3 flagship — "Super PPS"** — an all-in-one shop for working pro
+  photographers, PPS as the daily hub:
+  - Multiple print-lab integrations (Bay Photo, Mpix, WHCC, ProDPI)
+  - Client galleries — publish a batch to a private share link
+  - Invoicing hooks (QuickBooks / Stripe) tied to a shoot folder
+  - License-and-release capture (embed model releases with photos)
+  - Session budgets (frames-per-hour, storage-cost tracking)
+  - Optional cloud mirror of the safety-backup (for photographers who
+    trust a cloud provider). Keep 100% offline mode as the default.
+
+
 - ✅ Removed the top-left `© WM` chip and the top-right WM ON/OFF toggle
   from the image overlay. Both now sit side-by-side in the toolbar row,
   right-aligned directly under the 16×20 resize button. The chip shows

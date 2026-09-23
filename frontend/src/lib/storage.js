@@ -51,114 +51,100 @@ const DEFAULT_SETTINGS = {
 
 const DEFAULT_STATE = {
   categories: [
+    // v1.3 — new starter packs use the cascade shape: Category → Sub-Folders → Filename Tags.
+    // No more pack-level folderItems / filenameItems.
     {
       id: "cat-starter-wildlife",
       name: "Wildlife",
-      folderItems: [
-        { id: "wf-1", label: "Mammals",  iconType: "lucide", iconName: "Rabbit" },
-        { id: "wf-2", label: "Birds",    iconType: "lucide", iconName: "Bird" },
-        { id: "wf-3", label: "Reptiles", iconType: "lucide", iconName: "Triangle" },
-        { id: "wf-4", label: "Fish",     iconType: "lucide", iconName: "Fish" },
-        { id: "wf-5", label: "Insects",  iconType: "lucide", iconName: "Sparkles" },
-      ],
-      filenameItems: [
-        { id: "wn-1", label: "portrait", iconType: "lucide", iconName: "Aperture" },
-        { id: "wn-2", label: "action",   iconType: "lucide", iconName: "Zap" },
-        { id: "wn-3", label: "flying",   iconType: "lucide", iconName: "Wind" },
-        { id: "wn-4", label: "feeding",  iconType: "lucide", iconName: "Utensils" },
-        { id: "wn-5", label: "distant",  iconType: "lucide", iconName: "MapPin" },
-        { id: "wn-6", label: "closeup",  iconType: "lucide", iconName: "Sparkles" },
+      subfolders: [
+        {
+          id: "wf-sub-mammals", name: "Mammals", iconType: "lucide", iconName: "Rabbit",
+          filenameItems: [
+            { id: "wf-mm-1", label: "portrait", iconType: "lucide", iconName: "Aperture" },
+            { id: "wf-mm-2", label: "action",   iconType: "lucide", iconName: "Zap" },
+            { id: "wf-mm-3", label: "feeding",  iconType: "lucide", iconName: "Utensils" },
+            { id: "wf-mm-4", label: "closeup",  iconType: "lucide", iconName: "Sparkles" },
+          ],
+        },
+        {
+          id: "wf-sub-birds", name: "Birds", iconType: "lucide", iconName: "Bird",
+          filenameItems: [
+            { id: "wf-bd-1", label: "portrait", iconType: "lucide", iconName: "Aperture" },
+            { id: "wf-bd-2", label: "flying",   iconType: "lucide", iconName: "Wind" },
+            { id: "wf-bd-3", label: "feeding",  iconType: "lucide", iconName: "Utensils" },
+            { id: "wf-bd-4", label: "distant",  iconType: "lucide", iconName: "MapPin" },
+          ],
+        },
+        { id: "wf-sub-reptiles", name: "Reptiles", iconType: "lucide", iconName: "Triangle", filenameItems: [] },
+        { id: "wf-sub-fish",     name: "Fish",     iconType: "lucide", iconName: "Fish",     filenameItems: [] },
+        { id: "wf-sub-insects",  name: "Insects",  iconType: "lucide", iconName: "Sparkles", filenameItems: [] },
       ],
     },
     {
       id: "cat-starter-wedding",
       name: "Wedding",
-      folderItems: [
-        { id: "wd-f1", label: "Getting-Ready", iconType: "lucide", iconName: "Sparkles" },
-        { id: "wd-f2", label: "Ceremony",      iconType: "lucide", iconName: "Church" },
-        { id: "wd-f3", label: "Portraits",     iconType: "lucide", iconName: "Users" },
-        { id: "wd-f4", label: "Details",       iconType: "lucide", iconName: "Heart" },
-        { id: "wd-f5", label: "Reception",     iconType: "lucide", iconName: "Wine" },
-        { id: "wd-f6", label: "First-Dance",   iconType: "lucide", iconName: "Music" },
-      ],
-      filenameItems: [
-        { id: "wd-n1", label: "candid",  iconType: "lucide", iconName: "Camera" },
-        { id: "wd-n2", label: "formal",  iconType: "lucide", iconName: "Star" },
-        { id: "wd-n3", label: "moment",  iconType: "lucide", iconName: "Sparkles" },
-        { id: "wd-n4", label: "wide",    iconType: "lucide", iconName: "Aperture" },
-        { id: "wd-n5", label: "close",   iconType: "lucide", iconName: "Sun" },
-        { id: "wd-n6", label: "bw",      iconType: "lucide", iconName: "Moon" },
+      subfolders: [
+        { id: "wd-sub-getting-ready", name: "Getting-Ready", iconType: "lucide", iconName: "Sparkles",
+          filenameItems: [
+            { id: "wd-gr-1", label: "candid", iconType: "lucide", iconName: "Camera" },
+            { id: "wd-gr-2", label: "detail", iconType: "lucide", iconName: "Sparkles" },
+          ],
+        },
+        { id: "wd-sub-ceremony",   name: "Ceremony",   iconType: "lucide", iconName: "Church",
+          filenameItems: [
+            { id: "wd-ce-1", label: "wide",   iconType: "lucide", iconName: "Aperture" },
+            { id: "wd-ce-2", label: "moment", iconType: "lucide", iconName: "Sparkles" },
+            { id: "wd-ce-3", label: "bw",     iconType: "lucide", iconName: "Moon" },
+          ],
+        },
+        { id: "wd-sub-portraits",  name: "Portraits",  iconType: "lucide", iconName: "Users",
+          filenameItems: [
+            { id: "wd-po-1", label: "formal", iconType: "lucide", iconName: "Star" },
+            { id: "wd-po-2", label: "close",  iconType: "lucide", iconName: "Sun" },
+          ],
+        },
+        { id: "wd-sub-details",    name: "Details",    iconType: "lucide", iconName: "Heart", filenameItems: [] },
+        { id: "wd-sub-reception",  name: "Reception",  iconType: "lucide", iconName: "Wine",  filenameItems: [] },
+        { id: "wd-sub-first-dance",name: "First-Dance",iconType: "lucide", iconName: "Music", filenameItems: [] },
       ],
     },
     {
       id: "cat-starter-portrait",
       name: "Portrait",
-      folderItems: [
-        { id: "pr-f1", label: "Headshot",   iconType: "lucide", iconName: "User" },
-        { id: "pr-f2", label: "Family",     iconType: "lucide", iconName: "Users" },
-        { id: "pr-f3", label: "Couple",     iconType: "lucide", iconName: "Heart" },
-        { id: "pr-f4", label: "Kids",       iconType: "lucide", iconName: "Baby" },
-        { id: "pr-f5", label: "Corporate",  iconType: "lucide", iconName: "Building" },
-        { id: "pr-f6", label: "Fine-Art",   iconType: "lucide", iconName: "Sparkles" },
-      ],
-      filenameItems: [
-        { id: "pr-n1", label: "studio",         iconType: "lucide", iconName: "Camera" },
-        { id: "pr-n2", label: "environmental",  iconType: "lucide", iconName: "Trees" },
-        { id: "pr-n3", label: "profile",        iconType: "lucide", iconName: "User" },
-        { id: "pr-n4", label: "three-quarter",  iconType: "lucide", iconName: "Aperture" },
-        { id: "pr-n5", label: "smile",          iconType: "lucide", iconName: "Sun" },
-        { id: "pr-n6", label: "moody",          iconType: "lucide", iconName: "Moon" },
+      subfolders: [
+        { id: "pr-sub-headshot",  name: "Headshot",  iconType: "lucide", iconName: "User",     filenameItems: [
+          { id: "pr-hs-1", label: "studio", iconType: "lucide", iconName: "Camera" },
+          { id: "pr-hs-2", label: "smile",  iconType: "lucide", iconName: "Sun" },
+        ] },
+        { id: "pr-sub-family",    name: "Family",    iconType: "lucide", iconName: "Users",    filenameItems: [] },
+        { id: "pr-sub-couple",    name: "Couple",    iconType: "lucide", iconName: "Heart",    filenameItems: [] },
+        { id: "pr-sub-kids",      name: "Kids",      iconType: "lucide", iconName: "Baby",     filenameItems: [] },
+        { id: "pr-sub-corporate", name: "Corporate", iconType: "lucide", iconName: "Building", filenameItems: [] },
+        { id: "pr-sub-fineart",   name: "Fine-Art",  iconType: "lucide", iconName: "Sparkles", filenameItems: [] },
       ],
     },
     {
       id: "cat-starter-landscape",
       name: "Landscape",
-      folderItems: [
-        { id: "ls-f1", label: "Mountains", iconType: "lucide", iconName: "Mountain" },
-        { id: "ls-f2", label: "Coastal",   iconType: "lucide", iconName: "Waves" },
-        { id: "ls-f3", label: "Forest",    iconType: "lucide", iconName: "Trees" },
-        { id: "ls-f4", label: "Desert",    iconType: "lucide", iconName: "Sun" },
-        { id: "ls-f5", label: "Waterfall", iconType: "lucide", iconName: "CloudRain" },
-        { id: "ls-f6", label: "Astro",     iconType: "lucide", iconName: "Moon" },
-      ],
-      filenameItems: [
-        { id: "ls-n1", label: "sunrise",       iconType: "lucide", iconName: "Sunrise" },
-        { id: "ls-n2", label: "sunset",        iconType: "lucide", iconName: "Sunset" },
-        { id: "ls-n3", label: "golden-hour",   iconType: "lucide", iconName: "Sun" },
-        { id: "ls-n4", label: "blue-hour",     iconType: "lucide", iconName: "Cloud" },
-        { id: "ls-n5", label: "panorama",      iconType: "lucide", iconName: "Aperture" },
-        { id: "ls-n6", label: "long-exposure", iconType: "lucide", iconName: "Wind" },
+      subfolders: [
+        { id: "ls-sub-mountains", name: "Mountains", iconType: "lucide", iconName: "Mountain", filenameItems: [
+          { id: "ls-mt-1", label: "sunrise",     iconType: "lucide", iconName: "Sunrise" },
+          { id: "ls-mt-2", label: "sunset",      iconType: "lucide", iconName: "Sunset" },
+          { id: "ls-mt-3", label: "golden-hour", iconType: "lucide", iconName: "Sun" },
+        ] },
+        { id: "ls-sub-coastal",   name: "Coastal",   iconType: "lucide", iconName: "Waves",    filenameItems: [] },
+        { id: "ls-sub-forest",    name: "Forest",    iconType: "lucide", iconName: "Trees",    filenameItems: [] },
+        { id: "ls-sub-desert",    name: "Desert",    iconType: "lucide", iconName: "Sun",      filenameItems: [] },
+        { id: "ls-sub-waterfall", name: "Waterfall", iconType: "lucide", iconName: "CloudRain",filenameItems: [] },
+        { id: "ls-sub-astro",     name: "Astro",     iconType: "lucide", iconName: "Moon",     filenameItems: [] },
       ],
     },
     {
       id: "cat-starter-sports",
       name: "Sports",
-      folderItems: [
-        { id: "sp-f1", label: "Game",      iconType: "lucide", iconName: "Flag" },
-        { id: "sp-f2", label: "Practice",  iconType: "lucide", iconName: "Zap" },
-        { id: "sp-f3", label: "Portraits", iconType: "lucide", iconName: "Users" },
-        { id: "sp-f4", label: "Team",      iconType: "lucide", iconName: "Trophy" },
-        { id: "sp-f5", label: "Sidelines", iconType: "lucide", iconName: "Camera" },
-        { id: "sp-f6", label: "Awards",    iconType: "lucide", iconName: "Award" },
-      ],
-      filenameItems: [
-        { id: "sp-n1", label: "action",       iconType: "lucide", iconName: "Zap" },
-        { id: "sp-n2", label: "keeper",       iconType: "lucide", iconName: "Star" },
-        { id: "sp-n3", label: "celebration",  iconType: "lucide", iconName: "Sparkles" },
-        { id: "sp-n4", label: "close",        iconType: "lucide", iconName: "Aperture" },
-        { id: "sp-n5", label: "wide",         iconType: "lucide", iconName: "Camera" },
-        { id: "sp-n6", label: "sequence",     iconType: "lucide", iconName: "Flame" },
-      ],
-      // v1.1.6 — demo subfolders. When one is picked in the main window's
-      // SUBFOLDER bar, its name prepends to the destination folder path
-      // (e.g. "Sports/Baseball/…") and its filenameItems replace the
-      // pack's default filename tags in the Filename bar. Parent's
-      // folderItems stay in the Folders bar (inherited).
       subfolders: [
         {
-          id: "sp-sub-baseball",
-          name: "Baseball",
-          iconType: "lucide", iconName: "Circle",
+          id: "sp-sub-baseball",  name: "Baseball",  iconType: "lucide", iconName: "Circle",
           filenameItems: [
             { id: "sp-bb-1", label: "Yankees",  iconType: "lucide", iconName: "Star" },
             { id: "sp-bb-2", label: "RedSox",   iconType: "lucide", iconName: "Star" },
@@ -168,9 +154,7 @@ const DEFAULT_STATE = {
           ],
         },
         {
-          id: "sp-sub-basketball",
-          name: "Basketball",
-          iconType: "lucide", iconName: "Circle",
+          id: "sp-sub-basketball", name: "Basketball", iconType: "lucide", iconName: "Circle",
           filenameItems: [
             { id: "sp-bk-1", label: "Lakers",   iconType: "lucide", iconName: "Star" },
             { id: "sp-bk-2", label: "Celtics",  iconType: "lucide", iconName: "Star" },
@@ -179,9 +163,7 @@ const DEFAULT_STATE = {
           ],
         },
         {
-          id: "sp-sub-football",
-          name: "Football",
-          iconType: "lucide", iconName: "Circle",
+          id: "sp-sub-football", name: "Football", iconType: "lucide", iconName: "Circle",
           filenameItems: [
             { id: "sp-fb-1", label: "Chiefs",   iconType: "lucide", iconName: "Star" },
             { id: "sp-fb-2", label: "49ers",    iconType: "lucide", iconName: "Star" },
@@ -194,22 +176,21 @@ const DEFAULT_STATE = {
     {
       id: "cat-starter-realestate",
       name: "Real Estate",
-      folderItems: [
-        { id: "re-f1", label: "Exterior", iconType: "lucide", iconName: "Home" },
-        { id: "re-f2", label: "Interior", iconType: "lucide", iconName: "Building" },
-        { id: "re-f3", label: "Kitchen",  iconType: "lucide", iconName: "Utensils" },
-        { id: "re-f4", label: "Bedroom",  iconType: "lucide", iconName: "Moon" },
-        { id: "re-f5", label: "Bathroom", iconType: "lucide", iconName: "Waves" },
-        { id: "re-f6", label: "Yard",     iconType: "lucide", iconName: "Trees" },
-        { id: "re-f7", label: "Twilight", iconType: "lucide", iconName: "Sunset" },
-      ],
-      filenameItems: [
-        { id: "re-n1", label: "wide",       iconType: "lucide", iconName: "Aperture" },
-        { id: "re-n2", label: "detail",     iconType: "lucide", iconName: "Sparkles" },
-        { id: "re-n3", label: "hdr",        iconType: "lucide", iconName: "Sun" },
-        { id: "re-n4", label: "straight",   iconType: "lucide", iconName: "Square" },
-        { id: "re-n5", label: "lifestyle",  iconType: "lucide", iconName: "Heart" },
-        { id: "re-n6", label: "aerial",     iconType: "lucide", iconName: "Plane" },
+      subfolders: [
+        { id: "re-sub-exterior", name: "Exterior", iconType: "lucide", iconName: "Home",     filenameItems: [
+          { id: "re-ex-1", label: "wide",     iconType: "lucide", iconName: "Aperture" },
+          { id: "re-ex-2", label: "twilight", iconType: "lucide", iconName: "Sunset" },
+          { id: "re-ex-3", label: "aerial",   iconType: "lucide", iconName: "Plane" },
+        ] },
+        { id: "re-sub-interior", name: "Interior", iconType: "lucide", iconName: "Building", filenameItems: [
+          { id: "re-in-1", label: "wide",     iconType: "lucide", iconName: "Aperture" },
+          { id: "re-in-2", label: "detail",   iconType: "lucide", iconName: "Sparkles" },
+          { id: "re-in-3", label: "hdr",      iconType: "lucide", iconName: "Sun" },
+        ] },
+        { id: "re-sub-kitchen",  name: "Kitchen",  iconType: "lucide", iconName: "Utensils", filenameItems: [] },
+        { id: "re-sub-bedroom",  name: "Bedroom",  iconType: "lucide", iconName: "Moon",     filenameItems: [] },
+        { id: "re-sub-bathroom", name: "Bathroom", iconType: "lucide", iconName: "Waves",    filenameItems: [] },
+        { id: "re-sub-yard",     name: "Yard",     iconType: "lucide", iconName: "Trees",    filenameItems: [] },
       ],
     },
   ],
@@ -260,11 +241,48 @@ export function loadState() {
       if (id === "cat-default-1" && typeof c.name === "string" && c.name.toLowerCase().startsWith("wildlife")) {
         id = "cat-starter-wildlife";
       }
-      let subfolders = Array.isArray(c.subfolders) ? c.subfolders : [];
-      // v1.1.6 migration: an existing user's Sports pack (from v1.1.4/1.1.5)
-      // won't have the demo Baseball/Basketball/Football sub-folders. Auto-seed
-      // them ONLY if the current Sports pack still has zero subfolders, so we
-      // never clobber sub-folders the user has already customized.
+      // v1.3 CASCADE MIGRATION: fold old folderItems + pack-level filenameItems
+      // into subfolders so every category has exactly ONE child list.
+      //   • each old folderItem  →  new empty sub-folder (icon carries over)
+      //   • existing subfolders  →  preserved untouched
+      //   • old pack-level filenameItems → new "_Unsorted filenames" sub-folder
+      //     (leading underscore sorts to the top so Kurt spots + reorganizes it)
+      // Zero data loss; duplicates left for the user to drag-merge.
+      const existingSubs = Array.isArray(c.subfolders) ? c.subfolders : [];
+      const legacyFolderItems = Array.isArray(c.folderItems) ? c.folderItems : [];
+      const legacyFilenameItems = Array.isArray(c.filenameItems) ? c.filenameItems : [];
+      const needsMigration = legacyFolderItems.length > 0 || legacyFilenameItems.length > 0;
+
+      let subfolders = existingSubs.map((s) => ({
+        ...s,
+        filenameItems: Array.isArray(s.filenameItems) ? s.filenameItems : [],
+      }));
+
+      if (needsMigration) {
+        // Old folderItems become empty sub-folders, prepended so they appear at top.
+        const migratedFromFolders = legacyFolderItems.map((it, i) => ({
+          id: `sub-mig-fp-${id}-${it.id || i}`,
+          name: it.label || "Untitled",
+          iconType: it.iconType,
+          iconName: it.iconName,
+          imageDataUrl: it.imageDataUrl,
+          filenameItems: [],
+        }));
+        subfolders = [...migratedFromFolders, ...subfolders];
+
+        // Loose pack-level filenames land in a dedicated bucket.
+        if (legacyFilenameItems.length > 0) {
+          subfolders.push({
+            id: `sub-mig-un-${id}`,
+            name: "_Unsorted filenames",
+            iconType: "lucide",
+            iconName: "Package",
+            filenameItems: legacyFilenameItems,
+          });
+        }
+      }
+
+      // v1.1.6 seed for existing Sports pack (unchanged from prior release).
       if (id === "cat-starter-sports" && subfolders.length === 0) {
         const seed = DEFAULT_STATE.categories.find((p) => p.id === "cat-starter-sports");
         if (seed?.subfolders?.length) subfolders = seed.subfolders;
@@ -272,9 +290,10 @@ export function loadState() {
       return {
         ...c,
         id,
-        folderItems: Array.isArray(c.folderItems) ? c.folderItems : [],
-        filenameItems: Array.isArray(c.filenameItems) ? c.filenameItems : [],
         subfolders,
+        // Drop the legacy fields to keep saved state clean going forward.
+        folderItems: undefined,
+        filenameItems: undefined,
       };
     });
     return {
