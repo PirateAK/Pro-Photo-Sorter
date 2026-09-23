@@ -2,6 +2,20 @@
 
 ## Original Problem Statement
 A professional photographer needs software to sort thousands of digital photos.
+## v1.2.9 (pass 4) — 2026-02-20 · Dockable filmstrip + folder consolidation
+- ✅ **Fixed invisible arrows in light mode** — filmstrip prev/next buttons
+  now use explicit `text-white` so the chevrons read on every theme.
+- ✅ **Dockable filmstrip** — new one-click dock picker at the top-left of
+  the strip lets Kurt pop it to bottom / top / left / right. Left and
+  right positions reshape the grid to a 4-column vertical layout and
+  flip the strip to scroll vertically. `settings.filmstripPosition`
+  persists the choice. Auto-scroll of the active thumb is
+  orientation-aware.
+- ✅ **Consolidated `electron-additions/` → `electron-shell/`** as the
+  single source of truth. The duplicate folder was causing
+  `pack-app.bat` to silently ship builds without my updated `main.js`.
+  Repo now has one canonical build source.
+
 ## v1.2.9 (pass 3) — 2026-02-20 · Watermark chip + toggle moved off the photo
 - ✅ Removed the top-left `© WM` chip and the top-right WM ON/OFF toggle
   from the image overlay. Both now sit side-by-side in the toolbar row,

@@ -33,6 +33,15 @@ const DEFAULT_SETTINGS = {
   uiScale: 1.10,
   // Filmstrip thumbnail height in px (v1.1.3). Presets: 96 S · 128 M · 176 L · 224 XL.
   thumbSize: 128,
+  // v1.2.9 — Filmstrip dock position: "bottom" (default), "top", "left", "right".
+  // Vertical positions ("left"/"right") reshape the grid + flip the strip to
+  // scroll vertically so photographers can keep the strip off things it
+  // might obscure (Kurt asked for this after it started covering a wide
+  // deer photo). Persists per-user.
+  filmstripPosition: "bottom",
+  // Width used when the filmstrip is docked left/right. Height reused for
+  // top/bottom docks. Reads from --filmstrip-w CSS var at runtime.
+  filmstripWidth: 200,
   // Default location that fills the on-viewer EXIF Location chip whenever a
   // photo has no per-image location override (v1.1.7). Empty string means
   // "no default — show whatever EXIF GPS translates to (usually nothing)".

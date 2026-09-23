@@ -36,7 +36,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle, ZoomIn, ZoomOut, Maximize } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle, ZoomIn, ZoomOut, Maximize, PanelBottom, PanelTop, PanelLeft, PanelRight, ChevronUp, GripHorizontal } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -300,7 +300,19 @@ export default function App() {
     const t = typeof settings.thumbSize === "number" ? settings.thumbSize : 128;
     const clamped = Math.max(80, Math.min(320, t));
     document.documentElement.style.setProperty("--filmstrip-h", `${clamped + 72}px`);
+    // v1.2.9 — vertical dock width driven by thumb size + label chrome.
+    // Reads from the same thumbSize so photos stay legible when docked
+    // to the left/right.
+    document.documentElement.style.setProperty("--filmstrip-w", `${clamped + 72}px`);
   }, [settings.thumbSize]);
+
+  // v1.2.9 — the filmstrip's dock position (bottom / top / left / right).
+  // Kept in settings so it persists; derived class name + orientation flag
+  // used to reshape the app grid and the strip's inner scroll direction.
+  const filmstripPosition = ["bottom", "top", "left", "right"].includes(settings.filmstripPosition)
+    ? settings.filmstripPosition
+    : "bottom";
+  const filmstripVertical = filmstripPosition === "left" || filmstripPosition === "right";
 
   const UI_SCALE_STEPS = [0.90, 1.00, 1.10, 1.25, 1.40];
   const nudgeUiScale = (dir) => {
@@ -447,15 +459,24 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Track whether the filmstrip has content off-screen (so we know when to show arrows)
+  // Track whether the filmstrip has content off-screen (so we know when to show arrows).
+  // v1.2.9 — orientation-aware: uses scrollTop/clientHeight when the strip
+  // is docked vertically so the prev/next arrows still work sensibly.
   useEffect(() => {
     const el = filmstripRef.current;
     if (!el) return;
     const update = () => {
-      setFilmstripCanScroll({
-        left: el.scrollLeft > 2,
-        right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
-      });
+      if (filmstripVertical) {
+        setFilmstripCanScroll({
+          left: el.scrollTop > 2, // "left" = up in vertical mode
+          right: el.scrollTop + el.clientHeight < el.scrollHeight - 2,
+        });
+      } else {
+        setFilmstripCanScroll({
+          left: el.scrollLeft > 2,
+          right: el.scrollLeft + el.clientWidth < el.scrollWidth - 2,
+        });
+      }
     };
     update();
     el.addEventListener("scroll", update, { passive: true });
@@ -465,15 +486,19 @@ export default function App() {
       el.removeEventListener("scroll", update);
       ro.disconnect();
     };
-  }, [images.length, settings.minStarFilter, currentSourcePath]);
+  }, [images.length, settings.minStarFilter, currentSourcePath, filmstripVertical]);
 
   const scrollFilmstrip = (dir) => {
     const el = filmstripRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * Math.max(200, el.clientWidth * 0.7), behavior: "smooth" });
+    if (filmstripVertical) {
+      el.scrollBy({ top: dir * Math.max(200, el.clientHeight * 0.7), behavior: "smooth" });
+    } else {
+      el.scrollBy({ left: dir * Math.max(200, el.clientWidth * 0.7), behavior: "smooth" });
+    }
   };
 
-  // Auto-scroll active thumbnail into view
+  // Auto-scroll active thumbnail into view (v1.2.9 — orientation-aware).
   useEffect(() => {
     const el = filmstripRef.current;
     if (!el || !currentImage) return;
@@ -481,10 +506,16 @@ export default function App() {
     if (!target) return;
     const tRect = target.getBoundingClientRect();
     const eRect = el.getBoundingClientRect();
-    if (tRect.left < eRect.left + 20 || tRect.right > eRect.right - 20) {
-      target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+    if (filmstripVertical) {
+      if (tRect.top < eRect.top + 20 || tRect.bottom > eRect.bottom - 20) {
+        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" });
+      }
+    } else {
+      if (tRect.left < eRect.left + 20 || tRect.right > eRect.right - 20) {
+        target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+      }
     }
-  }, [selectedIdx, currentImage]);
+  }, [selectedIdx, currentImage, filmstripVertical]);
 
   // Poll total-free-space every 60s while the app is open (Electron only).
   // Also refreshes when the user opens the Drives panel or picks a new folder.
@@ -1675,7 +1706,7 @@ export default function App() {
         onActivateClick={() => { setHelpInitialTab("license"); setShowHelp(true); }}
       />
       <UpdateBanner enabled={!!settings.checkForUpdates} />
-      <div className="app-grid" data-testid="app-root">
+      <div className={`app-grid strip-${filmstripPosition}`} data-testid="app-root">
       <Toaster theme={settings.theme || "dark"} position="bottom-right" richColors closeButton />
 
       {/* LEFT — Source drive tree */}
@@ -2584,33 +2615,79 @@ export default function App() {
           onReset={() => setSessionStats({ stored: 0, moved: 0, deleted: 0, skipped: 0, rated: 0, enhanced: 0 })}
         />
         <div className="relative flex-1 min-h-0">
-        {/* Left scroll button */}
+        {/* v1.2.9 — Filmstrip dock picker. Lets Kurt pop the strip to any
+            of the four edges without ever letting it obscure the photo.
+            Sits under the SessionStats bar in the top-left of the strip
+            container so it's out of the way of the thumbs themselves. */}
+        <div
+          className="absolute top-1 left-1 z-30 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-black/70 backdrop-blur border border-app text-white shadow-lg"
+          data-testid="filmstrip-dock-picker"
+          title="Move the filmstrip — dock at bottom, top, left, or right"
+        >
+          <GripHorizontal size={11} className="opacity-60" />
+          {[
+            { key: "bottom", Icon: PanelBottom, label: "Dock bottom" },
+            { key: "top",    Icon: PanelTop,    label: "Dock top" },
+            { key: "left",   Icon: PanelLeft,   label: "Dock left (vertical)" },
+            { key: "right",  Icon: PanelRight,  label: "Dock right (vertical)" },
+          ].map(({ key, Icon, label }) => (
+            <button
+              key={key}
+              onClick={() => setSettings({ ...settings, filmstripPosition: key })}
+              className={`w-6 h-6 rounded flex items-center justify-center transition-colors ${
+                filmstripPosition === key
+                  ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                  : "text-white/80 hover:text-white hover:bg-white/10"
+              }`}
+              data-testid={`filmstrip-dock-${key}`}
+              title={label}
+              aria-pressed={filmstripPosition === key}
+            >
+              <Icon size={13} />
+            </button>
+          ))}
+        </div>
+        {/* Prev arrow — "left" for horizontal, "up" for vertical.
+            v1.2.9 — explicit text-white so the icon reads on ANY theme,
+            not just dark mode (Kurt reported invisible arrows in light). */}
         {filmstripCanScroll.left && (
           <button
             onClick={() => scrollFilmstrip(-1)}
-            className="absolute left-1 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-primary-earth hover:text-[color:var(--text-inverse)] backdrop-blur border border-app flex items-center justify-center shadow-lg transition-colors"
+            className={`absolute z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-primary-earth text-white backdrop-blur border border-app flex items-center justify-center shadow-lg transition-colors ${
+              filmstripVertical
+                ? "top-1 left-1/2 -translate-x-1/2"
+                : "left-1 top-1/2 -translate-y-1/2"
+            }`}
             data-testid="filmstrip-scroll-left"
-            title="Scroll left"
-            aria-label="Scroll filmstrip left"
+            title={filmstripVertical ? "Scroll up" : "Scroll left"}
+            aria-label={filmstripVertical ? "Scroll filmstrip up" : "Scroll filmstrip left"}
           >
-            <ChevronLeft size={18} />
+            {filmstripVertical ? <ChevronUp size={18} /> : <ChevronLeft size={18} />}
           </button>
         )}
-        {/* Right scroll button */}
+        {/* Next arrow — "right" for horizontal, "down" for vertical */}
         {filmstripCanScroll.right && (
           <button
             onClick={() => scrollFilmstrip(1)}
-            className="absolute right-1 top-1/2 -translate-y-1/2 z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-primary-earth hover:text-[color:var(--text-inverse)] backdrop-blur border border-app flex items-center justify-center shadow-lg transition-colors"
+            className={`absolute z-20 w-9 h-9 rounded-full bg-black/70 hover:bg-primary-earth text-white backdrop-blur border border-app flex items-center justify-center shadow-lg transition-colors ${
+              filmstripVertical
+                ? "bottom-1 left-1/2 -translate-x-1/2"
+                : "right-1 top-1/2 -translate-y-1/2"
+            }`}
             data-testid="filmstrip-scroll-right"
-            title="Scroll right"
-            aria-label="Scroll filmstrip right"
+            title={filmstripVertical ? "Scroll down" : "Scroll right"}
+            aria-label={filmstripVertical ? "Scroll filmstrip down" : "Scroll filmstrip right"}
           >
-            <ChevronRight size={18} />
+            {filmstripVertical ? <ChevronDown size={18} /> : <ChevronRight size={18} />}
           </button>
         )}
         <div
           ref={filmstripRef}
-          className="filmstrip flex items-center gap-3 px-6 overflow-x-auto h-full scroll-smooth"
+          className={`filmstrip flex items-center gap-3 scroll-smooth h-full ${
+            filmstripVertical
+              ? "flex-col py-10 overflow-y-auto overflow-x-hidden"
+              : "px-6 overflow-x-auto"
+          }`}
           data-testid="filmstrip"
         >
         {(settings.minStarFilter || 0) > 0 && images.length > 0 && (

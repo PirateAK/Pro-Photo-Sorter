@@ -6,40 +6,71 @@
     width: 100vw;
     overflow: hidden;
 }
+
+/* ── v1.2.9 — Dockable filmstrip ─────────────────────────────────────────
+   The .app-grid gets one of four .strip-<pos> variants so the filmstrip
+   can live at the bottom (default), top, left, or right of the workspace
+   without breaking the three panes. Grid template + region rows/cols are
+   swapped in one place so the App JSX stays position-agnostic. */
 .app-grid {
     display: grid;
-    grid-template-columns: 280px 1fr 280px;
-    /* Filmstrip row height driven by --filmstrip-h (set from settings.thumbSize) */
-    grid-template-rows: 1fr var(--filmstrip-h, 200px);
     flex: 1 1 auto;
     min-height: 0;
     width: 100%;
     overflow: hidden;
 }
 
-.region-left {
-    grid-column: 1;
-    grid-row: 1;
-    border-right: 1px solid var(--border);
-    background: var(--surface);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
+/* Bottom (default) — 3 cols × 2 rows, strip spans row 2 */
+.app-grid.strip-bottom {
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: 1fr var(--filmstrip-h, 200px);
 }
+.app-grid.strip-bottom .region-left   { grid-column: 1; grid-row: 1; }
+.app-grid.strip-bottom .region-center { grid-column: 2; grid-row: 1; }
+.app-grid.strip-bottom .region-right  { grid-column: 3; grid-row: 1; }
+.app-grid.strip-bottom .region-strip  { grid-column: 1 / 4; grid-row: 2; border-top: 1px solid var(--border); }
 
+/* Top — 3 cols × 2 rows, strip spans row 1 */
+.app-grid.strip-top {
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: var(--filmstrip-h, 200px) 1fr;
+}
+.app-grid.strip-top .region-left   { grid-column: 1; grid-row: 2; }
+.app-grid.strip-top .region-center { grid-column: 2; grid-row: 2; }
+.app-grid.strip-top .region-right  { grid-column: 3; grid-row: 2; }
+.app-grid.strip-top .region-strip  { grid-column: 1 / 4; grid-row: 1; border-bottom: 1px solid var(--border); }
+
+/* Left — 4 cols × 1 row, strip is col 1 (vertical) */
+.app-grid.strip-left {
+    grid-template-columns: var(--filmstrip-w, 200px) 280px 1fr 280px;
+    grid-template-rows: 1fr;
+}
+.app-grid.strip-left .region-strip  { grid-column: 1; grid-row: 1; border-right: 1px solid var(--border); }
+.app-grid.strip-left .region-left   { grid-column: 2; grid-row: 1; }
+.app-grid.strip-left .region-center { grid-column: 3; grid-row: 1; }
+.app-grid.strip-left .region-right  { grid-column: 4; grid-row: 1; }
+
+/* Right — 4 cols × 1 row, strip is col 4 (vertical) */
+.app-grid.strip-right {
+    grid-template-columns: 280px 1fr 280px var(--filmstrip-w, 200px);
+    grid-template-rows: 1fr;
+}
+.app-grid.strip-right .region-left   { grid-column: 1; grid-row: 1; }
+.app-grid.strip-right .region-center { grid-column: 2; grid-row: 1; }
+.app-grid.strip-right .region-right  { grid-column: 3; grid-row: 1; }
+.app-grid.strip-right .region-strip  { grid-column: 4; grid-row: 1; border-left: 1px solid var(--border); }
+
+.region-left,
 .region-right {
-    grid-column: 3;
-    grid-row: 1;
-    border-left: 1px solid var(--border);
     background: var(--surface);
     overflow: hidden;
     display: flex;
     flex-direction: column;
 }
+.region-left  { border-right: 1px solid var(--border); }
+.region-right { border-left: 1px solid var(--border); }
 
 .region-center {
-    grid-column: 2;
-    grid-row: 1;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -48,9 +79,6 @@
 }
 
 .region-strip {
-    grid-column: 1 / 4;
-    grid-row: 2;
-    border-top: 1px solid var(--border);
     overflow: hidden;
     position: relative;
 }
