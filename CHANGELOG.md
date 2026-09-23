@@ -2,6 +2,49 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.2.9 (pass 2) — 2026-02-20 · Date toggle + Editor filmstrip + Spring-loaded subfolders
+
+### Added
+- **Date stamp button is now a true toggle.** DateTagDropdowns default to
+  today on mount (no more auto-pulling EXIF into the picker). First press
+  of Apply stamps the selected date onto the photo; second press flips
+  the button to "Remove" and clears the stamp. Stable palette ids per
+  slot (`date-stamp-month|day|year`) guarantee one stamp per photo — if
+  you re-apply with a different year, the previous stamp is replaced,
+  not duplicated. Regression suite in
+  `frontend/tests/dateStampToggle.test.mjs` (5 assertions).
+- **Editor filmstrip.** ImageEditor accepts `images` + `currentImageName`
+  + `onNavigate` props and renders a prev / next arrow pair with a
+  horizontal thumb strip pinned to the bottom of the canvas stage.
+  Active thumb auto-scrolls into view. Unsaved edits divert through the
+  existing three-way prompt: Save-and-jump keeps the editor open and
+  resets the sliders for the next photo, Discard-and-jump throws the
+  edits away, Cancel goes back to the current image.
+
+### Changed
+- **Tag Manager sections re-ordered to Folders → Sub-Folders → Filename**
+  so the editor reads left-to-right in the same shape as the destination
+  path it builds (verified in DOM: `section-folderItems` →
+  `SUB-FOLDERS` → `section-filenameItems`).
+- **Sub-folder rows are spring-loaded.** Dragging any chip over a
+  collapsed sub-folder header arms a 500ms timer; if the user keeps
+  hovering, the row auto-expands so they can drop into the nested list.
+  Moving off cancels the timer. The row shows a subtle earth-tone tint
+  while armed so it's clear something's about to happen.
+
+### Files touched (pass 2)
+- `frontend/src/components/DateTagDropdowns.jsx` — today-default + toggle.
+- `frontend/src/App.js` — `dateStampApplied` memo + rewired onApply/onRemove
+  + Editor filmstrip props.
+- `frontend/src/components/CategoryManager.jsx` — section reorder +
+  spring-load timer on `SubfolderSection`.
+- `frontend/src/components/ImageEditor.jsx` — filmstrip + navigate flow.
+- `frontend/tests/dateStampToggle.test.mjs` — new regression suite.
+
+### Test summary
+- 49/49 assertions across 5 test files. Webpack compiles clean.
+
+
 ## v1.2.9 — 2026-02-20 · Data-loss-proof updates (license + tag pack persistence)
 
 ### Fixed (CRITICAL)

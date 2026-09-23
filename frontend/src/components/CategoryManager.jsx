@@ -825,7 +825,10 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                   </div>
                 </div>
 
-                {/* Two-section paired list editor */}
+                {/* Two-section paired list editor
+                    v1.2.9 — order is Folders → Sub-Folders → Filename so the
+                    editor reads left-to-right in the same shape as the
+                    destination path it builds. */}
                 <div className="flex-1 overflow-auto">
                   <ListSection
                     listKey="folderItems"
@@ -844,6 +847,18 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onSwapIcon={swapItemIcon}
                   />
                   <div className="h-px bg-app/60 mx-4" />
+                  <SubfolderSection
+                    pack={current}
+                    onAddSubfolder={addSubfolder}
+                    onRemoveSubfolder={removeSubfolder}
+                    onRenameSubfolder={renameSubfolder}
+                    onMoveSubfolder={moveSubfolder}
+                    onAddItem={addSubfolderItem}
+                    onRemoveItem={removeSubfolderItem}
+                    onSwapItemIcon={swapSubfolderItemIcon}
+                    onMoveSubfolderItem={moveSubfolderItem}
+                  />
+                  <div className="h-px bg-app/60 mx-4" />
                   <ListSection
                     listKey="filenameItems"
                     listLabel="Filename tags"
@@ -859,18 +874,6 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     onMoveIn={(fromKey, itemId) => moveTagBetweenLists(fromKey, "filenameItems", itemId)}
                     onBulkPaste={(text) => bulkAddLabels("filenameItems", text)}
                     onSwapIcon={swapItemIcon}
-                  />
-                  <div className="h-px bg-app/60 mx-4" />
-                  <SubfolderSection
-                    pack={current}
-                    onAddSubfolder={addSubfolder}
-                    onRemoveSubfolder={removeSubfolder}
-                    onRenameSubfolder={renameSubfolder}
-                    onMoveSubfolder={moveSubfolder}
-                    onAddItem={addSubfolderItem}
-                    onRemoveItem={removeSubfolderItem}
-                    onSwapItemIcon={swapSubfolderItemIcon}
-                    onMoveSubfolderItem={moveSubfolderItem}
                   />
                 </div>
               </>
@@ -1375,6 +1378,32 @@ function SubfolderSection({
   // v1.2.1 — which subfolder is being drag-hovered over (for highlight)
   const [dropOverSfId, setDropOverSfId] = useState(null);
 
+  // v1.2.9 — Spring-loaded auto-expand. When a chip is dragged over a
+  // collapsed subfolder header, start a 500ms timer; when it fires we
+  // expand the subfolder so the user can drop into its nested list without
+  // clicking. Drag-leave (or drag-end elsewhere) cancels the timer.
+  const springTimerRef = React.useRef(null);
+  const springTargetRef = React.useRef(null);   // last hovered sfId (for guard)
+  const cancelSpring = React.useCallback(() => {
+    if (springTimerRef.current) {
+      clearTimeout(springTimerRef.current);
+      springTimerRef.current = null;
+    }
+    springTargetRef.current = null;
+  }, []);
+  const armSpring = React.useCallback((sfId) => {
+    if (springTargetRef.current === sfId && springTimerRef.current) return; // already armed
+    cancelSpring();
+    springTargetRef.current = sfId;
+    springTimerRef.current = setTimeout(() => {
+      // Guard: only expand if the user is still dragging over the same
+      // subfolder. React's setState via the setter is safe post-timeout.
+      if (springTargetRef.current === sfId) setExpandedId(sfId);
+      springTimerRef.current = null;
+    }, 500);
+  }, [cancelSpring]);
+  useEffect(() => () => cancelSpring(), [cancelSpring]);
+
   useEffect(() => {
     if (!ctxMenu) return;
     const onDoc = () => setCtxMenu(null);
@@ -1451,7 +1480,38 @@ function SubfolderSection({
             const items = sf.filenameItems || [];
             const itDraft = itemDrafts[sf.id] || "";
             return (
-              <div key={sf.id} className="rounded border border-app bg-app/40" data-testid={`subfolder-row-${sf.id}`}>
+              <div
+                key={sf.id}
+                className={`rounded border bg-app/40 transition-colors ${
+                  springTargetRef.current === sf.id && !expanded
+                    ? "border-primary-earth/70 bg-primary-earth/5"
+                    : "border-app"
+                }`}
+                data-testid={`subfolder-row-${sf.id}`}
+                onDragOver={(e) => {
+                  // v1.2.9 — spring-load if a draggable payload is present
+                  // (any chip type: subfolder-item, palette icon, folder tag)
+                  // and this subfolder is currently collapsed.
+                  if (expanded) return;
+                  const types = e.dataTransfer?.types || [];
+                  const isDraggable =
+                    types.includes?.("application/x-pps-sfitem") ||
+                    types.includes?.("application/x-pps-icon") ||
+                    types.includes?.("application/x-pps-iconswap") ||
+                    types.length > 0; // fall back — any drag-over counts
+                  if (!isDraggable) return;
+                  e.preventDefault();
+                  armSpring(sf.id);
+                }}
+                onDragLeave={(e) => {
+                  // Only cancel if the drag actually left this row (not just
+                  // moved to a nested child element).
+                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                    if (springTargetRef.current === sf.id) cancelSpring();
+                  }
+                }}
+                onDrop={() => cancelSpring()}
+              >
                 <div className="flex items-center gap-1 px-2 py-1.5">
                   <button
                     onClick={() => setExpandedId(expanded ? null : sf.id)}

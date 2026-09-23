@@ -34,7 +34,30 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - Earth-tone dark theme (warm browns, ochre primary #C68A53, sage/terracotta accents)
 - Author credit "Built for photographers · Pro Photo Sorter" in right panel footer
 
-## v1.2.9 — 2026-02-20 · Data-loss-proof updates (LATEST)
+## v1.2.9 — 2026-02-20 · Date-stamp toggle + Editor filmstrip + Spring-loaded subfolders + Data-loss-proof updates (LATEST)
+
+### New in this pass (workflow polish)
+- ✅ **Date selector defaults to today.** No more auto-pulling EXIF into
+  the picker — Kurt is almost always stamping today's date, so today is
+  now the resting state. Change the Year dropdown only when working on
+  older photos.
+- ✅ **Apply toggles Apply / Remove.** Only one date-stamp set per photo,
+  ever. Second press of the button reads "Remove" and clears the stamp.
+  Stable chip ids (`date-stamp-month`, `-day`, `-year`) make re-applying
+  with a different year replace the old stamp instead of stacking.
+- ✅ **Tag Manager reorder — Folders → Sub-Folders → Filename.** Editor
+  now reads left-to-right in the same shape as the destination path it
+  builds.
+- ✅ **Spring-loaded sub-folders.** Drag any chip over a collapsed
+  sub-folder header; if you hover 500ms it auto-expands so you can drop
+  into the nested list. Moving off cancels the timer. Row shows a subtle
+  earth-tone tint while armed so you can see it's about to open.
+- ✅ **Editor filmstrip.** Prev/Next arrows + horizontal thumb strip at
+  the bottom of the Image Editor. Click a thumb to jump to that photo
+  without closing the editor. If you have unsaved edits, the existing
+  three-way prompt now offers Save-and-jump / Discard-and-jump / Cancel.
+
+
 - ✅ **P0 FIX**: License key + tag pack wipe after v1.2.8 update fully resolved.
   Root cause: v1.2.8 renamed Electron `productName` → Chromium's `userData`
   folder shifted from `%APPDATA%\electron-shell\` to `%APPDATA%\Pro Photo

@@ -29,7 +29,7 @@ import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
 import SubfolderBar from "@/components/SubfolderBar";
-import DateTagDropdowns from "@/components/DateTagDropdowns";
+import DateTagDropdowns, { DATE_STAMP_IDS } from "@/components/DateTagDropdowns";
 import IconOverlay from "@/components/IconOverlay";
 import ZoomablePreview from "@/components/ZoomablePreview";
 import StarRating from "@/components/StarRating";
@@ -1613,6 +1613,14 @@ export default function App() {
     [currentOverlay]
   );
 
+  // v1.2.9 — is a date stamp already on this photo? True when the current
+  // image's tags row contains any chip whose id matches a DATE_STAMP_IDS
+  // slot. Used to flip the Apply button into "Remove" mode.
+  const dateStampApplied = useMemo(() => {
+    const ids = new Set(Object.values(DATE_STAMP_IDS));
+    return (currentOverlay?.tags || []).some((chip) => ids.has(chip.id));
+  }, [currentOverlay]);
+
   // Preview path for the current image (destination string preview)
   const previewPath = useMemo(() => {
     if (!currentImage) return null;
@@ -2106,17 +2114,25 @@ export default function App() {
               <HelpCircle size={12} /> Help
             </button>
             <DateTagDropdowns
-              exifDate={exif?.DateTimeOriginal || exif?.CreateDate || null}
               disabled={!currentImage}
+              isApplied={dateStampApplied}
               onApply={(labels) => {
-                labels.forEach((l) => applyIcon({
+                // Ensure only ONE date stamp per photo — clear any previous
+                // date stamp chips first (stable palette ids let us find them),
+                // then apply the freshly-picked set.
+                Object.values(DATE_STAMP_IDS).forEach((id) => removeChipFromCurrentImage(id, "tags"));
+                labels.forEach(({ id, label }) => applyIcon({
                   uid: uid("ovl"),
-                  id: uid("date-tag"),
-                  label: l,
+                  id,
+                  label,
                   iconType: "lucide",
                   iconName: "Calendar",
                 }, "tags"));
-                toast.success(`Added ${labels.length} date tag${labels.length > 1 ? "s" : ""}`, { description: labels.join(" · ") });
+                toast.success(`Date stamped: ${labels.map((l) => l.label).join(" · ")}`);
+              }}
+              onRemove={() => {
+                Object.values(DATE_STAMP_IDS).forEach((id) => removeChipFromCurrentImage(id, "tags"));
+                toast("Date stamp removed", { icon: "🗓️" });
               }}
             />
           </div>
@@ -2683,6 +2699,12 @@ export default function App() {
         destDirHandle={destSelected?.handle || destRoot}
         looks={looks}
         onLooksChange={setLooks}
+        images={images}
+        currentImageName={currentImage?.name || ""}
+        onNavigate={(name) => {
+          const idx = images.findIndex((f) => f.name === name);
+          if (idx >= 0) setSelectedIdx(idx);
+        }}
       />
 
       <BatchRenameModal

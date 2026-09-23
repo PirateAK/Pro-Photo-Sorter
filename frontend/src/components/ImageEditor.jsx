@@ -1,12 +1,13 @@
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import {
   X, ZoomIn, ZoomOut, RotateCcw, Save, Crop, Sun, Moon, Zap,
   Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
-  Wand2, Palette, Trash2, Plus,
+  Wand2, Palette, Trash2, Plus, ChevronLeft, ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
 import { autoAnalyze } from "../lib/autoTone";
+import Thumbnail from "./Thumbnail";
 
 const ASPECT_RATIOS = [
   { label: "Free", value: null },
@@ -19,8 +20,19 @@ const ASPECT_RATIOS = [
 /**
  * ImageEditor - modal editor with zoom, pan, crop, rotate/straighten,
  * brightness/contrast/saturation/sharpen, before/after peek, save-as-new.
+ *
+ * v1.2.9 — accepts `images` + `currentImageName` + `onNavigate(name)` so
+ * the editor renders a mini filmstrip at the bottom. Clicking a thumb (or
+ * the prev/next arrows) jumps to another image without closing the editor.
+ * If the current edits aren't saved, the standard three-way prompt is
+ * reused with the choice "Save changes" or "Discard" now flowing into a
+ * pending navigation instead of a close.
  */
-export default function ImageEditor({ open, onClose, imageFileHandle, imageName, destDirHandle, sourceDirHandle, looks = [], onLooksChange }) {
+export default function ImageEditor({
+  open, onClose, imageFileHandle, imageName, destDirHandle, sourceDirHandle,
+  looks = [], onLooksChange,
+  images = [], currentImageName = "", onNavigate,
+}) {
   const [imgEl, setImgEl] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -476,7 +488,7 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
   }, [open, onClose]);
 
   // Save edited image
-  const saveEdited = async () => {
+  const saveEdited = async ({ suppressClose = false } = {}) => {
     if (!imgEl) return;
     const dir = saveTarget === "destination" ? destDirHandle : sourceDirHandle;
     if (!dir) {
@@ -540,7 +552,13 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
       await writable.close();
 
       toast.success("Saved edited image", { description: outName });
-      onClose(outName);
+      if (suppressClose) {
+        // v1.2.9 — save-then-navigate flow keeps the editor open. Reset the
+        // per-edit sliders so the next image opens with a clean slate.
+        resetTransform();
+      } else {
+        onClose(outName);
+      }
     } catch (e) {
       toast.error("Save failed", { description: e.message });
     } finally {
@@ -554,6 +572,9 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
   );
 
   const [showDonePrompt, setShowDonePrompt] = useState(false);
+  // v1.2.9 — if non-null, the done-prompt (or a direct save) will flow into
+  // onNavigate(pendingNavigate) instead of onClose. Cleared by every path.
+  const pendingNavigateRef = useRef(null);
 
   const doneEditing = () => {
     if (hasAnyEdits()) {
@@ -567,16 +588,46 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
 
   const doneSave = async () => {
     setShowDonePrompt(false);
-    await saveEdited();
+    const target = pendingNavigateRef.current;
+    pendingNavigateRef.current = null;
+    await saveEdited({ suppressClose: !!target });
+    if (target) onNavigate?.(target);
   };
   const doneDiscard = () => {
     setShowDonePrompt(false);
+    const target = pendingNavigateRef.current;
+    pendingNavigateRef.current = null;
     toast("Discarded edits — original file untouched");
-    onClose(null);
+    if (target) onNavigate?.(target); else onClose(null);
   };
   const doneCancel = () => {
     setShowDonePrompt(false);
+    pendingNavigateRef.current = null;
   };
+
+  // v1.2.9 — navigate to another image inside the editor. If unsaved edits
+  // are present, park the target and open the three-way prompt; otherwise
+  // jump instantly.
+  const idxOfCurrent = useMemo(
+    () => images.findIndex((f) => f.name === currentImageName),
+    [images, currentImageName]
+  );
+  const navigateTo = useCallback((name) => {
+    if (!name || name === currentImageName || !onNavigate) return;
+    if (hasAnyEdits()) {
+      pendingNavigateRef.current = name;
+      setShowDonePrompt(true);
+      return;
+    }
+    onNavigate(name);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentImageName, onNavigate, brightness, contrast, saturation, sharpness, rotation, angle, crop]);
+  const navigatePrev = useCallback(() => {
+    if (idxOfCurrent > 0) navigateTo(images[idxOfCurrent - 1].name);
+  }, [idxOfCurrent, images, navigateTo]);
+  const navigateNext = useCallback(() => {
+    if (idxOfCurrent >= 0 && idxOfCurrent < images.length - 1) navigateTo(images[idxOfCurrent + 1].name);
+  }, [idxOfCurrent, images, navigateTo]);
 
   if (!open) return null;
 
@@ -972,6 +1023,19 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
               <Eye size={12} /> ORIGINAL
             </div>
           )}
+
+          {/* v1.2.9 — Editor filmstrip: prev/next arrows + horizontal thumb strip.
+              Only renders when the parent supplies an image list + onNavigate,
+              otherwise gracefully hides so unit-tests / storybook still work. */}
+          {images.length > 1 && onNavigate && (
+            <EditorFilmstrip
+              images={images}
+              currentIdx={idxOfCurrent}
+              onPick={navigateTo}
+              onPrev={navigatePrev}
+              onNext={navigateNext}
+            />
+          )}
         </div>
       </div>
 
@@ -1016,6 +1080,74 @@ export default function ImageEditor({ open, onClose, imageFileHandle, imageName,
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+
+/**
+ * EditorFilmstrip (v1.2.9)
+ * Compact horizontal thumb strip pinned to the bottom of the editor stage.
+ * Prev / Next arrows on the sides; clicking a thumb picks that image.
+ * The active thumb auto-scrolls into view when the current image changes.
+ */
+function EditorFilmstrip({ images, currentIdx, onPick, onPrev, onNext }) {
+  const stripRef = useRef(null);
+
+  useEffect(() => {
+    if (!stripRef.current || currentIdx < 0) return;
+    const el = stripRef.current.querySelector(`[data-testid="editor-strip-thumb-${images[currentIdx]?.name}"]`);
+    if (el?.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
+  }, [currentIdx, images]);
+
+  const atStart = currentIdx <= 0;
+  const atEnd = currentIdx < 0 || currentIdx >= images.length - 1;
+
+  return (
+    <div
+      className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-app shadow-2xl"
+      style={{ maxWidth: "calc(100% - 24px)" }}
+      data-testid="editor-filmstrip"
+    >
+      <button
+        onClick={onPrev}
+        disabled={atStart}
+        className="w-7 h-7 rounded flex items-center justify-center bg-app/80 hover:bg-primary-earth/40 border border-app text-app disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        data-testid="editor-strip-prev"
+        title="Previous image (←)"
+      >
+        <ChevronLeft size={14} />
+      </button>
+      <div
+        ref={stripRef}
+        className="flex items-center gap-1 overflow-x-auto max-w-[70vw] pps-scrollbar"
+        style={{ scrollbarWidth: "thin" }}
+      >
+        {images.map((f, i) => (
+          <div
+            key={f.name}
+            data-testid={`editor-strip-thumb-${f.name}`}
+            className="shrink-0"
+          >
+            <Thumbnail
+              file={f}
+              cacheKey={f.name}
+              active={i === currentIdx}
+              onClick={() => onPick(f.name)}
+              size={64}
+            />
+          </div>
+        ))}
+      </div>
+      <button
+        onClick={onNext}
+        disabled={atEnd}
+        className="w-7 h-7 rounded flex items-center justify-center bg-app/80 hover:bg-primary-earth/40 border border-app text-app disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        data-testid="editor-strip-next"
+        title="Next image (→)"
+      >
+        <ChevronRight size={14} />
+      </button>
     </div>
   );
 }
