@@ -11,7 +11,7 @@
 // they'd only be able to inject a state we're already trusting from disk,
 // same trust level as localStorage itself.
 
-import { isElectron, safetyReadLatest } from "./electronBridge.js";
+import { isElectron, safetyReadLatest, safetyWrite } from "./electronBridge.js";
 import { STATE_KEY } from "./storage.js";
 import { LICENSE_STORAGE_KEY } from "./license.js";
 
@@ -20,7 +20,26 @@ export async function bootRestoreFromSafetyIfEmpty() {
 
   const hasState = !!localStorage.getItem(STATE_KEY);
   const hasLicense = !!localStorage.getItem(LICENSE_STORAGE_KEY);
-  if (hasState && hasLicense) return { restored: false, reason: "already-populated" };
+
+  // v1.2.9 (patch) — proactive eager-mirror. If localStorage already has
+  // data but the Safety-Backup file does not yet exist, write it right
+  // away. This protects users on their FIRST launch after an update, so
+  // the safety net doesn't wait for the next tag save or license change.
+  if (hasState || hasLicense) {
+    const info = await safetyReadLatest();
+    const alreadyMirrored = !!info?.data;
+    if (!alreadyMirrored) {
+      try {
+        await safetyWrite({
+          stateKey: STATE_KEY,
+          state: localStorage.getItem(STATE_KEY),
+          licenseKey: LICENSE_STORAGE_KEY,
+          license: hasLicense ? JSON.parse(localStorage.getItem(LICENSE_STORAGE_KEY)) : null,
+        });
+      } catch { /* mirror is best-effort */ }
+    }
+    return { restored: false, reason: "already-populated", eagerMirrored: !alreadyMirrored };
+  }
 
   const res = await safetyReadLatest();
   const data = res?.data;

@@ -29,7 +29,7 @@ import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
 import SubfolderBar from "@/components/SubfolderBar";
-import DateTagDropdowns from "@/components/DateTagDropdowns";
+import DateTagDropdowns, { DATE_STAMP_IDS } from "@/components/DateTagDropdowns";
 import IconOverlay from "@/components/IconOverlay";
 import ZoomablePreview from "@/components/ZoomablePreview";
 import StarRating from "@/components/StarRating";
@@ -1613,6 +1613,14 @@ export default function App() {
     [currentOverlay]
   );
 
+  // v1.2.9 — is a date stamp already on this photo? True when the current
+  // image's tags row contains any chip whose id matches a DATE_STAMP_IDS
+  // slot. Used to flip the Apply button into "Remove" mode.
+  const dateStampApplied = useMemo(() => {
+    const ids = new Set(Object.values(DATE_STAMP_IDS));
+    return (currentOverlay?.tags || []).some((chip) => ids.has(chip.id));
+  }, [currentOverlay]);
+
   // Preview path for the current image (destination string preview)
   const previewPath = useMemo(() => {
     if (!currentImage) return null;
@@ -2106,17 +2114,25 @@ export default function App() {
               <HelpCircle size={12} /> Help
             </button>
             <DateTagDropdowns
-              exifDate={exif?.DateTimeOriginal || exif?.CreateDate || null}
               disabled={!currentImage}
+              isApplied={dateStampApplied}
               onApply={(labels) => {
-                labels.forEach((l) => applyIcon({
+                // Ensure only ONE date stamp per photo — clear any previous
+                // date stamp chips first (stable palette ids let us find them),
+                // then apply the freshly-picked set.
+                Object.values(DATE_STAMP_IDS).forEach((id) => removeChipFromCurrentImage(id, "tags"));
+                labels.forEach(({ id, label }) => applyIcon({
                   uid: uid("ovl"),
-                  id: uid("date-tag"),
-                  label: l,
+                  id,
+                  label,
                   iconType: "lucide",
                   iconName: "Calendar",
                 }, "tags"));
-                toast.success(`Added ${labels.length} date tag${labels.length > 1 ? "s" : ""}`, { description: labels.join(" · ") });
+                toast.success(`Date stamped: ${labels.map((l) => l.label).join(" · ")}`);
+              }}
+              onRemove={() => {
+                Object.values(DATE_STAMP_IDS).forEach((id) => removeChipFromCurrentImage(id, "tags"));
+                toast("Date stamp removed", { icon: "🗓️" });
               }}
             />
           </div>
@@ -2243,12 +2259,92 @@ export default function App() {
             </div>
           </div>
 
-          {/* Row 3: destination preview path */}
-          {previewPath && (
+          {/* Row 3: destination preview path + watermark chip/toggle
+              v1.2.9 — the WM indicator chip and ON/OFF selector moved out
+              of the image overlay corners and into this toolbar row (right
+              side, directly below the 16×20 resize button) so they stop
+              obstructing the photo. The chip now shows the full watermark
+              text instead of just "WM". */}
+          {(currentImage || previewPath) && (
             <div className="flex items-center gap-2 text-[11px] text-dim font-mono border-t border-app pt-1.5" data-testid="dest-preview-path">
-              <Copy size={11} />
-              <span className="text-dim">Will store to:</span>
-              <span className="text-primary-earth truncate">{previewPath}</span>
+              {previewPath && (
+                <>
+                  <Copy size={11} />
+                  <span className="text-dim">Will store to:</span>
+                  <span className="text-primary-earth truncate">{previewPath}</span>
+                </>
+              )}
+              {currentImage && (() => {
+                const trial = isTrialMode();
+                const wmText = trial
+                  ? TRIAL_WATERMARK_TEXT
+                  : (settings.watermarkText || "").trim();
+                const wmOn = currentImagePath ? isWatermarkOnFor(currentImagePath) : false;
+                return (
+                  <div className="ml-auto flex items-center gap-2 shrink-0" data-testid="wm-toolbar">
+                    {wmText ? (
+                      <div
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded border ${
+                          wmOn ? "border-primary-earth/60 text-primary-earth bg-primary-earth/10" : "border-app text-dim bg-app"
+                        } max-w-[26rem]`}
+                        data-testid="wm-text-chip"
+                        title={wmOn
+                          ? `Watermark ON — this text will be stamped: "${wmText}"`
+                          : `Watermark OFF for this photo — set text: "${wmText}"`}
+                      >
+                        <Copyright size={11} className="shrink-0" />
+                        <span className="truncate">{wmText}</span>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setShowSettings(true)}
+                        className="flex items-center gap-1 px-2 py-0.5 rounded border border-dashed border-app text-dim hover:text-primary-earth hover:border-primary-earth/60"
+                        data-testid="wm-text-chip-empty"
+                        title="No watermark text set. Click to open Settings and add one."
+                      >
+                        <Copyright size={11} /> <span>No watermark set — click to add</span>
+                      </button>
+                    )}
+                    <span className="text-[10px] uppercase tracking-widest text-dim font-heading">WM</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!currentImagePath) return;
+                        const nextOn = !wmOn;
+                        toggleWatermarkFor(currentImagePath);
+                        toast.success(`Watermark ${nextOn ? "ON" : "OFF"} for this photo`, {
+                          description: nextOn
+                            ? "This photo will be stamped when stored"
+                            : "This photo will store without a watermark",
+                        });
+                      }}
+                      role="switch"
+                      aria-checked={wmOn}
+                      data-testid="btn-watermark-toggle"
+                      title={wmOn ? "Watermark ON — click to turn OFF" : "Watermark OFF — click to turn ON"}
+                      className={`relative w-11 h-5 rounded-full transition-colors border shrink-0 ${
+                        wmOn
+                          ? "bg-primary-earth border-primary-earth"
+                          : "bg-app border-app hover:bg-surface-hover"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[color:var(--text-inverse)] shadow transition-transform flex items-center justify-center text-[9px] font-semibold ${
+                          wmOn ? "translate-x-6 text-primary-earth" : "translate-x-0 text-dim"
+                        }`}
+                      >
+                        <Copyright size={10} />
+                      </span>
+                    </button>
+                    <span
+                      className={`text-[10px] font-mono w-6 text-left ${wmOn ? "text-primary-earth" : "text-dim"}`}
+                      data-testid="wm-toggle-state"
+                    >
+                      {wmOn ? "ON" : "OFF"}
+                    </span>
+                  </div>
+                );
+              })()}
             </div>
           )}
         </div>
@@ -2304,17 +2400,11 @@ export default function App() {
                   });
                 }}
               />
-              {/* Tidy © badge — shows only when watermark is ON for this photo */}
-              {currentImagePath && isWatermarkOnFor(currentImagePath) && (
-                <div
-                  className="absolute top-3 left-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-1 text-primary-earth text-[11px] font-mono uppercase tracking-widest z-30 pointer-events-none"
-                  data-testid="watermark-indicator"
-                  title="Watermark will be applied to this photo when stored. Right-click the photo to toggle."
-                >
-                  <Copyright size={12} />
-                  <span>WM</span>
-                </div>
-              )}
+              {/* v1.2.9 — the "(C) WM" indicator that used to sit here
+                  (top-left of the image) has been moved out to the
+                  toolbar area, directly below the 16×20 resize button,
+                  where it now shows the full watermark text and sits
+                  next to the ON/OFF toggle. Keeps the photo unobstructed. */}
               <IconOverlay
                 containerRef={imageAreaRef}
                 folders={currentOverlay.folders}
@@ -2392,51 +2482,10 @@ export default function App() {
                 <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Rate</span>
                 <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
               </div>
-              {/* Watermark toggle bar (sits directly below Rate) */}
-              {(() => {
-                const wmOn = currentImagePath ? isWatermarkOnFor(currentImagePath) : false;
-                return (
-                  <div className="absolute top-14 right-3 icon-overlay rounded-lg px-2 py-1 flex items-center gap-2 z-30" data-testid="wm-toggle-bar">
-                    <span className="text-[10px] uppercase tracking-widest text-dim font-heading">WM</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (!currentImagePath) return;
-                        const nextOn = !wmOn;
-                        toggleWatermarkFor(currentImagePath);
-                        toast.success(`Watermark ${nextOn ? "ON" : "OFF"} for this photo`, {
-                          description: nextOn
-                            ? "This photo will be stamped when stored"
-                            : "This photo will store without a watermark",
-                        });
-                      }}
-                      role="switch"
-                      aria-checked={wmOn}
-                      data-testid="btn-watermark-toggle"
-                      title={wmOn ? "Watermark ON — click to turn OFF" : "Watermark OFF — click to turn ON"}
-                      className={`relative w-11 h-5 rounded-full transition-colors border ${
-                        wmOn
-                          ? "bg-primary-earth border-primary-earth"
-                          : "bg-app border-app hover:bg-surface-hover"
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-0.5 left-0.5 w-4 h-4 rounded-full bg-[color:var(--text-inverse)] shadow transition-transform flex items-center justify-center text-[9px] font-semibold ${
-                          wmOn ? "translate-x-6 text-primary-earth" : "translate-x-0 text-dim"
-                        }`}
-                      >
-                        <Copyright size={10} />
-                      </span>
-                    </button>
-                    <span
-                      className={`text-[10px] font-mono ${wmOn ? "text-primary-earth" : "text-dim"}`}
-                      data-testid="wm-toggle-state"
-                    >
-                      {wmOn ? "ON" : "OFF"}
-                    </span>
-                  </div>
-                );
-              })()}
+              {/* v1.2.9 — the WM ON/OFF toggle that used to float here has
+                  moved into the toolbar row (right side, below the 16×20
+                  button) so it lives beside the watermark-text chip and
+                  no longer obstructs the top-right of the photo. */}
             </>
             )
           ) : (
@@ -2683,6 +2732,12 @@ export default function App() {
         destDirHandle={destSelected?.handle || destRoot}
         looks={looks}
         onLooksChange={setLooks}
+        images={images}
+        currentImageName={currentImage?.name || ""}
+        onNavigate={(name) => {
+          const idx = images.findIndex((f) => f.name === name);
+          if (idx >= 0) setSelectedIdx(idx);
+        }}
       />
 
       <BatchRenameModal

@@ -1,21 +1,30 @@
 import React, { useEffect, useState } from "react";
-import { CalendarPlus } from "lucide-react";
+import { CalendarPlus, CalendarMinus } from "lucide-react";
 
 /**
- * DateTagDropdowns (v1.1.7) — compact Month/Day/Year dropdowns + Apply button
+ * DateTagDropdowns (v1.2.9) — compact Month/Day/Year dropdowns + Apply button
  * that sits beside the Help button in the top toolbar.
  *
- * • Preselects from the current photo's EXIF date on mount / photo change.
- * • Clicking Apply pushes the selected date parts as FILENAME tags onto the
- *   current image via `onApply(labels)` — main app decides where they land.
- * • Any empty dropdown is skipped, so the user can add e.g. only the year.
- * • Month is shown as short name (Jan, Feb...) — most readable, most useful
- *   as a filename token for a working photographer.
+ * v1.2.9 changes:
+ *   • Defaults to TODAY on mount (not to the photo's EXIF date). Kurt found
+ *     the auto-EXIF prefill unhelpful — he's usually stamping "today", and
+ *     only wants to change the year when working on older photos.
+ *   • Apply is now a TOGGLE. First press stamps the current selection onto
+ *     the image; second press removes those stamps. The button label and
+ *     icon flip to "Remove" when a stamp is currently on the image, so the
+ *     photo can carry at most one date-stamp set at a time.
+ *
+ * Each stamp chip uses a STABLE palette id (`date-stamp-month`, `-day`,
+ * `-year`) so we can reliably detect and remove the previous stamp when
+ * the user toggles it off, even if the label changed (e.g. Jan → Feb).
  *
  * Props:
- *   exifDate     : Date | null - initial pre-fill from current image EXIF
- *   disabled     : boolean     - true if no photo is loaded
- *   onApply(labels) : called with an array of tag labels (e.g. ["Aug", "14", "2024"])
+ *   isApplied   : boolean     - true when at least one date-stamp chip is
+ *                               currently on the active image (parent
+ *                               computes from its overlay state)
+ *   disabled    : boolean     - true if no photo is loaded
+ *   onApply(labelsWithIds)    - called with [{id,label}...] on stamp
+ *   onRemove()                - called to clear the current stamp
  */
 const MONTHS = [
   { v: "01", label: "Jan" }, { v: "02", label: "Feb" }, { v: "03", label: "Mar" },
@@ -27,31 +36,52 @@ const DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1).padStart(2, "0")
 const CURRENT_YEAR = new Date().getFullYear();
 const YEARS = Array.from({ length: 25 }, (_, i) => String(CURRENT_YEAR - i));
 
-export default function DateTagDropdowns({ exifDate, disabled, onApply }) {
-  const [month, setMonth] = useState(""); // stores label, e.g. "Aug"
-  const [day, setDay] = useState("");     // "01".."31"
-  const [year, setYear] = useState("");   // "2024"
+// v1.2.9 — stable palette ids so parent can detect + remove existing stamps.
+export const DATE_STAMP_IDS = {
+  month: "date-stamp-month",
+  day: "date-stamp-day",
+  year: "date-stamp-year",
+};
 
-  // Pre-fill from EXIF whenever the active image changes.
-  useEffect(() => {
-    if (!exifDate) { setMonth(""); setDay(""); setYear(""); return; }
-    try {
-      const d = exifDate instanceof Date ? exifDate : new Date(exifDate);
-      if (isNaN(d.getTime())) return;
-      const mi = d.getMonth(); // 0..11
-      setMonth(MONTHS[mi].label);
-      setDay(String(d.getDate()).padStart(2, "0"));
-      setYear(String(d.getFullYear()));
-    } catch { /* ignore */ }
-  }, [exifDate]);
+function todayParts() {
+  const d = new Date();
+  return {
+    month: MONTHS[d.getMonth()].label,
+    day: String(d.getDate()).padStart(2, "0"),
+    year: String(d.getFullYear()),
+  };
+}
 
-  const apply = () => {
-    const labels = [month, day, year].filter(Boolean);
-    if (labels.length === 0) return;
-    onApply(labels);
+export default function DateTagDropdowns({ isApplied = false, disabled, onApply, onRemove }) {
+  // Default to today on mount. We deliberately do NOT re-sync when the
+  // active image changes: Kurt wants the picker to hold his last choice
+  // until he changes it, not shift around with each thumbnail.
+  const initial = todayParts();
+  const [month, setMonth] = useState(initial.month);
+  const [day, setDay] = useState(initial.day);
+  const [year, setYear] = useState(initial.year);
+
+  const nothingSelected = !month && !day && !year;
+
+  const handleClick = () => {
+    if (isApplied) {
+      onRemove?.();
+      return;
+    }
+    if (nothingSelected) return;
+    const labels = [
+      month && { id: DATE_STAMP_IDS.month, label: month },
+      day && { id: DATE_STAMP_IDS.day, label: day },
+      year && { id: DATE_STAMP_IDS.year, label: year },
+    ].filter(Boolean);
+    onApply?.(labels);
   };
 
   const cls = "bg-app border border-app rounded px-1.5 py-1 text-xs font-mono focus-ring disabled:opacity-40";
+
+  const btnClass = isApplied
+    ? "px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] border border-primary-earth text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+    : "px-2 py-1 rounded bg-primary-earth/15 hover:bg-primary-earth/30 border border-primary-earth/50 text-primary-earth text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
     <div className="flex items-center gap-1 shrink-0" data-testid="date-tag-dropdowns">
@@ -91,13 +121,17 @@ export default function DateTagDropdowns({ exifDate, disabled, onApply }) {
         {YEARS.map((y) => <option key={y} value={y}>{y}</option>)}
       </select>
       <button
-        onClick={apply}
-        disabled={disabled || (!month && !day && !year)}
-        className="px-2 py-1 rounded bg-primary-earth/15 hover:bg-primary-earth/30 border border-primary-earth/50 text-primary-earth text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+        onClick={handleClick}
+        disabled={disabled || (!isApplied && nothingSelected)}
+        className={btnClass}
         data-testid="date-tag-apply"
-        title="Apply selected parts as filename tags on the current photo"
+        title={isApplied
+          ? "Remove the date stamp from this photo"
+          : "Stamp the selected date onto this photo (one stamp per photo)"}
       >
-        <CalendarPlus size={12} /> Apply
+        {isApplied
+          ? (<><CalendarMinus size={12} /> Remove</>)
+          : (<><CalendarPlus size={12} /> Apply</>)}
       </button>
     </div>
   );
