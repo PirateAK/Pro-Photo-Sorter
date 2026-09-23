@@ -3,6 +3,7 @@ import {
   X, ZoomIn, ZoomOut, RotateCcw, Save, Crop, Sun, Moon, Zap,
   Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
   Wand2, Palette, Trash2, Plus, ChevronLeft, ChevronRight,
+  ChevronUp, ChevronDown, PanelBottom, PanelTop, PanelLeft, PanelRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
@@ -1087,40 +1088,109 @@ export default function ImageEditor({
 
 /**
  * EditorFilmstrip (v1.2.9)
- * Compact horizontal thumb strip pinned to the bottom of the editor stage.
- * Prev / Next arrows on the sides; clicking a thumb picks that image.
- * The active thumb auto-scrolls into view when the current image changes.
+ * Compact thumb strip that floats inside the editor stage. Prev / Next
+ * arrows on the sides; clicking a thumb picks that image. Active thumb
+ * auto-scrolls into view when the current image changes.
+ *
+ * v1.2.9 (pass 2):
+ *   • Arrow icons now render `text-white` on a darkened button so the
+ *     chevrons read clearly in EVERY theme (Kurt reported they were
+ *     invisible in light mode).
+ *   • Dockable to bottom / top / left / right of the editor stage via
+ *     a small 4-icon picker. Left / right positions flip the strip to
+ *     vertical, swap arrows to up/down, and change the inner scroll
+ *     axis to y. Choice persists in localStorage.
  */
+const EDITOR_STRIP_POS_KEY = "pps.editorstrip.position.v1";
+function readEditorStripPos() {
+  try {
+    const v = localStorage.getItem(EDITOR_STRIP_POS_KEY);
+    return ["bottom", "top", "left", "right"].includes(v) ? v : "bottom";
+  } catch { return "bottom"; }
+}
+
 function EditorFilmstrip({ images, currentIdx, onPick, onPrev, onNext }) {
   const stripRef = useRef(null);
+  const [dockPos, setDockPos] = useState(() => readEditorStripPos());
+  const vertical = dockPos === "left" || dockPos === "right";
+
+  useEffect(() => {
+    try { localStorage.setItem(EDITOR_STRIP_POS_KEY, dockPos); } catch { /* ignore */ }
+  }, [dockPos]);
 
   useEffect(() => {
     if (!stripRef.current || currentIdx < 0) return;
     const el = stripRef.current.querySelector(`[data-testid="editor-strip-thumb-${images[currentIdx]?.name}"]`);
-    if (el?.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
-  }, [currentIdx, images]);
+    if (el?.scrollIntoView) el.scrollIntoView({
+      behavior: "smooth",
+      block: vertical ? "center" : "nearest",
+      inline: vertical ? "nearest" : "center",
+    });
+  }, [currentIdx, images, vertical]);
 
   const atStart = currentIdx <= 0;
   const atEnd = currentIdx < 0 || currentIdx >= images.length - 1;
 
+  const shellPositionCls = {
+    bottom: "bottom-3 left-1/2 -translate-x-1/2 flex-row",
+    top:    "top-3 left-1/2 -translate-x-1/2 flex-row",
+    left:   "left-3 top-1/2 -translate-y-1/2 flex-col",
+    right:  "right-3 top-1/2 -translate-y-1/2 flex-col",
+  }[dockPos];
+
+  const scrollAreaCls = vertical
+    ? "flex flex-col items-center gap-1 overflow-y-auto overflow-x-hidden max-h-[60vh] pps-scrollbar"
+    : "flex items-center gap-1 overflow-x-auto max-w-[70vw] pps-scrollbar";
+
+  const arrowBtnCls = "w-7 h-7 rounded flex items-center justify-center bg-black/70 hover:bg-primary-earth text-white border border-app disabled:opacity-30 disabled:cursor-not-allowed shrink-0";
+
+  const dockOptions = [
+    { key: "bottom", Icon: PanelBottom, label: "Dock bottom" },
+    { key: "top",    Icon: PanelTop,    label: "Dock top" },
+    { key: "left",   Icon: PanelLeft,   label: "Dock left (vertical)" },
+    { key: "right",  Icon: PanelRight,  label: "Dock right (vertical)" },
+  ];
+
   return (
     <div
-      className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-2 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-app shadow-2xl"
-      style={{ maxWidth: "calc(100% - 24px)" }}
+      className={`absolute flex items-center gap-1 px-2 py-1.5 rounded-lg bg-black/70 backdrop-blur border border-app shadow-2xl ${shellPositionCls}`}
+      style={vertical ? { maxHeight: "calc(100% - 24px)" } : { maxWidth: "calc(100% - 24px)" }}
       data-testid="editor-filmstrip"
     >
+      {/* Dock picker — always at the "start" edge of the strip */}
+      <div className={`flex ${vertical ? "flex-col" : "flex-row"} items-center gap-0.5 shrink-0 pr-1 ${vertical ? "pb-1 border-b" : "border-r"} border-white/10`}>
+        {dockOptions.map(({ key, Icon, label }) => (
+          <button
+            key={key}
+            onClick={() => setDockPos(key)}
+            className={`w-5 h-5 rounded flex items-center justify-center transition-colors ${
+              dockPos === key
+                ? "bg-primary-earth text-[color:var(--text-inverse)]"
+                : "text-white/70 hover:text-white hover:bg-white/10"
+            }`}
+            data-testid={`editor-strip-dock-${key}`}
+            title={label}
+            aria-pressed={dockPos === key}
+          >
+            <Icon size={11} />
+          </button>
+        ))}
+      </div>
+
+      {/* Prev — left arrow when horizontal, up arrow when vertical */}
       <button
         onClick={onPrev}
         disabled={atStart}
-        className="w-7 h-7 rounded flex items-center justify-center bg-app/80 hover:bg-primary-earth/40 border border-app text-app disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        className={arrowBtnCls}
         data-testid="editor-strip-prev"
-        title="Previous image (←)"
+        title={vertical ? "Previous image (↑)" : "Previous image (←)"}
       >
-        <ChevronLeft size={14} />
+        {vertical ? <ChevronUp size={14} /> : <ChevronLeft size={14} />}
       </button>
+
       <div
         ref={stripRef}
-        className="flex items-center gap-1 overflow-x-auto max-w-[70vw] pps-scrollbar"
+        className={scrollAreaCls}
         style={{ scrollbarWidth: "thin" }}
       >
         {images.map((f, i) => (
@@ -1139,14 +1209,16 @@ function EditorFilmstrip({ images, currentIdx, onPick, onPrev, onNext }) {
           </div>
         ))}
       </div>
+
+      {/* Next — right arrow when horizontal, down arrow when vertical */}
       <button
         onClick={onNext}
         disabled={atEnd}
-        className="w-7 h-7 rounded flex items-center justify-center bg-app/80 hover:bg-primary-earth/40 border border-app text-app disabled:opacity-30 disabled:cursor-not-allowed shrink-0"
+        className={arrowBtnCls}
         data-testid="editor-strip-next"
-        title="Next image (→)"
+        title={vertical ? "Next image (↓)" : "Next image (→)"}
       >
-        <ChevronRight size={14} />
+        {vertical ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
       </button>
     </div>
   );

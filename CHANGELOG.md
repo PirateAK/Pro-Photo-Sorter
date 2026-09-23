@@ -2,7 +2,30 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.2.9 (pass 4) — 2026-02-20 · Dockable filmstrip + arrow visibility fix + folder consolidation
+## v1.2.9 (pass 5) — 2026-02-20 · Editor filmstrip parity
+
+### Fixed
+- **Editor filmstrip arrows invisible in light mode.** The mini filmstrip
+  inside the Image Editor used `text-app` on `bg-app/80`, which blended
+  into itself in light theme. Now uses `text-white` on `bg-black/70` so
+  the chevrons read cleanly on every theme (same treatment as the main
+  filmstrip in pass 4).
+
+### Added
+- **Editor filmstrip is now dockable too.** A compact 4-icon picker
+  (bottom / top / left / right) lives at the leading edge of the strip.
+  Left/right positions flip it to vertical: swaps the arrows to up/down,
+  changes the inner scroll axis to y, and lets Kurt move the strip out
+  of the way of whatever detail he's editing at the bottom of the photo.
+  The choice persists across editor sessions in localStorage
+  (`pps.editorstrip.position.v1`).
+
+### Files touched (pass 5)
+- `frontend/src/components/ImageEditor.jsx` — `EditorFilmstrip` rewrite
+  + Lucide icon imports (`ChevronUp`, `ChevronDown`, `PanelBottom`,
+  `PanelTop`, `PanelLeft`, `PanelRight`).
+
+
 
 ### Fixed
 - **Filmstrip prev/next arrows invisible in light mode.** Both scroll
