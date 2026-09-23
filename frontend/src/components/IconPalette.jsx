@@ -291,21 +291,25 @@ export default function IconPalette({
             <ChevronDown size={12} className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-dim" />
           </div>
         )}
-        {/* A-Z toggle (v1.1.5) — per-pack per-role */}
+        {/* A-Z toggle (v1.1.5) — per-pack per-role
+            v1.2.9 — added inline check when active for visual parity with
+            the rest of the toolbar's stateful toggles. */}
         {active && onCategoriesChange && (
           <button
             onClick={toggleSortAlpha}
-            className={`shrink-0 w-6 h-6 rounded border flex items-center justify-center transition-colors ${
+            className={`shrink-0 h-6 rounded border flex items-center justify-center gap-0.5 transition-colors ${
               sortAlpha
-                ? "bg-primary-earth border-primary-earth text-[color:var(--text-inverse)]"
-                : "bg-app border-app text-dim hover:text-primary-earth hover:border-primary-earth/60"
+                ? "px-1.5 bg-primary-earth border-primary-earth text-[color:var(--text-inverse)]"
+                : "w-6 bg-app border-app text-dim hover:text-primary-earth hover:border-primary-earth/60"
             }`}
             data-testid={`palette-${role}-sort-alpha`}
             title={sortAlpha
               ? `${roleLabel} tags are sorted A→Z — click to keep insertion order`
               : `${roleLabel} tags follow insertion order — click to sort A→Z`}
+            aria-pressed={sortAlpha}
           >
             <ArrowDownAZ size={12} />
+            {sortAlpha && <Check size={10} className="opacity-90" />}
           </button>
         )}
       </div>

@@ -2,7 +2,43 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.2.9 (pass 5) — 2026-02-20 · Editor filmstrip parity
+## v1.2.9 (pass 6) — 2026-02-20 · Active-Mode audit + Hide filmstrip
+
+### Changed
+- **Active-Mode audit — unified stateful toggles.** Batch, Cull, Sort A-Z,
+  and Star-filter now all wear the same look when active: filled
+  primary-earth background with inverse text, primary-earth border, and
+  a trailing `Check` icon. Matches the active subfolder chip's language
+  so the whole toolbar speaks with one voice.
+  - Batch button: was `success-earth` (green), now `primary-earth`
+  - Cull button: was neutral even while its modal was open, now lights
+    up primary-earth whenever `showCull` is true
+  - Sort A-Z button: adds a `Check` next to `ArrowDownAZ` when active
+  - Star-filter chip: was outline `primary-earth/20`, now filled
+    primary-earth with inverse text + a `Check`
+
+### Added
+- **Hide filmstrip.** Both the main filmstrip dock picker and the editor
+  filmstrip dock picker gained a 5th "hide" button (`EyeOff` icon).
+  When hidden:
+  - Main app grid collapses to 3-col × 1-row via `.strip-hidden`, giving
+    the photo full-height canvas.
+  - A floating **"Show filmstrip"** pill (`Film` icon on `bg-black/80`)
+    appears at the bottom-right corner — one click brings it back.
+  - The editor filmstrip goes fully collapsed to a similar pill inside
+    the editor stage.
+  - New keyboard shortcut **T** toggles hide/show for the main
+    filmstrip (Lightroom-style).
+
+### Files touched (pass 6)
+- `frontend/src/App.js` — batch/cull/star-filter styles, 5th dock
+  option, floating show-pill, `T` shortcut.
+- `frontend/src/App.css` — `.strip-hidden` grid variant.
+- `frontend/src/components/IconPalette.jsx` — Sort A-Z active check.
+- `frontend/src/components/ImageEditor.jsx` — editor filmstrip 5th
+  dock option, hidden-state show-pill.
+
+
 
 ### Fixed
 - **Editor filmstrip arrows invisible in light mode.** The mini filmstrip

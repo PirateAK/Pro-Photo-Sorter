@@ -36,7 +36,7 @@ import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
-import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle, ZoomIn, ZoomOut, Maximize, PanelBottom, PanelTop, PanelLeft, PanelRight, ChevronUp, GripHorizontal } from "lucide-react";
+import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle, ZoomIn, ZoomOut, Maximize, PanelBottom, PanelTop, PanelLeft, PanelRight, ChevronUp, GripHorizontal, EyeOff, Film, Check } from "lucide-react";
 import {
   isFSAccessSupported,
   pickDirectory,
@@ -306,12 +306,13 @@ export default function App() {
     document.documentElement.style.setProperty("--filmstrip-w", `${clamped + 72}px`);
   }, [settings.thumbSize]);
 
-  // v1.2.9 — the filmstrip's dock position (bottom / top / left / right).
-  // Kept in settings so it persists; derived class name + orientation flag
-  // used to reshape the app grid and the strip's inner scroll direction.
-  const filmstripPosition = ["bottom", "top", "left", "right"].includes(settings.filmstripPosition)
+  // v1.2.9 — the filmstrip's dock position (bottom / top / left / right / hidden).
+  // "hidden" collapses the strip entirely; a small floating "Show filmstrip"
+  // pill appears in the corner so it's always one click to bring back.
+  const filmstripPosition = ["bottom", "top", "left", "right", "hidden"].includes(settings.filmstripPosition)
     ? settings.filmstripPosition
     : "bottom";
+  const filmstripHidden = filmstripPosition === "hidden";
   const filmstripVertical = filmstripPosition === "left" || filmstripPosition === "right";
 
   const UI_SCALE_STEPS = [0.90, 1.00, 1.10, 1.25, 1.40];
@@ -1574,6 +1575,14 @@ export default function App() {
       else if (e.key === "s" || e.key === "S") { e.preventDefault(); storeCurrent(); }
       else if (isMod && (e.key === "z" || e.key === "Z")) { e.preventDefault(); undo(); }
       else if (e.key === "b" || e.key === "B") { e.preventDefault(); toggleBatch(); }
+      else if (e.key === "t" || e.key === "T") {
+        // v1.2.9 — Lightroom-style Tab: toggle filmstrip hidden/visible.
+        e.preventDefault();
+        setSettings((s) => ({
+          ...s,
+          filmstripPosition: s.filmstripPosition === "hidden" ? "bottom" : "hidden",
+        }));
+      }
       else if (e.key === "e" || e.key === "E") { e.preventDefault(); if (currentImage) setShowEditor(true); }
       else if (e.key === "?" ) { e.preventDefault(); setShowHelp((v) => !v); }
       else if (e.key === "F1" ) { e.preventDefault(); setShowHelp((v) => !v); }
@@ -1916,8 +1925,10 @@ export default function App() {
             </button>
             <button
               onClick={toggleBatch}
-              className={`px-2.5 py-1 rounded border text-xs flex items-center gap-1 ${
-                batchMode ? "bg-success-earth text-[color:var(--text-inverse)] border-transparent" : "bg-app hover:bg-surface-hover border-app"
+              className={`px-2.5 py-1 rounded border text-xs flex items-center gap-1 transition-colors ${
+                batchMode
+                  ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
+                  : "bg-app hover:bg-surface-hover border-app"
               }`}
               data-testid="toggle-batch"
               title="Batch mode (B)"
@@ -1926,6 +1937,7 @@ export default function App() {
               {batchMode && (
                 <span className="ml-1 font-mono">({batchSelected.size}/{images.length})</span>
               )}
+              {batchMode && <Check size={11} className="opacity-80" />}
             </button>
             {batchMode && (() => {
               // v1.2.8 — visualize which mode is currently reflected in the
@@ -2093,11 +2105,16 @@ export default function App() {
                 if (images.length === 0) { toast.error("Load photos first"); return; }
                 setShowCull(true);
               }}
-              className="px-2.5 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+              className={`px-2.5 py-1 rounded border text-xs flex items-center gap-1 transition-colors ${
+                showCull
+                  ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
+                  : "bg-app hover:bg-surface-hover border-app"
+              }`}
               data-testid="open-cull"
               title="Cull Mode — rapid-fire rating with 1-5 keys"
             >
               <Zap size={12} /> Cull
+              {showCull && <Check size={11} className="opacity-80" />}
             </button>
             {trashCount > 0 && (
               <button
@@ -2608,6 +2625,20 @@ export default function App() {
         </div>
       </div>
 
+      {/* v1.2.9 — Floating "Show filmstrip" pill, only when the strip is
+          hidden. Sits at the bottom-right so it never blocks the photo
+          and always reads on any theme (dark button, white icon). */}
+      {filmstripHidden && (
+        <button
+          onClick={() => setSettings({ ...settings, filmstripPosition: "bottom" })}
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/80 hover:bg-primary-earth text-white border border-app shadow-2xl backdrop-blur text-xs font-medium transition-colors"
+          data-testid="filmstrip-show-btn"
+          title="Show filmstrip (T)"
+        >
+          <Film size={12} /> Show filmstrip
+        </button>
+      )}
+
       {/* BOTTOM — Filmstrip with session stats bar on top */}
       <div className="region-strip relative flex flex-col">
         <SessionStats
@@ -2630,6 +2661,7 @@ export default function App() {
             { key: "top",    Icon: PanelTop,    label: "Dock top" },
             { key: "left",   Icon: PanelLeft,   label: "Dock left (vertical)" },
             { key: "right",  Icon: PanelRight,  label: "Dock right (vertical)" },
+            { key: "hidden", Icon: EyeOff,      label: "Hide filmstrip (T to toggle)" },
           ].map(({ key, Icon, label }) => (
             <button
               key={key}
@@ -2692,14 +2724,15 @@ export default function App() {
         >
         {(settings.minStarFilter || 0) > 0 && images.length > 0 && (
           <div
-            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-primary-earth/20 border border-primary-earth text-primary-earth text-[11px] font-medium"
+            className="shrink-0 flex items-center gap-1 px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] border border-primary-earth text-[11px] font-medium"
             data-testid="star-filter-chip"
           >
             <StarIcon size={11} fill="currentColor" />
             <span>≥ {settings.minStarFilter} star{settings.minStarFilter > 1 ? "s" : ""}</span>
+            <Check size={11} className="opacity-80" />
             <button
               onClick={() => setSettings({ ...settings, minStarFilter: 0 })}
-              className="ml-1 w-4 h-4 rounded flex items-center justify-center hover:bg-primary-earth hover:text-[color:var(--text-inverse)]"
+              className="ml-1 w-4 h-4 rounded flex items-center justify-center hover:bg-black/20"
               data-testid="clear-star-filter"
               title="Clear filter"
             >

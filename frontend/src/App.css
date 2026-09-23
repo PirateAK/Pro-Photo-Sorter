@@ -60,6 +60,18 @@
 .app-grid.strip-right .region-right  { grid-column: 3; grid-row: 1; }
 .app-grid.strip-right .region-strip  { grid-column: 4; grid-row: 1; border-left: 1px solid var(--border); }
 
+/* Hidden — 3 cols × 1 row, strip is not rendered
+   v1.2.9 — max canvas real-estate; toggle back via floating "Show" pill
+   or the T shortcut. */
+.app-grid.strip-hidden {
+    grid-template-columns: 280px 1fr 280px;
+    grid-template-rows: 1fr;
+}
+.app-grid.strip-hidden .region-left   { grid-column: 1; grid-row: 1; }
+.app-grid.strip-hidden .region-center { grid-column: 2; grid-row: 1; }
+.app-grid.strip-hidden .region-right  { grid-column: 3; grid-row: 1; }
+.app-grid.strip-hidden .region-strip  { display: none; }
+
 .region-left,
 .region-right {
     background: var(--surface);
