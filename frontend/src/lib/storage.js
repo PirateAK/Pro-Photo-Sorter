@@ -2,7 +2,12 @@
 // v1.1 (Feb 2026): paired-list tag packs. Each pack has folderItems +
 // filenameItems. Bumping the key wipes any legacy v2 data so users start
 // with a clean paired-list model instead of migrating mismatched shapes.
-const KEY = "pps.state.v1_1";
+// v1.2.9: exported STATE_KEY + wired Safety-Backup mirror on every save.
+export const STATE_KEY = "pps.state.v1_1";
+const KEY = STATE_KEY;
+
+import { safetyWrite } from "./electronBridge.js";
+import { getLicense, LICENSE_STORAGE_KEY } from "./license.js";
 
 const DEFAULT_SETTINGS = {
   moveMode: false,
@@ -288,7 +293,14 @@ export function loadState() {
 
 export function saveState(state) {
   try {
-    localStorage.setItem(KEY, JSON.stringify(state));
+    const json = JSON.stringify(state);
+    localStorage.setItem(KEY, json);
+    // v1.2.9 — fire-and-forget mirror to Documents\Pro Photo Sorter\Safety-Backups\
+    // so a future userData wipe/rename can't destroy the user's tag packs.
+    try {
+      const license = getLicense();
+      safetyWrite({ stateKey: KEY, state: json, licenseKey: LICENSE_STORAGE_KEY, license });
+    } catch { /* mirror is best-effort; never block a save */ }
   } catch (e) {
     console.warn("save failed", e);
   }

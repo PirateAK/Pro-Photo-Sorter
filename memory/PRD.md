@@ -34,6 +34,25 @@ destination filename/path, action buttons (Delete/Skip/Store), category manageme
 - Earth-tone dark theme (warm browns, ochre primary #C68A53, sage/terracotta accents)
 - Author credit "Built for photographers · Pro Photo Sorter" in right panel footer
 
+## v1.2.9 — 2026-02-20 · Data-loss-proof updates (LATEST)
+- ✅ **P0 FIX**: License key + tag pack wipe after v1.2.8 update fully resolved.
+  Root cause: v1.2.8 renamed Electron `productName` → Chromium's `userData`
+  folder shifted from `%APPDATA%\electron-shell\` to `%APPDATA%\Pro Photo
+  Sorter\`, orphaning Local Storage + IndexedDB. Fixed in three layers:
+   1. Pin `userData` path in `main.js` BEFORE `app.whenReady()` so future
+      productName renames can't move storage.
+   2. One-time boot-migration copies `Local Storage`/`Session Storage`/
+      `IndexedDB` from legacy `electron-shell` dir if pinned dir is empty.
+   3. Safety-Backup mirror to `Documents\Pro Photo Sorter\Safety-Backups\`
+      (latest.json + one dated snapshot/day, 30-day rolling window). Boot
+      restores localStorage from mirror before React mounts if `%APPDATA%`
+      has been wiped for any reason (uninstall, disk cleanup, another
+      rename in future).
+- ✅ Help → License panel shows Safety-Backup status + "Open folder" button.
+- ✅ Regression suite: `frontend/tests/safetyBackup.test.mjs` (6 tests).
+  Full suite green: 44/44 assertions across 4 test files.
+
+
 ## What's Been Implemented (2026-01-27, iteration 2)
 - ✅ Full 5-region CSS-grid layout with filmstrip sprocket-hole styling
 - ✅ Recursive file trees (source + destination) with expand/collapse

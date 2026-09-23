@@ -1,6 +1,7 @@
 // electron-shell/preload.js
 // Exposes safe, whitelisted Node/Electron APIs to the React renderer.
 // v1.2.3: added openExternal + auto-update controls.
+// v1.2.9: added Safety-Backup mirror IPC (survives userData wipes).
 const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -17,4 +18,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('pps:update-status', listener);
     return () => ipcRenderer.removeListener('pps:update-status', listener);
   },
+
+  // Safety-Backup mirror (v1.2.9) — writes/reads a copy of the app state +
+  // license to %USERPROFILE%\Documents\Pro Photo Sorter\Safety-Backups\ so
+  // user data survives ANY future userData folder rename / wipe / uninstall.
+  safetyWrite: (payload) => ipcRenderer.invoke('pps:safety-write', payload),
+  safetyReadLatest: () => ipcRenderer.invoke('pps:safety-read-latest'),
+  safetyOpenFolder: () => ipcRenderer.invoke('pps:safety-open-folder'),
+  safetyInfo: () => ipcRenderer.invoke('pps:safety-info'),
 });

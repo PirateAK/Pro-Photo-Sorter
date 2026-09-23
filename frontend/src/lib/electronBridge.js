@@ -71,3 +71,24 @@ export async function openExternal(url) {
   window.open(url, "_blank", "noopener,noreferrer");
   return true;
 }
+
+// ── Safety-Backup mirror (v1.2.9) ────────────────────────────────────────
+// Mirrors {license, state} to Documents\Pro Photo Sorter\Safety-Backups\.
+// All calls are no-ops in browser dev. Failures are swallowed — safety is
+// belt-and-suspenders, never a hard dependency.
+export async function safetyWrite(payload) {
+  if (!isElectron() || !window.electronAPI?.safetyWrite) return { ok: false };
+  try { return await window.electronAPI.safetyWrite(payload); } catch { return { ok: false }; }
+}
+export async function safetyReadLatest() {
+  if (!isElectron() || !window.electronAPI?.safetyReadLatest) return { ok: false };
+  try { return await window.electronAPI.safetyReadLatest(); } catch { return { ok: false }; }
+}
+export async function safetyOpenFolder() {
+  if (!isElectron() || !window.electronAPI?.safetyOpenFolder) return { ok: false };
+  try { return await window.electronAPI.safetyOpenFolder(); } catch { return { ok: false }; }
+}
+export async function safetyInfo() {
+  if (!isElectron() || !window.electronAPI?.safetyInfo) return { ok: false };
+  try { return await window.electronAPI.safetyInfo(); } catch { return { ok: false }; }
+}
