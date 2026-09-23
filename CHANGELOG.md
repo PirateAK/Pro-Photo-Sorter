@@ -2,7 +2,24 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.2.9 (pass 2) — 2026-02-20 · Date toggle + Editor filmstrip + Spring-loaded subfolders
+## v1.2.9 (pass 3) — 2026-02-20 · Watermark chip + toggle moved off the photo
+
+### Changed
+- **Top-left `© WM` chip and top-right `WM ON/OFF` toggle removed from the
+  image overlay.** They now live together in the toolbar row, right-aligned
+  directly below the 16×20 resize button, so nothing floats on top of the
+  photo any more. The chip now shows the FULL watermark text (or the trial
+  banner `TRIAL - Pro Photo Sorter (unlicensed)` when unlicensed) instead
+  of just the letters "WM". Right-click on the photo still toggles the WM
+  for that image as before.
+- If no watermark text has been configured, the chip becomes a dashed
+  "No watermark set — click to add" affordance that opens Settings.
+
+### Files touched (pass 3)
+- `frontend/src/App.js` — removed the two overlay blocks, added a single
+  `data-testid="wm-toolbar"` bar inside the `dest-preview-path` row.
+
+
 
 ### Added
 - **Date stamp button is now a true toggle.** DateTagDropdowns default to

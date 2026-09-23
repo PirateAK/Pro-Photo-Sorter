@@ -2,6 +2,15 @@
 
 ## Original Problem Statement
 A professional photographer needs software to sort thousands of digital photos.
+## v1.2.9 (pass 3) — 2026-02-20 · Watermark chip + toggle moved off the photo
+- ✅ Removed the top-left `© WM` chip and the top-right WM ON/OFF toggle
+  from the image overlay. Both now sit side-by-side in the toolbar row,
+  right-aligned directly under the 16×20 resize button. The chip shows
+  the FULL watermark text (or the trial banner) so at a glance Kurt can
+  see exactly what will be stamped onto the photo. Empty state is a
+  dashed "click to add" chip that jumps to Settings.
+
+
 Requirements: file tree of source drive (left), file tree of destination drive (right),
 filmstrip of photos in selected source folder (bottom), large image viewer (center),
 icon bar above viewer, dropdowns for Date/Location/Categories, category lists with
