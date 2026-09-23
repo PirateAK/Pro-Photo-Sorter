@@ -2145,20 +2145,13 @@ export default function App() {
             />
           </div>
 
-          {/* Row 2: icon palette (folders) + Row 3: icon palette (filename) + actions */}
+          {/* v1.3.0 — Compact 2-row toolbar:
+              Row 1 = Category picker (dropdown/header only, chip strip
+                      gone since folder-path-tags no longer exist)
+                      + Sub-Folder chips inline next to it
+              Row 2 = Filename tag chips of the active sub-folder */}
           <div className="flex items-start gap-3">
             <div className="flex-1 min-w-0 pane rounded px-2 py-1 flex flex-col gap-1">
-              <IconPalette
-                role="folders"
-                categories={categories}
-                activeCatId={foldersCatId}
-                onSetCat={setFoldersCatId}
-                onApply={applyIcon}
-                onRemoveApplied={removeChipFromCurrentImage}
-                appliedIds={appliedFolderIds}
-                onCategoriesChange={setCategories}
-                onOpenManager={() => setShowCatMgr(true)}
-              />
               {(() => {
                 const activePack = categories.find((c) => c.id === foldersCatId);
                 const hasSubs = activePack?.subfolders?.length > 0;
@@ -2167,16 +2160,29 @@ export default function App() {
                   : null;
                 return (
                   <>
-                    {hasSubs && (
-                      <>
-                        <div className="h-px bg-app/60" />
-                        <SubfolderBar
-                          active={activePack}
-                          activeSubfolderId={activeSubfolderId}
-                          onSetSubfolder={setActiveSubfolderId}
-                        />
-                      </>
-                    )}
+                    <div className="flex items-stretch gap-2 min-w-0">
+                      <IconPalette
+                        role="folders"
+                        categories={categories}
+                        activeCatId={foldersCatId}
+                        onSetCat={setFoldersCatId}
+                        onApply={applyIcon}
+                        onRemoveApplied={removeChipFromCurrentImage}
+                        appliedIds={appliedFolderIds}
+                        onCategoriesChange={setCategories}
+                        onOpenManager={() => setShowCatMgr(true)}
+                        compactHeaderOnly
+                      />
+                      {hasSubs && (
+                        <div className="flex-1 min-w-0 flex items-center pl-2 border-l border-app/60">
+                          <SubfolderBar
+                            active={activePack}
+                            activeSubfolderId={activeSubfolderId}
+                            onSetSubfolder={setActiveSubfolderId}
+                          />
+                        </div>
+                      )}
+                    </div>
                     <div className="h-px bg-app/60" />
                     <IconPalette
                       role="filename"
