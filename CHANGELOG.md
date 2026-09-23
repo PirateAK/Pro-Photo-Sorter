@@ -2,7 +2,58 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.2.9 (pass 3) — 2026-02-20 · Watermark chip + toggle moved off the photo
+## v1.2.9 (pass 4) — 2026-02-20 · Dockable filmstrip + arrow visibility fix + folder consolidation
+
+### Fixed
+- **Filmstrip prev/next arrows invisible in light mode.** Both scroll
+  buttons now use an explicit `text-white` icon color so the chevrons
+  read cleanly on ANY theme, dark or light (Kurt reported the arrows
+  were nearly invisible against the grass-photo background).
+
+### Added
+- **Dockable filmstrip.** A new dock picker sits at the top-left of the
+  filmstrip strip with four one-click positions:
+  - **Bottom** (default) — the classic look
+  - **Top** — filmstrip becomes the top edge, main workspace slides down
+  - **Left** — filmstrip goes vertical on the left, panes shift right
+  - **Right** — filmstrip goes vertical on the right, panes shift left
+  Selection persists per-user via `settings.filmstripPosition`. Vertical
+  orientation reshapes the CSS grid, flips the strip's inner scroll axis
+  to `overflow-y`, and swaps the prev/next arrows to up/down arrows
+  positioned at top/bottom of the vertical rail.
+- Auto-scroll of the active thumbnail is orientation-aware — it uses
+  `block: center` for vertical mode so the active photo always stays
+  centered on the vertical rail.
+
+### Changed
+- **Repo consolidation.** `electron-additions/` and `electron-shell/`
+  were both floating around in Kurt's local checkout, causing
+  `pack-app.bat` to sometimes bundle a stale `main.js` and silently
+  ship builds without the safety-mirror IPC handlers. The repo is now
+  a **single source of truth**: everything lives in `electron-shell/`
+  and `electron-additions/` has been deleted. Kurt's local sync command
+  below wipes the duplicate folder so this class of bug can't recur.
+
+### Files touched (pass 4)
+- `frontend/src/App.js` — dock picker, orientation-aware scroll logic,
+  arrow color fix.
+- `frontend/src/App.css` — four `.strip-<pos>` grid variants.
+- `frontend/src/lib/storage.js` — `filmstripPosition` + `filmstripWidth`
+  settings.
+- `electron-shell/` — mirrored from `electron-additions/`, now the
+  canonical build source.
+- `electron-additions/` — deleted from repo.
+
+### Local cleanup command for Kurt
+Paste this into a Command Prompt AFTER pulling the latest to wipe the
+duplicate folder on your machine so future `pack-app.bat` builds pick
+up only the correct source:
+
+```bat
+cd /d C:\Pro-Photo-Sorter && rmdir /S /Q electron-additions 2>nul & rmdir /S /Q electron-shell\dist 2>nul & pack-app.bat && findstr /C:"pps:safety-write" "electron-shell\dist\win-unpacked\resources\app.asar" && echo === BUILD READY ===
+```
+
+
 
 ### Changed
 - **Top-left `© WM` chip and top-right `WM ON/OFF` toggle removed from the
