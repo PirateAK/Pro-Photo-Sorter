@@ -2,7 +2,29 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
-## v1.2.9 (pass 6) — 2026-02-20 · Active-Mode audit + Hide filmstrip
+## v1.2.9 (pass 7) — 2026-02-20 · Dropped main filmstrip dock feature
+
+### Reverted
+- **Main filmstrip dock picker removed.** Left/right positions covered
+  the Source/Destination trees, so Kurt asked to drop the feature and
+  keep the filmstrip always at the bottom.
+- Removed: dock-picker widget, `filmstripPosition` setting, `.strip-*`
+  CSS variants, `strip-hidden` state, floating "Show filmstrip" pill,
+  and the **T** keyboard shortcut.
+- Kept: **arrow visibility fix** (`text-white` chevrons on both prev
+  and next), **active-mode audit** on Batch/Cull/Sort/Star-filter, and
+  the **editor filmstrip docking** (5-way with hide, works great).
+
+### Files touched (pass 7)
+- `frontend/src/App.js` — removed dock UI + show-pill, reverted scroll
+  logic to horizontal-only, dropped `T` shortcut.
+- `frontend/src/App.css` — restored base `.app-grid` with explicit
+  region grid coordinates (fixes region positioning after class
+  variants were removed).
+- `frontend/src/lib/storage.js` — removed `filmstripPosition` +
+  `filmstripWidth` from DEFAULT_SETTINGS.
+
+
 
 ### Changed
 - **Active-Mode audit — unified stateful toggles.** Batch, Cull, Sort A-Z,
