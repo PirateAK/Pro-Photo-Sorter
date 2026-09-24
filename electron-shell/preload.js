@@ -26,4 +26,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   safetyReadLatest: () => ipcRenderer.invoke('pps:safety-read-latest'),
   safetyOpenFolder: () => ipcRenderer.invoke('pps:safety-open-folder'),
   safetyInfo: () => ipcRenderer.invoke('pps:safety-info'),
+
+  // First-run Sample Folder (v1.4.0) — bundled sample photos land in
+  // %USERPROFILE%\Documents\Pro Photo Sorter\Samples\ on first launch so new
+  // users have real images to try immediately.
+  samplesInfo: () => ipcRenderer.invoke('pps:samples-info'),
+  samplesRestore: () => ipcRenderer.invoke('pps:samples-restore'),
+  samplesOpenFolder: () => ipcRenderer.invoke('pps:samples-open-folder'),
 });

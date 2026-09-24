@@ -47,6 +47,24 @@ const DEFAULT_SETTINGS = {
   // Bookkeeping — last successful backup date (YYYY-MM-DD). Never edit by
   // hand; the backups helper writes this after a successful snapshot.
   lastTagBackupDate: "",
+  // v1.4.0 — Unlimited nested sub-folders. When true (default), the main
+  // window shows a cascading row of SUB-FOLDER bars, one per depth level
+  // the user drills into. When false, only the top-level sub-folder row
+  // is rendered (v1.3.x behavior). The Tag Manager always allows the user
+  // to build deeper trees; this toggle only controls the runtime cascade.
+  enableNestedSubfolders: true,
+  // v1.4.0 — Custom Filename Templates. Kurt saves up to 5 favourite
+  // template strings. Newest bumps the oldest out (LRU). Each entry:
+  //   { id, name, template }
+  // Name auto-derives from the user's own template text (first non-token
+  // word, sanitised). Displayed as removable chips alongside the built-in
+  // presets in the Settings modal.
+  customFilenameTemplates: [],
+  // v1.4.0 — First-run sample folder. Set to true once the Electron shell
+  // has copied the bundled samples to Documents\Pro Photo Sorter\Samples\.
+  // Prevents a re-copy on every launch while still letting the user
+  // "Restore samples" from Settings any time they want.
+  samplesCopied: false,
 };
 
 const DEFAULT_STATE = {

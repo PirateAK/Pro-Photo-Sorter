@@ -6,6 +6,7 @@ import { uid } from "../lib/storage";
 import { totalCount } from "../lib/tags";
 import { parseTagList, serializePack as serializePackText, serializePacks as serializePacksText } from "../lib/tagpackText";
 import { toast } from "sonner";
+import NestedSubfolderEditor from "./NestedSubfolderEditor";
 
 // Curated built-in icons
 const BUILTIN_ICONS = [
@@ -251,6 +252,17 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
       subfolders: (c.subfolders || []).map((s) =>
         s.id === sfId ? { ...s, filenameItems: (s.filenameItems || []).filter((it) => it.id !== itemId) } : s
       ),
+    }));
+  };
+
+  // v1.4.0 — Recursive nested-subfolder tree editor callback. The
+  // NestedSubfolderEditor hands back a fully-patched top-level sub-folder
+  // node (with all descendants inside) whenever anything in its subtree
+  // changes; we splice it back into the pack's subfolders list.
+  const replaceSubfolderNode = (sfId, patchedNode) => {
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) => (s.id === sfId ? patchedNode : s)),
     }));
   };
 
@@ -1070,6 +1082,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                     onRemoveItem={removeSubfolderItem}
                     onSwapItemIcon={swapSubfolderItemIcon}
                     onMoveSubfolderItem={moveSubfolderItem}
+                    onReplaceSubfolderNode={replaceSubfolderNode}
                   />
 
                   {/* Dedicated Filename Tags editor for the currently
@@ -1602,6 +1615,7 @@ function SubfolderSection({
   onRemoveItem,
   onSwapItemIcon,          // v1.2.1 — fn(sfId, itemId, iconPayload)
   onMoveSubfolderItem,     // v1.2.1 — fn(fromSfId, toSfId, itemId, "move"|"copy")
+  onReplaceSubfolderNode,  // v1.4.0 — fn(sfId, patchedNode) — recursive nested editor
   selectedSubId,           // v1.3 — currently selected sub-folder (highlights the row)
   onSelectSubfolder,       // v1.3 — (sfId) => void — click a row to load its filename tags into the editor below
   armedIcon,               // v1.3.1 — armed icon from Icon Holders (may be null)
@@ -1919,6 +1933,16 @@ function SubfolderSection({
                         <Plus size={11} /> Add
                       </button>
                     </div>
+
+                    {/* v1.4.0 — Unlimited nested sub-folders. Managed by a
+                        self-contained recursive editor so the surrounding
+                        SubfolderSection stays flat. */}
+                    {onReplaceSubfolderNode && (
+                      <NestedSubfolderEditor
+                        node={sf}
+                        onChange={(patched) => onReplaceSubfolderNode(sf.id, patched)}
+                      />
+                    )}
                   </div>
                 )}
               </div>

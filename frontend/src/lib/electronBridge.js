@@ -92,3 +92,21 @@ export async function safetyInfo() {
   if (!isElectron() || !window.electronAPI?.safetyInfo) return { ok: false };
   try { return await window.electronAPI.safetyInfo(); } catch { return { ok: false }; }
 }
+
+// ── First-run Sample Folder (v1.4.0) ────────────────────────────────────
+// Electron main.js copies bundled sample photos to
+// Documents\Pro Photo Sorter\Samples\ on first launch. These helpers let
+// the renderer ask the shell where the folder is, force a re-copy, or
+// open the folder in Explorer.
+export async function samplesInfo() {
+  if (!isElectron() || !window.electronAPI?.samplesInfo) return { ok: false };
+  try { return await window.electronAPI.samplesInfo(); } catch { return { ok: false }; }
+}
+export async function samplesRestore() {
+  if (!isElectron() || !window.electronAPI?.samplesRestore) return { ok: false };
+  try { return await window.electronAPI.samplesRestore(); } catch { return { ok: false }; }
+}
+export async function samplesOpenFolder() {
+  if (!isElectron() || !window.electronAPI?.samplesOpenFolder) return { ok: false };
+  try { return await window.electronAPI.samplesOpenFolder(); } catch { return { ok: false }; }
+}

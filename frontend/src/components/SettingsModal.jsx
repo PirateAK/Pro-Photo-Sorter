@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type, PackagePlus, MapPin } from "lucide-react";
-import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate } from "../lib/template";
+import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type, PackagePlus, MapPin, Save as SaveIcon, AlertCircle } from "lucide-react";
+import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate, validateTemplate, autoNameForTemplate } from "../lib/template";
 import { clearThumbCache } from "../lib/thumbCache";
 import { paintWatermark, WATERMARK_FONTS } from "../lib/watermark";
 import { toast } from "sonner";
@@ -238,7 +238,7 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
             </section>
           )}
 
-          {/* Startup */}
+          {/* Workflow */}
           <section>
             <div className="flex items-start justify-between gap-4">
               <div>
@@ -257,6 +257,31 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                   data-testid="auto-advance-toggle"
                 />
                 <span className="text-xs">Auto-advance after Store</span>
+              </label>
+            </div>
+          </section>
+
+          {/* v1.4.0 — Nested Sub-folders toggle */}
+          <section>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-heading font-semibold text-sm mb-1">Nested Sub-Folders</h3>
+                <p className="text-xs text-dim">
+                  When enabled, drilling into a sub-folder that has children of its own reveals a
+                  deeper SUB-FOLDER row so you can pick from any level in the tree
+                  (e.g. Wedding › Ceremony › Bride's family). Turn off to stick with the classic
+                  single sub-folder row.
+                </p>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer shrink-0" data-testid="nested-subfolders-toggle-label">
+                <input
+                  type="checkbox"
+                  checked={local.enableNestedSubfolders !== false}
+                  onChange={(e) => setLocal({ ...local, enableNestedSubfolders: e.target.checked })}
+                  className="w-4 h-4 accent-primary-earth cursor-pointer"
+                  data-testid="nested-subfolders-toggle"
+                />
+                <span className="text-xs">Show deeper sub-folder rows</span>
               </label>
             </div>
           </section>
@@ -547,6 +572,135 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
               placeholder="{folders}/{tags}{ext}"
               data-testid="template-input"
             />
+
+            {/* v1.4.0 — Custom Filename Templates. Kurt saves up to 5
+                favourite strings. Newest bumps the oldest out (LRU). Invalid
+                tokens refuse to save with a red inline error (never silently
+                produces empty paths). Name auto-derives from the input text. */}
+            {(() => {
+              const validation = validateTemplate(local.filenameTemplate);
+              const savedList = Array.isArray(local.customFilenameTemplates)
+                ? local.customFilenameTemplates
+                : [];
+              const alreadySaved = savedList.some((t) => t.template === local.filenameTemplate);
+              const canSave = validation.ok && !alreadySaved && (local.filenameTemplate || "").trim().length > 0;
+              const saveCustom = () => {
+                if (!canSave) return;
+                const nextName = autoNameForTemplate(local.filenameTemplate);
+                const entry = { id: `tpl-${Date.now().toString(36)}`, name: nextName, template: local.filenameTemplate };
+                // LRU: newest first, cap at 5 (b1)
+                const dedup = savedList.filter((t) => t.template !== local.filenameTemplate);
+                const next = [entry, ...dedup].slice(0, 5);
+                setLocal({ ...local, customFilenameTemplates: next });
+                toast.success(`Saved template "${nextName}"`, { icon: "⚙️" });
+              };
+              const deleteSaved = (id) => {
+                setLocal({
+                  ...local,
+                  customFilenameTemplates: savedList.filter((t) => t.id !== id),
+                });
+              };
+              return (
+                <div className="mt-2">
+                  {!validation.ok && (
+                    <div
+                      className="flex items-start gap-1.5 text-[11px] text-red-400 bg-red-500/10 border border-red-500/40 rounded px-2 py-1.5 mb-2"
+                      data-testid="template-error"
+                    >
+                      <AlertCircle size={12} className="shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-semibold">
+                          Unknown token{validation.invalid.length > 1 ? "s" : ""}: {validation.invalid.map((t) => `{${t}}`).join(", ")}
+                        </div>
+                        {Object.keys(validation.suggestions || {}).length > 0 && (
+                          <div className="mt-0.5 text-red-300">
+                            Did you mean {Object.entries(validation.suggestions).map(([bad, good], i, arr) => (
+                              <button
+                                key={bad}
+                                onClick={() => setLocal({
+                                  ...local,
+                                  filenameTemplate: local.filenameTemplate.replace(
+                                    new RegExp(`\\{${bad}\\}`, "g"),
+                                    `{${good}}`
+                                  ),
+                                })}
+                                className="font-mono underline hover:text-red-200"
+                                data-testid={`template-suggest-${bad}`}
+                                title={`Replace {${bad}} with {${good}}`}
+                              >
+                                {`{${good}}`}
+                              </button>
+                            )).reduce((acc, el, i, arr) => acc.concat(i > 0 ? [", ", el] : [el]), [])}?
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={saveCustom}
+                      disabled={!canSave}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-[11px] font-medium disabled:opacity-40 disabled:cursor-not-allowed"
+                      data-testid="template-save-custom-btn"
+                      title={
+                        !validation.ok
+                          ? "Fix the invalid token(s) before saving."
+                          : alreadySaved
+                          ? "This template is already in your saved list."
+                          : !(local.filenameTemplate || "").trim().length
+                          ? "Type a template first."
+                          : `Save "${autoNameForTemplate(local.filenameTemplate)}" — keeps your last 5.`
+                      }
+                    >
+                      <SaveIcon size={11} /> Save Custom
+                    </button>
+                    {savedList.length > 0 && (
+                      <span className="text-[10px] uppercase tracking-widest text-dim font-heading">
+                        My Templates ({savedList.length}/5)
+                      </span>
+                    )}
+                  </div>
+
+                  {savedList.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1" data-testid="template-custom-chips">
+                      {savedList.map((t) => {
+                        const active = local.filenameTemplate === t.template;
+                        return (
+                          <div
+                            key={t.id}
+                            className={`inline-flex items-center gap-1 rounded border text-[11px] transition-colors ${
+                              active
+                                ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent"
+                                : "bg-app border-app hover:bg-surface-hover"
+                            }`}
+                            data-testid={`template-custom-chip-${t.id}`}
+                          >
+                            <button
+                              onClick={() => setLocal({ ...local, filenameTemplate: t.template })}
+                              className="pl-2 py-1 font-mono"
+                              title={t.template}
+                            >
+                              {t.name}
+                            </button>
+                            <button
+                              onClick={() => deleteSaved(t.id)}
+                              className={`pr-1.5 py-1 opacity-70 hover:opacity-100 ${
+                                active ? "" : "text-dim hover:text-danger-earth"
+                              }`}
+                              title="Delete this saved template"
+                              data-testid={`template-custom-delete-${t.id}`}
+                            >
+                              <X size={10} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             <div className="mt-3 pane rounded p-3 bg-app">
               <div className="text-[10px] uppercase tracking-widest text-dim font-heading mb-1">
