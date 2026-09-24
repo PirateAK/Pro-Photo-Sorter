@@ -1160,3 +1160,56 @@ Files touched:
 - kbd hint chips (`Space` / `Del` / `S` on Skip/Delete/Store) fixed for both dark and light themes.
 - Installer version-sync — `pack-app.bat` now stamps `electron-shell/package.json` from `frontend/package.json` before building so the `Setup X.Y.Z.exe` filename can never drift again.
 - v1.0.5 tagged in git and published as a GitHub Release with the installer attached.
+
+
+### Iteration 28 — v1.4.0 · Unlimited Nested Sub-folders + Custom Templates + First-run Samples (2026-02-19)
+
+Kurt's testing team delivered three requirements. Batched cleanly in one shot; testing_agent verified 7/7 flows passed with zero UI bugs or console errors.
+
+**1. Unlimited Nested Sub-folders (recursive tree)**
+- Data model: each `subfolder` gets an optional `subfolders: []`, unlimited depth. No migration — existing flat data works untouched.
+- Main-window UI: replaced single `activeSubfolderId` with `activeSubfolderPath: string[]`. New `SubfolderCascade` component renders one `SubfolderBar` per depth level, appearing only when the current-active chip at that depth has children. Gated behind `settings.enableNestedSubfolders` (default ON).
+- Filename inheritance: `deepestWithFilenames(chain)` — if the picked leaf sub-folder has no filename items, the app walks back up to the nearest ancestor that has them (so "container" sub-folders inherit their parent's tag list).
+- Tag Manager UI: new `NestedSubfolderEditor` mounts inside each expanded sub-folder row. Supports add/rename/delete + add/delete filename tags per nested child, recursively. Uses `React.createElement` for the self-recursion to sidestep a babel-loader edge case.
+- Setting toggle: SettingsModal → "Nested Sub-Folders" section with a checkbox (data-testid `nested-subfolders-toggle`).
+
+**2. Custom Filename Templates (UX picks a2 + b1 + c1)**
+- `validateTemplate(template)` in `lib/template.js` scans for unknown `{tokens}`; returns `{ok:false, invalid, suggestions}` with Levenshtein-based "did you mean" hints (distance ≤ 3).
+- `autoNameForTemplate(template)` derives a friendly name from the user's own template string (first non-token word, Title-Case, 24 chars max). Fallback = "Custom".
+- Settings modal: new "Save Custom" button (gear-style) inline in the Filename Template section. Disabled while validation fails or the current string equals a saved template. On save, appends to `settings.customFilenameTemplates` (LRU cap 5, newest bumps oldest).
+- Saved templates render as a chip strip "My Templates (n/5)" — click chip to apply, × to delete.
+- Invalid tokens surface a red banner with clickable suggestion buttons that patch the string in place.
+
+**3. First-run Sample Folder (Electron)**
+- Bundled six sample photos in `electron-shell/samples/` (added to `extraResources` in `package.json` so they ship with the NSIS installer).
+- `main.js` copies them into `%USERPROFILE%\Documents\Pro Photo Sorter\Samples\` on first launch (sentinel file `.samples-copied` prevents re-copies).
+- New IPC channels: `pps:samples-info`, `pps:samples-restore`, `pps:samples-open-folder` — exposed to renderer via `electronBridge.js` (`samplesInfo`, `samplesRestore`, `samplesOpenFolder`).
+- Help panel (LicenseSection.jsx) gains a "Sample Photos" pane with **Open Samples folder** and **Restore bundled samples** buttons, symmetric with the existing Safety-Backup pane.
+
+**Version bump**
+- `frontend/package.json`, `electron-shell/package.json`, and `src/buildInfo.json` all bumped to **1.4.0** (build date 2026-02-19).
+
+**Files touched**
+- New: `frontend/src/components/SubfolderCascade.jsx`, `frontend/src/components/NestedSubfolderEditor.jsx`, `frontend/tests/subfolderCascade.test.mjs`, `frontend/tests/customFilenameTemplate.test.mjs`, `electron-shell/samples/{01..06}_sample.jpg`.
+- Updated: `frontend/src/App.js` (activeSubfolderPath state, composeDestFolderParts subChain signature), `frontend/src/lib/storage.js` (three new settings fields), `frontend/src/lib/template.js` (validator + autoName), `frontend/src/lib/electronBridge.js` (samples helpers), `frontend/src/components/SubfolderBar.jsx` (nested-aware props), `frontend/src/components/CategoryManager.jsx` (recursive editor mount + replaceSubfolderNode helper), `frontend/src/components/SettingsModal.jsx` (Custom template save UI + Nested Sub-Folders toggle), `frontend/src/components/LicenseSection.jsx` (Sample Photos pane), `frontend/tests/folderPath.test.mjs` (updated for v1.4.0 chain signature), `electron-shell/main.js` (first-run sample copy + IPC handlers), `electron-shell/preload.js` (exposed samples IPC), `electron-shell/package.json` (extraResources + v1.4.0).
+
+**Test posture**
+- All prior Node.js `.mjs` unit suites still green (10/10 files).
+- 3 new/updated regression tests: 11 folderPath + 6 subfolderCascade + 14 customFilenameTemplate = **31 passing assertions** covering path composition (with & without nesting), chain resolution, fallback logic, template validation, Levenshtein suggestions, and LRU semantics.
+- testing_agent Playwright run against the preview URL: **7/7 flows passed** — no ui_bugs, no integration_issues, no console errors.
+
+**Still pending from Kurt**
+- Paragraph 4 of the v1.4.0 requirements (not yet received; awaiting on ship-return).
+- Optional: proper split of this PRD into PRD.md + CHANGELOG.md + ROADMAP.md (file is now ~1200 lines).
+
+**Deferred to v1.4.x / v2.0**
+- Multi-Source Roots (P1)
+- XMP Sidecars (P1)
+- Editor Save / Aspect Ratio + tag preservation across editor round-trip (P1)
+- Face Recognition AI Sort (P0 for v2)
+- ExifTool.exe EXIF write-back + full EXIF Editor window
+- Native RAW support in filmstrip + viewer (CR2/NEF/ARW/DNG)
+- Icon Holders popover on main window
+- `.pps-iconpack.json` pack signing
+- In-app contact-sheet fancy preview with mini-filmstrip
+- Hard-coded trial limit
