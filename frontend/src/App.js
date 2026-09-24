@@ -2830,6 +2830,8 @@ export default function App() {
             ? images.filter((i) => batchSelected.has(i.name))
             : images
         }
+        isBatchSelection={batchMode && batchSelected.size > 0}
+        totalFilmstripCount={images.length}
         ratings={ratings}
         sourcePath={currentSourcePath}
         sourceDirHandle={currentSourceFolder}
