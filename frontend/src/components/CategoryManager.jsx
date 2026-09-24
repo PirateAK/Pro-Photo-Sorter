@@ -103,6 +103,9 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   const [selectedSubId, setSelectedSubId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
+  // v1.3.1 — highlighted category row when a chip is being dragged across
+  // categories in the left rail. null when nothing is hovered.
+  const [crossDropCatId, setCrossDropCatId] = useState(null);
   const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
   const [bundleSelected, setBundleSelected] = useState(new Set());
   const folderFileRef = useRef(null);
@@ -304,6 +307,87 @@ export default function CategoryManager({ open, onClose, categories, onChange })
     toast.success(
       mode === "copy" ? `Copied "${item.label}"` : `Moved "${item.label}"`,
       { description: `${fromSub.name} → ${toSub.name}` }
+    );
+  };
+
+  // v1.3.1 — Cross-Category chip drag.
+  // Move / copy a filename chip from a sub-folder in the CURRENT category into
+  // ANY other category (by dropping it on that category's row in the left rail).
+  // The chip always lands in the target category's `_Unsorted filenames`
+  // sub-folder (created on the fly if missing) — the user can then reorganize
+  // it into the right sub-folder at their pace.
+  const crossMoveSubfolderItem = (fromCatId, fromSfId, toCatId, itemId, mode = "move") => {
+    if (!fromCatId || !toCatId || !fromSfId || !itemId) return;
+    if (fromCatId === toCatId) return; // within-pack move handled by moveSubfolderItem
+    const fromCat = categories.find((c) => c.id === fromCatId);
+    const toCat   = categories.find((c) => c.id === toCatId);
+    if (!fromCat || !toCat) return;
+    const fromSub = (fromCat.subfolders || []).find((s) => s.id === fromSfId);
+    const item = fromSub?.filenameItems?.find((it) => it.id === itemId);
+    if (!item) return;
+
+    const UNSORTED_NAME = "_Unsorted filenames";
+    const existingUnsorted = (toCat.subfolders || []).find(
+      (s) => (s.name || "").toLowerCase() === UNSORTED_NAME.toLowerCase()
+    );
+    const alreadyThere = existingUnsorted
+      ? (existingUnsorted.filenameItems || []).some(
+          (it) => it.label.toLowerCase() === item.label.toLowerCase()
+        )
+      : false;
+    if (alreadyThere) {
+      toast.error(`"${item.label}" already exists in "${toCat.name}"`, {
+        description: `Skipped — already in "${UNSORTED_NAME}"`,
+      });
+      return;
+    }
+    const cloneOrItem = mode === "copy" ? { ...item, id: uid("it") } : item;
+
+    const next = categories.map((c) => {
+      // 1. Source pack — remove the item if we're moving.
+      if (c.id === fromCatId && mode === "move") {
+        return {
+          ...c,
+          subfolders: (c.subfolders || []).map((s) =>
+            s.id === fromSfId
+              ? { ...s, filenameItems: (s.filenameItems || []).filter((it) => it.id !== itemId) }
+              : s
+          ),
+        };
+      }
+      // 2. Target pack — append into existing _Unsorted or create it.
+      if (c.id === toCatId) {
+        const subs = c.subfolders || [];
+        if (existingUnsorted) {
+          return {
+            ...c,
+            subfolders: subs.map((s) =>
+              s.id === existingUnsorted.id
+                ? { ...s, filenameItems: [...(s.filenameItems || []), cloneOrItem] }
+                : s
+            ),
+          };
+        }
+        return {
+          ...c,
+          subfolders: [
+            ...subs,
+            {
+              id: uid("sf"),
+              name: UNSORTED_NAME,
+              iconType: "lucide",
+              iconName: "Package",
+              filenameItems: [cloneOrItem],
+            },
+          ],
+        };
+      }
+      return c;
+    });
+    onChange(next);
+    toast.success(
+      mode === "copy" ? `Copied "${item.label}" to ${toCat.name}` : `Moved "${item.label}" to ${toCat.name}`,
+      { description: `${fromCat.name} › ${fromSub.name} → ${toCat.name} › ${UNSORTED_NAME}` }
     );
   };
 
@@ -757,8 +841,42 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 <div
                   key={c.id}
                   onClick={() => renamingId !== c.id && setActiveCat(c.id)}
-                  className={`group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-sm ${
-                    activeCat === c.id ? "bg-primary-earth/20 text-primary-earth" : "hover:bg-surface-hover"
+                  onDragOver={(e) => {
+                    // v1.3.1 — cross-category chip drop target.
+                    if (e.dataTransfer.types.includes("application/x-pps-sfitem")) {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                      if (crossDropCatId !== c.id) setCrossDropCatId(c.id);
+                    }
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      setCrossDropCatId((cur) => (cur === c.id ? null : cur));
+                    }
+                  }}
+                  onDrop={(e) => {
+                    setCrossDropCatId(null);
+                    const raw = e.dataTransfer.getData("application/x-pps-sfitem");
+                    if (!raw) return;
+                    e.preventDefault();
+                    try {
+                      const { fromSfId, itemId } = JSON.parse(raw);
+                      if (!fromSfId || !itemId) return;
+                      // The dragged chip always comes from the CURRENT pack
+                      // (only the current pack's sub-folders render chips), so
+                      // fromCatId = current.id at drag-time.
+                      const fromCatId = current?.id;
+                      if (!fromCatId || fromCatId === c.id) return; // no cross-move needed
+                      const mode = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                      crossMoveSubfolderItem(fromCatId, fromSfId, c.id, itemId, mode);
+                    } catch { /* ignore */ }
+                  }}
+                  className={`group flex items-center justify-between px-2 py-1.5 rounded cursor-pointer text-sm transition-colors ${
+                    activeCat === c.id
+                      ? "bg-primary-earth/20 text-primary-earth"
+                      : crossDropCatId === c.id
+                      ? "bg-primary-earth/15 ring-1 ring-primary-earth/60"
+                      : "hover:bg-surface-hover"
                   }`}
                   data-testid={`category-${c.id}`}
                 >
@@ -839,6 +957,40 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     >
                       <FileText size={12} /> Export as text
                     </button>
+                    {/* v1.3.1 — CASCADE cleanup helper: one-click deletion of every
+                        sub-folder in the CURRENT category that has 0 filename tags.
+                        Handy for post-v1.3.0 migration housekeeping where empty
+                        legacy folder-path buckets sit alongside populated ones. */}
+                    {(() => {
+                      const emptySubs = (current.subfolders || []).filter(
+                        (s) => (s.filenameItems?.length || 0) === 0
+                      );
+                      if (emptySubs.length === 0) return null;
+                      return (
+                        <button
+                          onClick={() => {
+                            const names = emptySubs.map((s) => `"${s.name}"`).join(", ");
+                            if (!window.confirm(
+                              `Delete ${emptySubs.length} empty sub-folder${emptySubs.length === 1 ? "" : "s"} from "${current.name}"?\n\n${names}\n\nThis only removes empty ones — nothing with filename tags will be touched.`
+                            )) return;
+                            const emptyIds = new Set(emptySubs.map((s) => s.id));
+                            updateCurrentPack((c) => ({
+                              ...c,
+                              subfolders: (c.subfolders || []).filter((s) => !emptyIds.has(s.id)),
+                            }));
+                            if (selectedSubId && emptyIds.has(selectedSubId)) setSelectedSubId(null);
+                            toast.success(`Deleted ${emptySubs.length} empty sub-folder${emptySubs.length === 1 ? "" : "s"}`, {
+                              description: names,
+                            });
+                          }}
+                          className="px-2.5 py-1 rounded bg-danger-earth/15 hover:bg-danger-earth/25 border border-danger-earth/50 text-danger-earth text-xs flex items-center gap-1"
+                          data-testid="delete-empty-subs-btn"
+                          title={`Deletes ${emptySubs.length} empty sub-folder${emptySubs.length === 1 ? "" : "s"} (0 tags each) in "${current.name}". Populated sub-folders are safe.`}
+                        >
+                          <Trash2 size={12} /> Delete empty ({emptySubs.length})
+                        </button>
+                      );
+                    })()}
                   </div>
                 </div>
 
@@ -1765,7 +1917,7 @@ function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext }) {
         dropOver ? "ring-2 ring-primary-earth bg-primary-earth/15 border-primary-earth" : "border-app"
       }`}
       data-testid={`subfolder-item-${sfId}-${it.id}`}
-      title={`${it.label}  ·  Drag to another sub-folder to move (Ctrl+drag to copy). Drop an icon here to swap. Right-click for menu.`}
+      title={`${it.label}  ·  Drag to another sub-folder to move (Ctrl+drag to copy) or onto another CATEGORY in the left rail to send it to that pack's "_Unsorted filenames". Drop an icon here to swap. Right-click for menu.`}
     >
       <span className="text-primary-earth shrink-0 flex items-center">
         <IconPreview item={it} size={12} />
