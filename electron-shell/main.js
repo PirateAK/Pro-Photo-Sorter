@@ -184,6 +184,28 @@ function createWindow() {
     : path.join(__dirname, 'build', 'index.html');
   win.loadFile(indexPath);
 
+  // v1.3.1 — Contact-sheet PDF preview: renderer calls window.open(blobUrl).
+  // Modern Electron blocks this by default; explicitly allow blob: URLs
+  // to pop a native BrowserWindow so Chromium's built-in PDF viewer
+  // renders the sheet. Everything else keeps the default deny to avoid
+  // stray popups from third-party links.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith('blob:')) {
+      return {
+        action: 'allow',
+        overrideBrowserWindowOptions: {
+          width: 900,
+          height: 1100,
+          title: 'Pro Photo Sorter — Preview',
+          backgroundColor: '#1a1715',
+          autoHideMenuBar: true,
+          webPreferences: { contextIsolation: true, nodeIntegration: false },
+        },
+      };
+    }
+    return { action: 'deny' };
+  });
+
   // Spellcheck right-click menu (v0.25.0)
   win.webContents.on('context-menu', (event, params) => {
     const menu = new Menu();
