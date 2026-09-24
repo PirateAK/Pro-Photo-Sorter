@@ -5,6 +5,10 @@
   "main": "main.js",
   "author": "Captain Kurt",
   "license": "UNLICENSED",
+  "scripts": {
+    "dist": "electron-builder --win --x64",
+    "pack": "electron-builder --dir"
+  },
   "dependencies": {
     "electron-updater": "^6.3.9"
   },
