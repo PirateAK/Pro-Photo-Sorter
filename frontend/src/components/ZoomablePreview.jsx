@@ -159,13 +159,24 @@ const ZoomablePreview = forwardRef(function ZoomablePreview(
           willChange: "transform",
         }}
       />
-      {/* Zoom badge — fades in on any change, out after 900ms */}
+      {/* Zoom badge — fades in on any change, out after 900ms.
+          v1.3.1: top-center placement stays clear of BOTH the Star Rate
+          overlay (top-right) and any other corner widgets, in every
+          theme. Colors bind to CSS vars so light + dark modes are both
+          readable — dark surface + light text in dark mode, white
+          surface + dark text in light mode. Orange border pops in
+          either theme. */}
       <div
-        className={`absolute top-3 right-3 z-30 pointer-events-none px-2 py-0.5 rounded-full bg-black/70 backdrop-blur border border-primary-earth/60 text-primary-earth text-[11px] font-mono transition-opacity duration-300 ${
+        className={`absolute top-3 left-1/2 -translate-x-1/2 z-50 pointer-events-none px-3 py-1 rounded-full backdrop-blur border-2 border-primary-earth text-[11px] font-mono font-semibold shadow-lg transition-opacity duration-300 ${
           badgeVisible ? "opacity-100" : "opacity-0"
         }`}
+        style={{
+          background: "color-mix(in srgb, var(--surface) 92%, transparent)",
+          color: "var(--text)",
+        }}
         data-testid="zoom-badge"
       >
+        <span className="text-primary-earth mr-1">⚲</span>
         {scale.toFixed(scale >= 10 ? 0 : 2)}×
       </div>
       {children}
