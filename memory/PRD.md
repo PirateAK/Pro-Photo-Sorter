@@ -37,6 +37,11 @@ here so nothing gets forgotten between now and v2 kickoff:
   window so grabbing an icon mid-sort doesn't require opening the Tag
   Manager. Foundation is done; just needs the popover UI + drag-source
   wiring. Deferred so it gets a proper design pass.
+- **Fancy Contact-Sheet Preview** — in-app PDF preview with page
+  navigation (mini-filmstrip pattern like the Image Editor), zoom,
+  and edit-in-place: swap thumbnails, drag to reorder before save.
+  v1.3.1 opens the PDF in Chromium's viewer window; v2/v3 gets the
+  full-fidelity in-app experience.
 - **Kurt-only Pack Creator Tool** — separate authoring app (or a
   hidden PPS mode gated by a Kurt-only flag) that lets Captain Kurt
   produce signed .pps-iconpack.json bundles for Gumroad customers with
