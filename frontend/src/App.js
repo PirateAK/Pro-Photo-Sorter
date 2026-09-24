@@ -1601,6 +1601,22 @@ export default function App() {
       return dt.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" });
     } catch { return null; }
   }, [exif]);
+  // v1.3.1 — machine-readable EXIF date pieces for the "Load EXIF" button in
+  // the Date-stamp toolbox. `null` when the current photo has no EXIF date.
+  const exifDateParts = useMemo(() => {
+    const d = exif?.DateTimeOriginal || exif?.CreateDate;
+    if (!d) return null;
+    try {
+      const dt = d instanceof Date ? d : new Date(d);
+      if (isNaN(dt.getTime())) return null;
+      const MONTHS_SHORT = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+      return {
+        month: MONTHS_SHORT[dt.getMonth()],
+        day:   String(dt.getDate()).padStart(2, "0"),
+        year:  String(dt.getFullYear()),
+      };
+    } catch { return null; }
+  }, [exif]);
   const exifLoc = useMemo(() => {
     if (exif?.latitude != null && exif?.longitude != null) {
       return `${exif.latitude.toFixed(4)}, ${exif.longitude.toFixed(4)}`;
@@ -2148,6 +2164,7 @@ export default function App() {
             <DateTagDropdowns
               disabled={!currentImage}
               isApplied={dateStampApplied}
+              exifDateParts={exifDateParts}
               onApply={(labels) => {
                 // Ensure only ONE date stamp per photo — clear any previous
                 // date stamp chips first (stable palette ids let us find them),
