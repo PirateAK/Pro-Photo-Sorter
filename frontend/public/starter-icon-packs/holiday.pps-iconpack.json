@@ -1,0 +1,59 @@
+{
+  "kind": "pps-iconpack",
+  "version": 1,
+  "scope": "global",
+  "sourceCategoryName": null,
+  "exportedAt": "2026-09-24T04:36:55.731Z",
+  "metadata": {
+    "builtin": true,
+    "slug": "holiday",
+    "displayName": "Holiday",
+    "description": "Seasonal celebrations across the year."
+  },
+  "images": [
+    {
+      "name": "Christmas Tree",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoQ8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Pumpkin",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoM8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Turkey",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpoM8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Fireworks",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoY8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Menorah",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCflY48L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Gift",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoE8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Party",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjok8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Balloon",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjog8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Fourth",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfh7rwn4e4PC90ZXh0Pjwvc3ZnPg=="
+    },
+    {
+      "name": "Egg",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpZo8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Heart",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKdpO+4jzwvdGV4dD48L3N2Zz4="
+    }
+  ]
+}

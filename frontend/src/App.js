@@ -92,6 +92,12 @@ function usePersistedState() {
         ...s,
         exifOverrides: typeof updater === "function" ? updater(s.exifOverrides || {}) : updater,
       })),
+    // v1.3.1 — Custom Images library
+    setCustomImages: (updater) =>
+      persist((s) => ({
+        ...s,
+        customImages: typeof updater === "function" ? updater(s.customImages || []) : updater,
+      })),
   };
 }
 
@@ -120,8 +126,8 @@ function composeDestFolderParts(activePack, folderPartsFromTemplate, activeSub) 
 }
 
 export default function App() {
-  const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides } = usePersistedState();
-  const { categories, settings, ratings, looks = [], exifOverrides = {} } = state;
+  const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides, setCustomImages } = usePersistedState();
+  const { categories, settings, ratings, looks = [], exifOverrides = {}, customImages = [] } = state;
   // Per-bar category memory (Iter 12) — init from settings, fallback to first category
   const [foldersCatId, setFoldersCatIdRaw] = useState(() =>
     (settings.foldersCatId && categories.find((c) => c.id === settings.foldersCatId))
@@ -2747,6 +2753,8 @@ export default function App() {
         onClose={() => setShowCatMgr(false)}
         categories={categories}
         onChange={setCategories}
+        customImages={customImages}
+        onCustomImagesChange={setCustomImages}
       />
 
       <SettingsModal

@@ -3,23 +3,67 @@
 ## Original Problem Statement
 A professional photographer needs software to sort thousands of digital photos.
 
-## v1.3.1 — 2026-02-23 · Housekeeping (Repeat-tag auto-disable + toolbar split)
-- ✅ **Repeat last tags auto-disable** — button now greys out (with friendly
-  tooltip: *"Nothing new to repeat — advance to the next photo"*) whenever
-  the user is still parked on the just-stored photo. Fixes Kurt's report
-  that the button kept re-firing on the last image of a filmstrip. Also
-  keeps existing disable-when-no-snapshot behavior. R key shortcut is
-  guarded with a matching toast.
-- ✅ **New state** `lastStoredPhotoName` set in `storeCurrent` alongside
-  `setLastAppliedTags`. Naturally re-enables the moment the user clicks
-  a different filmstrip thumb (React handles it — no manual reset).
-- ✅ **Top toolbar split into two rows**: Row 1 = EXIF (Date · Location ·
-  Cam) on its own line; Row 2 = Edit → Auto-Rate → Rename → Sheet → Tags
-  → Batch → Search → Cull → Theme → Settings → Help → Date-stamp. Same
-  font/size as before; only vertical layout changed so the EXIF strip
-  has breathing room ("insufficient space for the next line" fix).
-- ✅ Regression tests: `frontend/tests/repeatDisable.test.mjs` (5/5).
-  Full suite: 58/58 across 7 files.
+## v1.3.1 — 2026-02-23 · Housekeeping + cross-cat drag + Custom Images Library
+- ✅ **Repeat last tags auto-disable** — button greys out with friendly
+  tooltip when user is still parked on the just-stored photo.
+- ✅ **Top toolbar split into two rows** — EXIF · Edit → Help.
+- ✅ **CRITICAL bootRestore fix** — per-key restore actually runs when
+  license carries over but state is wiped.
+- ✅ **DevTools re-enabled** — F12 / Ctrl+Shift+I toggle DevTools.
+- ✅ **"Restore tags from Safety-Backup" button** in Settings.
+- ✅ **Cross-Category chip drag** — drag any filename chip onto ANY
+  category row in the left rail.
+- ✅ **Cleanup helper** — "Delete empty (N)" button in each Category
+  header.
+- ✅ **Zoom badge polish** — top-center + theme-aware colors.
+- ✅ **Date tools grouped** — Month/Day/Year selects + Apply button
+  in a tinted pill.
+- ✅ **Custom Images Library** — right-rail Icon Holders with Basic
+  Icons + Custom Images boxes. Global + Per-Category scopes. Bulk
+  import, drag-to-swap, click-to-arm. Export/Import as
+  `.pps-iconpack.json` for customer distribution via Gumroad.
+- ✅ **Six bundled Starter Icon Packs** — Wildlife, Wedding, Sports,
+  Holiday, Family Portrait, Nature/Landscape. 65 total icons
+  rendered as SVG-emoji data URLs (works offline, sharp at any size).
+  New "Starter packs" button in Custom Images box opens a browser
+  modal; one-click installs to Global scope. Files live in
+  `frontend/public/starter-icon-packs/` and ship inside the .exe.
+- ✅ Regression tests: **94/94 passing** across 10 files.
+
+## v2 Backlog (moved from v1.3.x) — 2026-02-23 checkpoint
+Deferred to v2.0 FLAGSHIP build per Kurt's request. Bundling these
+here so nothing gets forgotten between now and v2 kickoff:
+- **Main Window Icon Palette Sync** — compact popover in the main
+  window so grabbing an icon mid-sort doesn't require opening the Tag
+  Manager. Foundation is done; just needs the popover UI + drag-source
+  wiring. Deferred so it gets a proper design pass.
+- **Kurt-only Pack Creator Tool** — separate authoring app (or a
+  hidden PPS mode gated by a Kurt-only flag) that lets Captain Kurt
+  produce signed .pps-iconpack.json bundles for Gumroad customers with
+  author + version + license metadata baked in. Kept OUT of the
+  public v1 build because every buyer would see a "sign your pack"
+  UI they don't need — Kurt is the sole content creator.
+- **Custom Pack Screenshot Tool** — one-click PNG mosaic of the
+  current library, ready for Gumroad cover art. Pairs with the
+  Pack Creator Tool above.
+- **Multi-Source Roots** — open several source folders stacked in the
+  left rail for cross-shoot sessions.
+- **XMP Sidecars** — export metadata sidecars so stars/tags round-trip
+  with Lightroom.
+- **Native RAW support** in filmstrip + viewer (CR2 / NEF / ARW / DNG).
+- **Face Recognition AI Sort** — face-api.js, the v2 flagship feature.
+- **EXIF Write-Back + full EXIF Editor** window (ExifTool.exe bundle).
+- **Wireless camera FTP-in-app** & **Watch-folder mode**.
+- **Sunrise (blues/grays) + Sunset (golden)** color themes with
+  matching icons.
+- **Editor Save / Aspect Ratio** — hold edited image in state so user
+  can tag before storing (currently auto-writes to /Unsorted).
+- **Preserve tags across editor round-trip.**
+- **Hover-Zoom preview on filmstrip thumbs.**
+- **First-Run Welcome Modal / In-App Starter-Pack Browser polish.**
+- **Manual "People" Tag Pack** — hand-typed names, drag-onto-photo
+  (stepping stone for v2 face recognition).
+- **Print-services integration** (v3 "Super PPS" goal).
 
 ## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
 - ✅ Tag Manager reshaped from parallel two-list model to a cascading

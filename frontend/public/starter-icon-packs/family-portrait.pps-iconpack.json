@@ -1,0 +1,55 @@
+{
+  "kind": "pps-iconpack",
+  "version": 1,
+  "scope": "global",
+  "sourceCategoryName": null,
+  "exportedAt": "2026-09-24T04:36:55.731Z",
+  "metadata": {
+    "builtin": true,
+    "slug": "family-portrait",
+    "displayName": "Family Portrait",
+    "description": "Generations — from babies to grandparents."
+  },
+  "images": [
+    {
+      "name": "Baby",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkbY8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Boy",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkaY8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Girl",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkac8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Man",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkag8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Woman",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkak8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Grandpa",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkbQ8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Grandma",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkbU8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Family",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkajigI3wn5Gp4oCN8J+Rp+KAjfCfkaY8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Dog",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkJU8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Cat",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkIg8L3RleHQ+PC9zdmc+"
+    }
+  ]
+}

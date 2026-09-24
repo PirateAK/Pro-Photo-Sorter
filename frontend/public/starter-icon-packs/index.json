@@ -1,0 +1,155 @@
+{
+  "version": 1,
+  "packs": [
+    {
+      "slug": "wildlife",
+      "displayName": "Wildlife",
+      "description": "Animals in the wild — birds, mammals, marine.",
+      "filename": "wildlife.pps-iconpack.json",
+      "iconCount": 12,
+      "preview": [
+        {
+          "name": "Bear",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkLs8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Deer",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpow8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Wolf",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkLo8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Fox",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpoo8L3RleHQ+PC9zdmc+"
+        }
+      ]
+    },
+    {
+      "slug": "wedding",
+      "displayName": "Wedding",
+      "description": "Ceremony, reception, portrait moments.",
+      "filename": "wedding.pps-iconpack.json",
+      "iconCount": 10,
+      "preview": [
+        {
+          "name": "Rings",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfko08L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Cake",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoI8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Toast",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpYI8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Bride",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkbA8L3RleHQ+PC9zdmc+"
+        }
+      ]
+    },
+    {
+      "slug": "sports",
+      "displayName": "Sports",
+      "description": "Team, action, celebration.",
+      "filename": "sports.pps-iconpack.json",
+      "iconCount": 10,
+      "preview": [
+        {
+          "name": "Baseball",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKavjwvdGV4dD48L3N2Zz4="
+        },
+        {
+          "name": "Football",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfj4g8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Basketball",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfj4A8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Soccer",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKavTwvdGV4dD48L3N2Zz4="
+        }
+      ]
+    },
+    {
+      "slug": "holiday",
+      "displayName": "Holiday",
+      "description": "Seasonal celebrations across the year.",
+      "filename": "holiday.pps-iconpack.json",
+      "iconCount": 11,
+      "preview": [
+        {
+          "name": "Christmas Tree",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoQ8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Pumpkin",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoM8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Turkey",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpoM8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Fireworks",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoY8L3RleHQ+PC9zdmc+"
+        }
+      ]
+    },
+    {
+      "slug": "family-portrait",
+      "displayName": "Family Portrait",
+      "description": "Generations — from babies to grandparents.",
+      "filename": "family-portrait.pps-iconpack.json",
+      "iconCount": 10,
+      "preview": [
+        {
+          "name": "Baby",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkbY8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Boy",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkaY8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Girl",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkac8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Man",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkag8L3RleHQ+PC9zdmc+"
+        }
+      ]
+    },
+    {
+      "slug": "nature-landscape",
+      "displayName": "Nature & Landscape",
+      "description": "Land, water, sky — the great outdoors.",
+      "filename": "nature-landscape.pps-iconpack.json",
+      "iconCount": 12,
+      "preview": [
+        {
+          "name": "Tree",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjLI8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Mountain",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKbsO+4jzwvdGV4dD48L3N2Zz4="
+        },
+        {
+          "name": "Wave",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIo8L3RleHQ+PC9zdmc+"
+        },
+        {
+          "name": "Sunrise",
+          "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIU8L3RleHQ+PC9zdmc+"
+        }
+      ]
+    }
+  ]
+}

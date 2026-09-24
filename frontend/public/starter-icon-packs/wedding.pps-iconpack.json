@@ -1,0 +1,55 @@
+{
+  "kind": "pps-iconpack",
+  "version": 1,
+  "scope": "global",
+  "sourceCategoryName": null,
+  "exportedAt": "2026-09-24T04:36:55.731Z",
+  "metadata": {
+    "builtin": true,
+    "slug": "wedding",
+    "displayName": "Wedding",
+    "description": "Ceremony, reception, portrait moments."
+  },
+  "images": [
+    {
+      "name": "Rings",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfko08L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Cake",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjoI8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Toast",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpYI8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Bride",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkbA8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Groom",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfpLU8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Bouquet",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkpA8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Church",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKbqjwvdGV4dD48L3N2Zz4="
+    },
+    {
+      "name": "Kiss",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkos8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Dance",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfkoM8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Dove",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCflYrvuI88L3RleHQ+PC9zdmc+"
+    }
+  ]
+}

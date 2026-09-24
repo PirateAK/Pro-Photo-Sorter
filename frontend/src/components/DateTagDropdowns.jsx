@@ -84,7 +84,14 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
     : "px-2 py-1 rounded bg-primary-earth/15 hover:bg-primary-earth/30 border border-primary-earth/50 text-primary-earth text-xs flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed";
 
   return (
-    <div className="flex items-center gap-1 shrink-0" data-testid="date-tag-dropdowns">
+    <div
+      className="flex items-center gap-1 shrink-0 pane rounded-md border border-primary-earth/30 bg-primary-earth/5 px-1.5 py-1"
+      data-testid="date-tag-dropdowns"
+      title="Date-stamp toolset — pick a month/day/year, then Apply to stamp this photo"
+    >
+      <span className="text-[10px] uppercase tracking-widest font-heading text-primary-earth px-1 shrink-0" aria-hidden="true">
+        Date
+      </span>
       <select
         value={month}
         onChange={(e) => setMonth(e.target.value)}
