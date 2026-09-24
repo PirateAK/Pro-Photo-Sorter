@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { CalendarPlus, CalendarMinus } from "lucide-react";
+import { CalendarPlus, CalendarMinus, Camera } from "lucide-react";
 
 /**
  * DateTagDropdowns (v1.2.9) — compact Month/Day/Year dropdowns + Apply button
@@ -52,7 +52,7 @@ function todayParts() {
   };
 }
 
-export default function DateTagDropdowns({ isApplied = false, disabled, onApply, onRemove }) {
+export default function DateTagDropdowns({ isApplied = false, disabled, onApply, onRemove, exifDateParts = null }) {
   // Default to today on mount. We deliberately do NOT re-sync when the
   // active image changes: Kurt wants the picker to hold his last choice
   // until he changes it, not shift around with each thumbnail.
@@ -62,6 +62,23 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
   const [year, setYear] = useState(initial.year);
 
   const nothingSelected = !month && !day && !year;
+
+  // v1.3.1 — Load EXIF button. Grabs the machine-readable date parts
+  // computed upstream from the photo's EXIF DateTimeOriginal (or
+  // CreateDate fallback) and drops them straight into the M/D/Y
+  // selects. Handy when the photographer wants the original shoot
+  // date in the filename instead of the picker's default of "today".
+  const loadExif = () => {
+    if (!exifDateParts) return;
+    setMonth(exifDateParts.month);
+    setDay(exifDateParts.day);
+    setYear(exifDateParts.year);
+  };
+  const canLoadExif = !!exifDateParts && !disabled;
+  const exifMatches = exifDateParts &&
+    month === exifDateParts.month &&
+    day   === exifDateParts.day &&
+    year  === exifDateParts.year;
 
   const handleClick = () => {
     if (isApplied) {
@@ -92,6 +109,29 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
       <span className="text-[10px] uppercase tracking-widest font-heading text-primary-earth px-1 shrink-0" aria-hidden="true">
         Date
       </span>
+      {/* v1.3.1 — one-click "Load EXIF" that fills M/D/Y from the current
+          photo's shoot date. Hides when no photo is loaded / no EXIF
+          date is available. Highlights orange when the current picker
+          values already match the EXIF date. */}
+      <button
+        onClick={loadExif}
+        disabled={!canLoadExif}
+        className={`px-1.5 py-1 rounded text-xs flex items-center gap-1 border transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+          exifMatches
+            ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
+            : "bg-app hover:bg-surface-hover border-app text-app"
+        }`}
+        data-testid="date-tag-load-exif"
+        title={
+          !exifDateParts
+            ? "This photo has no EXIF date"
+            : exifMatches
+            ? `Picker already set to EXIF date: ${exifDateParts.month} ${exifDateParts.day}, ${exifDateParts.year}`
+            : `Load EXIF date: ${exifDateParts.month} ${exifDateParts.day}, ${exifDateParts.year}`
+        }
+      >
+        <Camera size={11} /> EXIF
+      </button>
       <select
         value={month}
         onChange={(e) => setMonth(e.target.value)}
