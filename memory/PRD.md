@@ -3,37 +3,47 @@
 ## Original Problem Statement
 A professional photographer needs software to sort thousands of digital photos.
 
-## v1.3.1 — 2026-02-23 · Housekeeping + cross-category drag + safety-restore
+## v1.3.1 — 2026-02-23 · Housekeeping + cross-cat drag + Custom Images Library
 - ✅ **Repeat last tags auto-disable** — button greys out with friendly
   tooltip when user is still parked on the just-stored photo (Kurt's
   last-image-of-filmstrip loop). R shortcut guarded with matching toast.
-- ✅ **Top toolbar split into two rows** — EXIF (Date · Location · Cam) on
-  its own line; Edit → Help + Date-stamp on the row below. Fixes
+- ✅ **Top toolbar split into two rows** — EXIF (Date · Location · Cam)
+  on its own line; Edit → Help + Date-stamp on the row below. Fixes
   "insufficient space for the next line."
-- ✅ **CRITICAL bootRestore fix** — Kurt's tags appeared wiped on v1.3.1
-  install because bootRestore gated the early-return on `hasState ||
-  hasLicense`; his license carried over, state key was empty, safety
-  mirror on disk never fired. Fixed to `hasState && hasLicense` so
-  per-key restore actually runs. New source-level regression test
-  (bootRestoreSource.test.mjs) pins the operator so the divergence
-  between test and prod can't happen again.
+- ✅ **CRITICAL bootRestore fix** — `hasState || hasLicense` → `&&` so
+  per-key restore actually runs when license carries over but state is
+  wiped. New source-level regression test pins the operator.
 - ✅ **DevTools re-enabled** — F12 / Ctrl+Shift+I toggle DevTools even
-  though the menu bar stays hidden (autoHideMenuBar + accelerator-only
-  menu). Previously Menu.setApplicationMenu(null) also killed the
-  shortcut.
-- ✅ **"Restore tags from Safety-Backup" button** — new lifebuoy button in
-  Settings → License → Safety-Backup pane. Reads latest.json, validates,
-  overwrites state, reloads. Discoverable recovery hatch.
-- ✅ **Cross-Category chip drag** (deferred from v1.3.0) — drag any
-  filename chip onto ANY category row in the left rail to move it into
-  that pack's `_Unsorted filenames` sub-folder (created on the fly).
-  Ctrl+drag = copy. Row highlights orange during hover. Duplicate-label
-  guard. 15-assertion test suite.
+  with the menu bar hidden.
+- ✅ **"Restore tags from Safety-Backup" button** — discoverable recovery
+  hatch in Settings → License → Safety-Backup pane.
+- ✅ **Cross-Category chip drag** — drag any filename chip onto ANY
+  category row in the left rail to move it into that pack's
+  `_Unsorted filenames`. Ctrl+drag = copy. Duplicate-label guard.
 - ✅ **Cleanup helper** — "Delete empty (N)" button in each Category
-  header. Only appears when N ≥ 1. Confirms + bulk-removes every
-  sub-folder with 0 filename tags in one click. Populated sub-folders
-  are never touched. Perfect for post-v1.3.0-migration housekeeping.
-- ✅ Regression tests: **73/73 passing** across 9 files.
+  header. One-click bulk-removes every empty sub-folder in that pack.
+- ✅ **Zoom badge polish** — moved to top-center of viewer with
+  theme-aware colors (dark bg + light text in dark mode, white bg +
+  dark text in light mode). No more corner conflicts.
+- ✅ **Date tools grouped** — Month/Day/Year selects + Apply button
+  wrapped in a tinted pill with 'DATE' label. Visually separated from
+  Edit → Help button strip on row 2.
+- ✅ **Custom Images Library** (Kurt's "A+1c+2a" pick):
+  • New right rail in Tag Manager with two vertical boxes: **Basic
+    Icons** (the 60+ lucide built-ins brought back after v1.3.0
+    stripped them) and **Custom Images** (persistent PNG library).
+  • Two scopes: Global (usable across every category) and
+    Per-Category (bound to the active pack).
+  • Bulk-import multi-select PNG/JPG/WEBP → auto-downscaled to
+    128×128 → stored in state.customImages so the safety-mirror
+    protects them.
+  • Every icon supports both drag-to-swap AND click-to-arm (orange
+    ring + 🎯 hint → next chip click applies; Esc to disarm).
+  • Sub-folder rows AND filename chips both accept armed clicks.
+  • **Shareable icon packs**: Export pack → `.pps-iconpack.json`
+    (human-readable, tiny) → Import pack merges back with dedup by
+    dataUrl. Perfect for handing pre-built libraries to customers.
+- ✅ Regression tests: **94/94 passing** across 10 files.
 
 ## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
 - ✅ Tag Manager reshaped from parallel two-list model to a cascading
