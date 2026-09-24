@@ -5,45 +5,56 @@ A professional photographer needs software to sort thousands of digital photos.
 
 ## v1.3.1 — 2026-02-23 · Housekeeping + cross-cat drag + Custom Images Library
 - ✅ **Repeat last tags auto-disable** — button greys out with friendly
-  tooltip when user is still parked on the just-stored photo (Kurt's
-  last-image-of-filmstrip loop). R shortcut guarded with matching toast.
-- ✅ **Top toolbar split into two rows** — EXIF (Date · Location · Cam)
-  on its own line; Edit → Help + Date-stamp on the row below. Fixes
-  "insufficient space for the next line."
-- ✅ **CRITICAL bootRestore fix** — `hasState || hasLicense` → `&&` so
-  per-key restore actually runs when license carries over but state is
-  wiped. New source-level regression test pins the operator.
-- ✅ **DevTools re-enabled** — F12 / Ctrl+Shift+I toggle DevTools even
-  with the menu bar hidden.
-- ✅ **"Restore tags from Safety-Backup" button** — discoverable recovery
-  hatch in Settings → License → Safety-Backup pane.
+  tooltip when user is still parked on the just-stored photo.
+- ✅ **Top toolbar split into two rows** — EXIF · Edit → Help.
+- ✅ **CRITICAL bootRestore fix** — per-key restore actually runs when
+  license carries over but state is wiped.
+- ✅ **DevTools re-enabled** — F12 / Ctrl+Shift+I toggle DevTools.
+- ✅ **"Restore tags from Safety-Backup" button** in Settings.
 - ✅ **Cross-Category chip drag** — drag any filename chip onto ANY
-  category row in the left rail to move it into that pack's
-  `_Unsorted filenames`. Ctrl+drag = copy. Duplicate-label guard.
+  category row in the left rail.
 - ✅ **Cleanup helper** — "Delete empty (N)" button in each Category
-  header. One-click bulk-removes every empty sub-folder in that pack.
-- ✅ **Zoom badge polish** — moved to top-center of viewer with
-  theme-aware colors (dark bg + light text in dark mode, white bg +
-  dark text in light mode). No more corner conflicts.
+  header.
+- ✅ **Zoom badge polish** — top-center + theme-aware colors.
 - ✅ **Date tools grouped** — Month/Day/Year selects + Apply button
-  wrapped in a tinted pill with 'DATE' label. Visually separated from
-  Edit → Help button strip on row 2.
-- ✅ **Custom Images Library** (Kurt's "A+1c+2a" pick):
-  • New right rail in Tag Manager with two vertical boxes: **Basic
-    Icons** (the 60+ lucide built-ins brought back after v1.3.0
-    stripped them) and **Custom Images** (persistent PNG library).
-  • Two scopes: Global (usable across every category) and
-    Per-Category (bound to the active pack).
-  • Bulk-import multi-select PNG/JPG/WEBP → auto-downscaled to
-    128×128 → stored in state.customImages so the safety-mirror
-    protects them.
-  • Every icon supports both drag-to-swap AND click-to-arm (orange
-    ring + 🎯 hint → next chip click applies; Esc to disarm).
-  • Sub-folder rows AND filename chips both accept armed clicks.
-  • **Shareable icon packs**: Export pack → `.pps-iconpack.json`
-    (human-readable, tiny) → Import pack merges back with dedup by
-    dataUrl. Perfect for handing pre-built libraries to customers.
+  in a tinted pill.
+- ✅ **Custom Images Library** — right-rail Icon Holders with Basic
+  Icons + Custom Images boxes. Global + Per-Category scopes. Bulk
+  import, drag-to-swap, click-to-arm. Export/Import as
+  `.pps-iconpack.json` for customer distribution via Gumroad.
+- ✅ **Six bundled Starter Icon Packs** — Wildlife, Wedding, Sports,
+  Holiday, Family Portrait, Nature/Landscape. 65 total icons
+  rendered as SVG-emoji data URLs (works offline, sharp at any size).
+  New "Starter packs" button in Custom Images box opens a browser
+  modal; one-click installs to Global scope. Files live in
+  `frontend/public/starter-icon-packs/` and ship inside the .exe.
 - ✅ Regression tests: **94/94 passing** across 10 files.
+
+## v2 Backlog (moved from v1.3.x) — 2026-02-23 checkpoint
+Deferred to v2.0 FLAGSHIP build per Kurt's request. Bundling these
+here so nothing gets forgotten between now and v2 kickoff:
+- **Main Window Icon Palette Sync** — surface the Custom Images
+  library in the main-window icon picker (compact popover) so grabbing
+  an icon mid-sort doesn't require opening the Tag Manager. Foundation
+  is done; just needs the popover UI + drag-source wiring.
+- **Multi-Source Roots** — open several source folders stacked in the
+  left rail for cross-shoot sessions.
+- **XMP Sidecars** — export metadata sidecars so stars/tags round-trip
+  with Lightroom.
+- **Native RAW support** in filmstrip + viewer (CR2 / NEF / ARW / DNG).
+- **Face Recognition AI Sort** — face-api.js, the v2 flagship feature.
+- **EXIF Write-Back + full EXIF Editor** window (ExifTool.exe bundle).
+- **Wireless camera FTP-in-app** & **Watch-folder mode**.
+- **Sunrise (blues/grays) + Sunset (golden)** color themes with
+  matching icons.
+- **Editor Save / Aspect Ratio** — hold edited image in state so user
+  can tag before storing (currently auto-writes to /Unsorted).
+- **Preserve tags across editor round-trip.**
+- **Hover-Zoom preview on filmstrip thumbs.**
+- **First-Run Welcome Modal / In-App Starter-Pack Browser polish.**
+- **Manual "People" Tag Pack** — hand-typed names, drag-onto-photo
+  (stepping stone for v2 face recognition).
+- **Print-services integration** (v3 "Super PPS" goal).
 
 ## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
 - ✅ Tag Manager reshaped from parallel two-list model to a cascading

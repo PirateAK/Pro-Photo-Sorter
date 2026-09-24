@@ -1,0 +1,63 @@
+{
+  "kind": "pps-iconpack",
+  "version": 1,
+  "scope": "global",
+  "sourceCategoryName": null,
+  "exportedAt": "2026-09-24T04:36:55.731Z",
+  "metadata": {
+    "builtin": true,
+    "slug": "nature-landscape",
+    "displayName": "Nature & Landscape",
+    "description": "Land, water, sky — the great outdoors."
+  },
+  "images": [
+    {
+      "name": "Tree",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjLI8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Mountain",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKbsO+4jzwvdGV4dD48L3N2Zz4="
+    },
+    {
+      "name": "Wave",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIo8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Sunrise",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIU8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Sunset",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIc8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Flower",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjLg8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Beach",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfj5bvuI88L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Desert",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfj5zvuI88L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Volcano",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIs8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Rainbow",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPvCfjIg8L3RleHQ+PC9zdmc+"
+    },
+    {
+      "name": "Snow",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKdhO+4jzwvdGV4dD48L3N2Zz4="
+    },
+    {
+      "name": "Star",
+      "dataUrl": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48dGV4dCB4PSI2NCIgeT0iOTYiIGZvbnQtc2l6ZT0iOTYiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtZmFtaWx5PSJTZWdvZSBVSSBFbW9qaSwgQXBwbGUgQ29sb3IgRW1vamksIE5vdG8gQ29sb3IgRW1vamksIEVtb2ppT25lIENvbG9yLCBUd2Vtb2ppIE1vemlsbGEsIHNhbnMtc2VyaWYiPuKtkDwvdGV4dD48L3N2Zz4="
+    }
+  ]
+}

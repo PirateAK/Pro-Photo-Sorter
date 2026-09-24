@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import * as Lucide from "lucide-react";
-import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste, ChevronDown, ChevronRight, ArrowUp, ArrowDown, FolderPlus, Copy } from "lucide-react";
+import { Plus, Trash2, X, Image as ImageIcon, Palette, Save, Download, Upload, Pencil, Package, FolderTree, Tag as TagIcon, FileText, ClipboardPaste, ChevronDown, ChevronRight, ArrowUp, ArrowDown, FolderPlus, Copy, Sparkles } from "lucide-react";
 import JSZip from "jszip";
 import { uid } from "../lib/storage";
 import { totalCount } from "../lib/tags";
@@ -2179,6 +2179,9 @@ function TagChipIcon({ item }) {
  */
 function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, activeCatName, armedIcon, onArmIcon }) {
   const [libraryScope, setLibraryScope] = useState("global"); // "global" | "category"
+  const [starterOpen, setStarterOpen] = useState(false);
+  const [starterManifest, setStarterManifest] = useState(null);
+  const [starterLoading, setStarterLoading] = useState(false);
   const libraryFileRef = useRef(null);
   const libraryImportPackRef = useRef(null);
 
@@ -2248,6 +2251,64 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
     if (!onCustomImagesChange) return;
     onCustomImagesChange((prev) => (prev || []).filter((img) => img.id !== id));
     toast(`Removed "${name}" from library`);
+  };
+
+  // v1.3.1 — Starter icon packs bundled with the app in
+  //   frontend/public/starter-icon-packs/
+  // Each is a normal .pps-iconpack.json — same format Kurt exports for
+  // his customers. index.json lists them + provides preview icons.
+  const openStarterBrowser = async () => {
+    setStarterOpen(true);
+    if (starterManifest) return;
+    setStarterLoading(true);
+    try {
+      const res = await fetch("./starter-icon-packs/index.json", { cache: "no-cache" });
+      const data = await res.json();
+      setStarterManifest(data);
+    } catch (e) {
+      toast.error("Couldn't load starter packs", { description: e.message });
+    } finally {
+      setStarterLoading(false);
+    }
+  };
+  const installStarterPack = async (entry) => {
+    if (!onCustomImagesChange) return;
+    try {
+      const res = await fetch(`./starter-icon-packs/${entry.filename}`, { cache: "no-cache" });
+      const payload = await res.json();
+      if (payload.kind !== "pps-iconpack" || !Array.isArray(payload.images)) {
+        throw new Error("Bundled pack has invalid shape.");
+      }
+      // Starter packs always install to Global scope so they're usable
+      // across every category (Kurt's ask).
+      const existingDataUrls = new Set(
+        customImages.filter((img) => (img.catId ?? null) === null).map((img) => img.dataUrl)
+      );
+      const additions = [];
+      let skipped = 0;
+      for (const im of payload.images) {
+        if (!im?.dataUrl) { skipped++; continue; }
+        if (existingDataUrls.has(im.dataUrl)) { skipped++; continue; }
+        additions.push({
+          id: uid("cim"),
+          name: String(im.name || "Untitled").slice(0, 40),
+          catId: null,
+          dataUrl: im.dataUrl,
+        });
+        existingDataUrls.add(im.dataUrl);
+      }
+      if (additions.length === 0) {
+        toast(`${entry.displayName} already installed`, { description: `${skipped} icon${skipped === 1 ? "" : "s"} already in your Global library.` });
+        return;
+      }
+      onCustomImagesChange((prev) => [...(prev || []), ...additions]);
+      toast.success(
+        `Installed ${entry.displayName} · ${additions.length} icon${additions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} duplicate${skipped === 1 ? "" : "s"} skipped)` : ""}`,
+        { description: "Scope: Global — usable across every category" }
+      );
+    } catch (e) {
+      toast.error(`Install failed: ${entry.displayName}`, { description: e.message });
+    }
   };
 
   // v1.3.1 — Export the currently-visible slice of the library as a
@@ -2457,6 +2518,14 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
               >
                 <Download size={10} /> Export pack
               </button>
+              <button
+                onClick={openStarterBrowser}
+                className="px-1.5 py-0.5 rounded bg-primary-earth/15 hover:bg-primary-earth/30 border border-primary-earth/40 text-primary-earth text-[10px] flex items-center gap-1"
+                data-testid="icon-picker-lib-starter-browse"
+                title="Browse free starter icon packs bundled with Pro Photo Sorter — one-click install to your Global library"
+              >
+                <Sparkles size={10} /> Starter packs
+              </button>
             </div>
           </div>
           {libraryVisible.length === 0 ? (
@@ -2502,6 +2571,79 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
           )}
         </div>
       </div>
+
+      {/* v1.3.1 — Starter icon-pack browser modal */}
+      {starterOpen && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/60 z-40"
+            onClick={() => setStarterOpen(false)}
+            data-testid="starter-pack-backdrop"
+          />
+          <div
+            className="fixed inset-x-8 top-16 bottom-16 z-50 pane rounded-xl shadow-2xl flex flex-col overflow-hidden"
+            data-testid="starter-pack-modal"
+          >
+            <div className="px-5 py-3 border-b border-app flex items-center gap-2 shrink-0">
+              <Sparkles size={16} className="text-primary-earth" />
+              <h3 className="font-heading text-lg">Starter Icon Packs</h3>
+              <span className="text-xs text-dim">
+                {starterManifest ? `${starterManifest.packs.length} bundled packs · install to Global` : ""}
+              </span>
+              <button
+                onClick={() => setStarterOpen(false)}
+                className="ml-auto w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover"
+                data-testid="starter-pack-close"
+                title="Close"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-5">
+              {starterLoading ? (
+                <p className="text-center text-dim py-10">Loading…</p>
+              ) : !starterManifest ? (
+                <p className="text-center text-dim py-10">
+                  Couldn't load bundled starter packs. Check that <code className="font-mono">starter-icon-packs/index.json</code> shipped with your build.
+                </p>
+              ) : (
+                <div className="grid gap-4" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))" }}>
+                  {starterManifest.packs.map((p) => (
+                    <div
+                      key={p.slug}
+                      className="pane rounded-lg border border-app hover:border-primary-earth p-3 flex flex-col gap-2 transition-colors"
+                      data-testid={`starter-pack-card-${p.slug}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-heading font-semibold">{p.displayName}</span>
+                        <span className="text-[10px] text-dim font-mono ml-auto">{p.iconCount}</span>
+                      </div>
+                      <p className="text-[11px] text-dim leading-snug">{p.description}</p>
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {(p.preview || []).map((im, i) => (
+                          <div key={i} className="w-9 h-9 rounded bg-surface border border-app flex items-center justify-center p-1" title={im.name}>
+                            <img src={im.dataUrl} alt={im.name} className="w-full h-full object-contain" draggable={false} />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => installStarterPack(p)}
+                        className="mt-1 px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-semibold flex items-center justify-center gap-1 hover:opacity-90"
+                        data-testid={`starter-pack-install-${p.slug}`}
+                      >
+                        <Download size={11} /> Install to Global
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="px-5 py-3 border-t border-app text-[11px] text-dim shrink-0">
+              Have your own icon pack? Use <strong>Import pack</strong> in the Custom Images box to load any <code className="font-mono">.pps-iconpack.json</code> file.
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
