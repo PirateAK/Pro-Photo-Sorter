@@ -33,10 +33,19 @@ A professional photographer needs software to sort thousands of digital photos.
 ## v2 Backlog (moved from v1.3.x) — 2026-02-23 checkpoint
 Deferred to v2.0 FLAGSHIP build per Kurt's request. Bundling these
 here so nothing gets forgotten between now and v2 kickoff:
-- **Main Window Icon Palette Sync** — surface the Custom Images
-  library in the main-window icon picker (compact popover) so grabbing
-  an icon mid-sort doesn't require opening the Tag Manager. Foundation
-  is done; just needs the popover UI + drag-source wiring.
+- **Main Window Icon Palette Sync** — compact popover in the main
+  window so grabbing an icon mid-sort doesn't require opening the Tag
+  Manager. Foundation is done; just needs the popover UI + drag-source
+  wiring. Deferred so it gets a proper design pass.
+- **Kurt-only Pack Creator Tool** — separate authoring app (or a
+  hidden PPS mode gated by a Kurt-only flag) that lets Captain Kurt
+  produce signed .pps-iconpack.json bundles for Gumroad customers with
+  author + version + license metadata baked in. Kept OUT of the
+  public v1 build because every buyer would see a "sign your pack"
+  UI they don't need — Kurt is the sole content creator.
+- **Custom Pack Screenshot Tool** — one-click PNG mosaic of the
+  current library, ready for Gumroad cover art. Pairs with the
+  Pack Creator Tool above.
 - **Multi-Source Roots** — open several source folders stacked in the
   left rail for cross-shoot sessions.
 - **XMP Sidecars** — export metadata sidecars so stars/tags round-trip
