@@ -25,7 +25,16 @@ export async function bootRestoreFromSafetyIfEmpty() {
   // data but the Safety-Backup file does not yet exist, write it right
   // away. This protects users on their FIRST launch after an update, so
   // the safety net doesn't wait for the next tag save or license change.
-  if (hasState || hasLicense) {
+  //
+  // v1.3.1 (BUG FIX) — we ONLY skip the restore step when BOTH keys are
+  // populated. Previously we bailed on `hasState || hasLicense`, which
+  // meant that if a user's license survived a bad install but their tag
+  // state was wiped, the safety-backup would never restore the tags.
+  // Kurt hit exactly this after the v1.3.1 install: his license persisted,
+  // his state key was empty, boot-restore said "already-populated", and
+  // the safety mirror on disk went untouched. The correct behavior is
+  // per-key restoration (see safetyBackup.test.mjs "half-populated" test).
+  if (hasState && hasLicense) {
     const info = await safetyReadLatest();
     const alreadyMirrored = !!info?.data;
     if (!alreadyMirrored) {
