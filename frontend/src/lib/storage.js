@@ -304,6 +304,11 @@ export function loadState() {
       ratings: parsed.ratings || {},
       looks: parsed.looks || [],
       exifOverrides: parsed.exifOverrides || {},
+      // v1.3.1 — Custom Images library. Each entry:
+      //   { id, name, catId (null = Global) | string, dataUrl }
+      // Downscaled to 96×96 PNG data-URLs when imported so a library of
+      // ~150 icons fits well within localStorage's 5 MB quota.
+      customImages: Array.isArray(parsed.customImages) ? parsed.customImages : [],
     };
   } catch {
     return DEFAULT_STATE;

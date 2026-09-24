@@ -44,7 +44,7 @@ function IconPreview({ item, size = 20 }) {
 
 export { IconPreview };
 
-export default function CategoryManager({ open, onClose, categories, onChange }) {
+export default function CategoryManager({ open, onClose, categories, onChange, customImages = [], onCustomImagesChange }) {
   const [activeCat, setActiveCat] = useState(categories[0]?.id || null);
   // v1.2.8 — resizable modal. Size persisted to localStorage; defaults tuned
   // to be close to the old fixed size (max-w-4xl / h-80vh).
@@ -106,6 +106,30 @@ export default function CategoryManager({ open, onClose, categories, onChange })
   // v1.3.1 — highlighted category row when a chip is being dragged across
   // categories in the left rail. null when nothing is hovered.
   const [crossDropCatId, setCrossDropCatId] = useState(null);
+  // v1.3.1 — "Armed" icon from the Icon Holders bar. When set, clicking
+  // ANY chip in the manager applies this icon to that chip. Multi-shot:
+  // stays armed until user clicks the same icon again or presses Esc.
+  const [armedIcon, setArmedIcon] = useState(null);
+  // Esc disarms + a body-level cursor hint while armed.
+  useEffect(() => {
+    if (!open) return;
+    if (armedIcon) {
+      document.body.setAttribute("data-pps-armed", "1");
+    } else {
+      document.body.removeAttribute("data-pps-armed");
+    }
+    const onKey = (e) => {
+      if (e.key === "Escape" && armedIcon) {
+        e.preventDefault();
+        setArmedIcon(null);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.removeAttribute("data-pps-armed");
+    };
+  }, [open, armedIcon]);
   const [bundlePickerOpen, setBundlePickerOpen] = useState(false);
   const [bundleSelected, setBundleSelected] = useState(new Set());
   const folderFileRef = useRef(null);
@@ -268,6 +292,21 @@ export default function CategoryManager({ open, onClose, categories, onChange })
           }),
         }
       ),
+    }));
+  };
+
+  // v1.3.1 — swap the sub-folder's OWN icon (not a filename tag).
+  const swapSubfolderIcon = (sfId, iconPayload) => {
+    if (!current || !iconPayload) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) => {
+        if (s.id !== sfId) return s;
+        if (iconPayload.iconType === "image" && iconPayload.iconData) {
+          return { ...s, iconType: "image", iconData: iconPayload.iconData, iconName: undefined };
+        }
+        return { ...s, iconType: "lucide", iconName: iconPayload.iconName || "Folder", iconData: undefined };
+      }),
     }));
   };
 
@@ -1005,6 +1044,13 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                     pack={current}
                     selectedSubId={selectedSub?.id || null}
                     onSelectSubfolder={setSelectedSubId}
+                    armedIcon={armedIcon}
+                    onConsumeArmed={(target) => {
+                      if (!armedIcon) return false;
+                      if (target.kind === "sub") swapSubfolderIcon(target.sfId, armedIcon);
+                      else if (target.kind === "item") swapSubfolderItemIcon(target.sfId, target.itemId, armedIcon);
+                      return true;
+                    }}
                     onAddSubfolder={(name) => {
                       addSubfolder(name);
                       // Auto-select the freshly added sub-folder so the
@@ -1060,6 +1106,21 @@ export default function CategoryManager({ open, onClose, categories, onChange })
                 Create a tag pack to begin.
               </div>
             )}
+          </div>
+
+          {/* v1.3.1 — Right rail: Icon Holders (Basic Icons + Custom
+              Images) stacked vertically. Each box scrolls INDEPENDENTLY
+              of the center pane so Kurt's icon library can grow without
+              stealing viewport from the sub-folder editor. */}
+          <div className="w-64 border-l border-app flex flex-col overflow-hidden shrink-0" data-testid="right-rail-icon-holders">
+            <IconPickerBar
+              customImages={customImages}
+              onCustomImagesChange={onCustomImagesChange}
+              activeCatId={current?.id || null}
+              activeCatName={current?.name || ""}
+              armedIcon={armedIcon}
+              onArmIcon={setArmedIcon}
+            />
           </div>
         </div>
 
@@ -1543,6 +1604,8 @@ function SubfolderSection({
   onMoveSubfolderItem,     // v1.2.1 — fn(fromSfId, toSfId, itemId, "move"|"copy")
   selectedSubId,           // v1.3 — currently selected sub-folder (highlights the row)
   onSelectSubfolder,       // v1.3 — (sfId) => void — click a row to load its filename tags into the editor below
+  armedIcon,               // v1.3.1 — armed icon from Icon Holders (may be null)
+  onConsumeArmed,          // v1.3.1 — fn({kind:"sub"|"item", sfId, itemId?}) → applies armed icon
 }) {
   const subs = Array.isArray(pack?.subfolders) ? pack.subfolders : [];
   const [draft, setDraft] = useState("");
@@ -1672,6 +1735,12 @@ function SubfolderSection({
                 }`}
                 data-testid={`subfolder-row-${sf.id}`}
                 onClick={(e) => {
+                  // v1.3.1 — if the Icon Holders have an armed icon,
+                  // clicking a sub-folder row applies that icon to the
+                  // sub-folder's OWN icon (and still selects the row).
+                  if (armedIcon && onConsumeArmed) {
+                    onConsumeArmed({ kind: "sub", sfId: sf.id });
+                  }
                   // v1.3 — clicking anywhere on the row (except the row's
                   // interactive controls that stopPropagation) selects it.
                   onSelectSubfolder?.(sf.id);
@@ -1813,6 +1882,8 @@ function SubfolderSection({
                           sfId={sf.id}
                           onRemove={() => onRemoveItem(sf.id, it.id)}
                           onSwapIcon={(payload) => onSwapItemIcon?.(sf.id, it.id, payload)}
+                          armedIcon={armedIcon}
+                          onArmedClick={() => onConsumeArmed?.({ kind: "item", sfId: sf.id, itemId: it.id })}
                           onContext={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
@@ -1884,11 +1955,18 @@ function SubfolderSection({
  * drop target for "application/x-pps-iconswap" to change its icon;
  * right-click opens a Move-to / Copy-to menu.
  */
-function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext }) {
+function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext, armedIcon, onArmedClick }) {
   const [dropOver, setDropOver] = React.useState(false);
   return (
     <div
       draggable
+      onClick={(e) => {
+        // v1.3.1 — armed-icon click-to-apply.
+        if (armedIcon && onArmedClick) {
+          e.stopPropagation();
+          onArmedClick();
+        }
+      }}
       onDragStart={(e) => {
         e.dataTransfer.setData(
           "application/x-pps-sfitem",
@@ -1913,11 +1991,15 @@ function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext }) {
         try { onSwapIcon?.(JSON.parse(raw)); } catch { /* ignore */ }
       }}
       onContextMenu={onContext}
-      className={`group flex items-center gap-1 px-2 py-0.5 rounded bg-app border text-xs max-w-[240px] cursor-grab active:cursor-grabbing transition-colors ${
+      className={`group flex items-center gap-1 px-2 py-0.5 rounded bg-app border text-xs max-w-[240px] transition-colors ${
+        armedIcon ? "cursor-crosshair ring-1 ring-primary-earth/40" : "cursor-grab active:cursor-grabbing"
+      } ${
         dropOver ? "ring-2 ring-primary-earth bg-primary-earth/15 border-primary-earth" : "border-app"
       }`}
       data-testid={`subfolder-item-${sfId}-${it.id}`}
-      title={`${it.label}  ·  Drag to another sub-folder to move (Ctrl+drag to copy) or onto another CATEGORY in the left rail to send it to that pack's "_Unsorted filenames". Drop an icon here to swap. Right-click for menu.`}
+      title={armedIcon
+        ? `${it.label}  ·  Click to apply the armed icon (or press Esc to disarm)`
+        : `${it.label}  ·  Drag to another sub-folder to move (Ctrl+drag to copy) or onto another CATEGORY in the left rail to send it to that pack's "_Unsorted filenames". Drop an icon here to swap. Right-click for menu.`}
     >
       <span className="text-primary-earth shrink-0 flex items-center">
         <IconPreview item={it} size={12} />
@@ -2083,4 +2165,343 @@ function TagChipIcon({ item }) {
   }
   const Icon = (item?.iconType === "lucide" && item?.iconName && Lucide[item.iconName]) || TagIcon;
   return <Icon size={12} className="text-primary-earth shrink-0" />;
+}
+
+/**
+ * v1.3.1 — Compact icon picker toolbox that sits at the top of the
+ * Tag Manager main pane. TWO side-by-side boxes: Basic Icons + Custom
+ * Images library. Each icon supports BOTH interaction modes:
+ *   • Drag onto any chip → swaps that chip's icon (existing pattern,
+ *     `application/x-pps-iconswap` payload).
+ *   • Single-click an icon here → it becomes "armed" (cursor gets a
+ *     stuck preview). Next click on any chip applies it. Clicking the
+ *     same icon again, or pressing Esc, disarms it.
+ */
+function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, activeCatName, armedIcon, onArmIcon }) {
+  const [libraryScope, setLibraryScope] = useState("global"); // "global" | "category"
+  const libraryFileRef = useRef(null);
+  const libraryImportPackRef = useRef(null);
+
+  const libraryScopeId = libraryScope === "global" ? null : activeCatId;
+  const libraryVisible = customImages.filter((img) => (img.catId ?? null) === libraryScopeId);
+  const globalCount = customImages.filter((img) => (img.catId ?? null) === null).length;
+  const catCount = customImages.filter((img) => img.catId === activeCatId).length;
+
+  const isArmed = (kind, key) => {
+    if (!armedIcon) return false;
+    if (kind === "lucide") return armedIcon.iconType === "lucide" && armedIcon.iconName === key;
+    if (kind === "image") return armedIcon.iconType === "image" && armedIcon.iconData === key;
+    return false;
+  };
+
+  const importIntoLibrary = async (fileList) => {
+    if (!fileList || fileList.length === 0 || !onCustomImagesChange) return;
+    const scope = libraryScope === "global" ? null : activeCatId;
+    if (libraryScope === "category" && !activeCatId) {
+      toast.error("Pick a category first"); return;
+    }
+    const additions = [];
+    let failed = 0;
+    for (const f of Array.from(fileList)) {
+      if (!/^image\//i.test(f.type)) { failed++; continue; }
+      try {
+        const dataUrl = await new Promise((res, rej) => {
+          const r = new FileReader();
+          r.onload = () => {
+            const im = new Image();
+            im.onload = () => {
+              const MAX = 128;
+              const s = Math.min(1, MAX / Math.max(im.naturalWidth, im.naturalHeight));
+              const w = Math.max(1, Math.round(im.naturalWidth * s));
+              const h = Math.max(1, Math.round(im.naturalHeight * s));
+              const c = document.createElement("canvas");
+              c.width = w; c.height = h;
+              c.getContext("2d").drawImage(im, 0, 0, w, h);
+              res(c.toDataURL("image/png"));
+            };
+            im.onerror = () => rej(new Error("decode"));
+            im.src = r.result;
+          };
+          r.onerror = () => rej(new Error("read"));
+          r.readAsDataURL(f);
+        });
+        additions.push({
+          id: uid("cim"),
+          name: (f.name.replace(/\.[^.]+$/, "").slice(0, 40) || "Untitled"),
+          catId: scope,
+          dataUrl,
+        });
+      } catch { failed++; }
+    }
+    if (additions.length > 0) {
+      onCustomImagesChange((prev) => [...(prev || []), ...additions]);
+      toast.success(`Imported ${additions.length} image${additions.length === 1 ? "" : "s"}`, {
+        description: scope ? `Scope: ${activeCatName}` : "Scope: Global — usable across every category",
+      });
+    }
+    if (failed > 0 && additions.length === 0) {
+      toast.error("Import failed", { description: `${failed} file${failed === 1 ? "" : "s"} were not valid images.` });
+    }
+  };
+
+  const removeLibraryImage = (id, name) => {
+    if (!onCustomImagesChange) return;
+    onCustomImagesChange((prev) => (prev || []).filter((img) => img.id !== id));
+    toast(`Removed "${name}" from library`);
+  };
+
+  // v1.3.1 — Export the currently-visible slice of the library as a
+  // shareable .pps-iconpack.json file. Scope is baked into the payload so
+  // an "import" of a Global export goes back into Global (and same for
+  // Per-Category — where the target category is chosen at import time).
+  const exportLibrary = () => {
+    if (libraryVisible.length === 0) {
+      toast.error("Nothing to export — this scope has no images yet.");
+      return;
+    }
+    const payload = {
+      kind: "pps-iconpack",
+      version: 1,
+      scope: libraryScope === "global" ? "global" : "category",
+      sourceCategoryName: libraryScope === "category" ? activeCatName : null,
+      exportedAt: new Date().toISOString(),
+      images: libraryVisible.map((img) => ({ name: img.name, dataUrl: img.dataUrl })),
+    };
+    const filename = libraryScope === "global"
+      ? `Global.pps-iconpack.json`
+      : `${(activeCatName || "Category").replace(/[\\/:*?"<>|]/g, "_")}.pps-iconpack.json`;
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+    toast.success(`Exported ${payload.images.length} icon${payload.images.length === 1 ? "" : "s"}`, {
+      description: filename,
+    });
+  };
+
+  // v1.3.1 — Import a .pps-iconpack.json into the CURRENT scope
+  // (Global or the active category). Images are merged into the library
+  // and de-duplicated by dataUrl so re-imports don't multiply.
+  const importLibrary = async (file) => {
+    if (!file || !onCustomImagesChange) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (data.kind !== "pps-iconpack" || !Array.isArray(data.images)) {
+        throw new Error("Not a valid Pro Photo Sorter icon pack file.");
+      }
+      const scope = libraryScope === "global" ? null : activeCatId;
+      if (libraryScope === "category" && !activeCatId) {
+        toast.error("Pick a category first"); return;
+      }
+      const existingDataUrls = new Set(
+        customImages
+          .filter((img) => (img.catId ?? null) === scope)
+          .map((img) => img.dataUrl)
+      );
+      const additions = [];
+      let skipped = 0;
+      for (const im of data.images) {
+        if (!im?.dataUrl || typeof im.dataUrl !== "string") { skipped++; continue; }
+        if (existingDataUrls.has(im.dataUrl)) { skipped++; continue; }
+        additions.push({
+          id: uid("cim"),
+          name: String(im.name || "Untitled").slice(0, 40),
+          catId: scope,
+          dataUrl: im.dataUrl,
+        });
+        existingDataUrls.add(im.dataUrl);
+      }
+      if (additions.length === 0) {
+        toast(`No new icons to add`, { description: `${skipped} were already in this library.` });
+        return;
+      }
+      onCustomImagesChange((prev) => [...(prev || []), ...additions]);
+      toast.success(
+        `Imported ${additions.length} icon${additions.length === 1 ? "" : "s"}${skipped ? ` (${skipped} duplicate${skipped === 1 ? "" : "s"} skipped)` : ""}`,
+        { description: scope ? `Scope: ${activeCatName}` : "Scope: Global" }
+      );
+    } catch (e) {
+      toast.error("Import failed", { description: e.message });
+    }
+  };
+
+  const armLucide = (name) => {
+    if (isArmed("lucide", name)) onArmIcon?.(null);
+    else onArmIcon?.({ iconType: "lucide", iconName: name });
+  };
+  const armImage = (dataUrl) => {
+    if (isArmed("image", dataUrl)) onArmIcon?.(null);
+    else onArmIcon?.({ iconType: "image", iconData: dataUrl });
+  };
+
+  return (
+    <div className="flex flex-col h-full overflow-hidden" data-testid="icon-picker-bar">
+      <div className="px-3 py-2 border-b border-app flex items-center gap-2 shrink-0">
+        <ImageIcon size={13} className="text-primary-earth" />
+        <span className="text-[10px] uppercase tracking-widest font-heading text-dim">Icon Holders</span>
+      </div>
+      <div className="px-2 py-1.5 border-b border-app/60 shrink-0">
+        <p className="text-[10px] text-dim italic leading-snug">
+          {armedIcon
+            ? "🎯 Armed — click any chip to apply. Click this icon again or press Esc to disarm."
+            : "Drag onto any chip to swap, or click to arm then click a chip."}
+        </p>
+      </div>
+
+      {/* Two boxes stacked vertically — each scrolls independently. */}
+      <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+        {/* ── Box 1: Basic Icons ─────────────────────────────────── */}
+        <div className="flex-1 flex flex-col min-h-0 border-b border-app" data-testid="icon-picker-builtin-box">
+          <div className="px-2 py-1 flex items-center gap-2 bg-app/30 border-b border-app/40 shrink-0">
+            <Palette size={11} className="text-primary-earth" />
+            <span className="text-[10px] uppercase tracking-wider font-heading font-semibold">Basic Icons</span>
+            <span className="text-[10px] text-dim font-mono ml-auto">{BUILTIN_ICONS.length}</span>
+          </div>
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(32px,1fr))] gap-0.5 overflow-auto p-1.5 flex-1 min-h-0" data-testid="icon-picker-builtin">
+            {BUILTIN_ICONS.map((n) => (
+              <button
+                key={n}
+                draggable
+                onClick={() => armLucide(n)}
+                onDragStart={(e) => {
+                  e.dataTransfer.setData(
+                    "application/x-pps-iconswap",
+                    JSON.stringify({ iconType: "lucide", iconName: n })
+                  );
+                  e.dataTransfer.effectAllowed = "copy";
+                }}
+                className={`w-8 h-8 rounded flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors ${
+                  isArmed("lucide", n)
+                    ? "bg-primary-earth text-[color:var(--text-inverse)] ring-2 ring-primary-earth"
+                    : "hover:bg-primary-earth/20 text-app"
+                }`}
+                title={`${n} — click to arm, or drag onto any chip to swap`}
+                data-testid={`icon-picker-builtin-${n}`}
+              >
+                <BuiltinIcon name={n} size={16} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* ── Box 2: Custom Images library ───────────────────────── */}
+        <div className="flex-1 flex flex-col min-h-0" data-testid="icon-picker-library-box">
+          <div className="px-2 py-1 bg-app/30 border-b border-app/40 shrink-0 space-y-1">
+            <div className="flex items-center gap-2">
+              <ImageIcon size={11} className="text-primary-earth" />
+              <span className="text-[10px] uppercase tracking-wider font-heading font-semibold">Custom Images</span>
+              <span className="text-[10px] text-dim font-mono ml-auto">{libraryVisible.length}</span>
+            </div>
+            <div className="flex items-center gap-1 flex-wrap">
+              <button
+                onClick={() => setLibraryScope("global")}
+                className={`px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 ${libraryScope === "global" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover"}`}
+                data-testid="icon-picker-lib-global"
+                title="Images available across every category"
+              >
+                Global <span className="font-mono opacity-70">{globalCount}</span>
+              </button>
+              <button
+                onClick={() => setLibraryScope("category")}
+                disabled={!activeCatId}
+                className={`px-1.5 py-0.5 rounded text-[10px] flex items-center gap-1 disabled:opacity-40 ${libraryScope === "category" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover"}`}
+                data-testid="icon-picker-lib-category"
+                title={activeCatId ? `Images limited to ${activeCatName}` : "Pick a category first"}
+              >
+                {activeCatName ? activeCatName.slice(0, 8) : "—"} <span className="font-mono opacity-70">{catCount}</span>
+              </button>
+              <input
+                ref={libraryFileRef}
+                type="file"
+                multiple
+                accept="image/png,image/jpeg,image/webp"
+                className="hidden-file"
+                onChange={(e) => { importIntoLibrary(e.target.files); e.target.value = ""; }}
+                data-testid="icon-picker-lib-input"
+              />
+              <input
+                ref={libraryImportPackRef}
+                type="file"
+                accept=".json,.pps-iconpack.json,application/json"
+                className="hidden-file"
+                onChange={(e) => { importLibrary(e.target.files?.[0]); e.target.value = ""; }}
+                data-testid="icon-picker-lib-import-pack-input"
+              />
+              <button
+                onClick={() => libraryFileRef.current?.click()}
+                disabled={libraryScope === "category" && !activeCatId}
+                className="ml-auto px-1.5 py-0.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-[10px] flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="icon-picker-lib-import"
+                title="Import PNG/JPG/WEBP files into this library — multi-select supported"
+              >
+                <Upload size={10} /> Import PNGs
+              </button>
+              <button
+                onClick={() => libraryImportPackRef.current?.click()}
+                disabled={libraryScope === "category" && !activeCatId}
+                className="px-1.5 py-0.5 rounded bg-app hover:bg-surface-hover border border-app text-[10px] flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="icon-picker-lib-import-pack"
+                title="Import a .pps-iconpack.json bundle you saved earlier (or received from someone)"
+              >
+                <Package size={10} /> Import pack
+              </button>
+              <button
+                onClick={exportLibrary}
+                disabled={libraryVisible.length === 0}
+                className="px-1.5 py-0.5 rounded bg-app hover:bg-surface-hover border border-app text-[10px] flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                data-testid="icon-picker-lib-export-pack"
+                title={`Save this ${libraryScope === "global" ? "Global" : activeCatName} library as a .pps-iconpack.json file — share it with anyone or use as a starter pack for customers`}
+              >
+                <Download size={10} /> Export pack
+              </button>
+            </div>
+          </div>
+          {libraryVisible.length === 0 ? (
+            <p className="text-[11px] text-dim italic text-center py-4 px-2 flex-1 flex items-center justify-center">
+              {libraryScope === "global"
+                ? "No global images yet — click Import to bulk-add PNGs."
+                : `No images for "${activeCatName}" — click Import to add some.`}
+            </p>
+          ) : (
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] gap-1 overflow-auto p-1.5 flex-1 min-h-0" data-testid="icon-picker-lib-grid">
+              {libraryVisible.map((img) => (
+                <div
+                  key={img.id}
+                  draggable
+                  onClick={() => armImage(img.dataUrl)}
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData(
+                      "application/x-pps-iconswap",
+                      JSON.stringify({ iconType: "image", iconData: img.dataUrl })
+                    );
+                    e.dataTransfer.effectAllowed = "copy";
+                  }}
+                  className={`group relative w-12 h-12 rounded border cursor-grab active:cursor-grabbing overflow-hidden transition-colors ${
+                    isArmed("image", img.dataUrl)
+                      ? "border-primary-earth ring-2 ring-primary-earth bg-primary-earth/10"
+                      : "border-app bg-surface hover:border-primary-earth"
+                  }`}
+                  title={`${img.name} — click to arm, or drag onto any chip to swap`}
+                  data-testid={`icon-picker-lib-item-${img.id}`}
+                >
+                  <img src={img.dataUrl} alt={img.name} draggable={false} className="w-full h-full object-contain p-0.5" />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeLibraryImage(img.id, img.name); }}
+                    className="absolute top-0 right-0 w-4 h-4 rounded-bl bg-app/90 border-l border-b border-app flex items-center justify-center opacity-0 group-hover:opacity-100 hover:text-danger-earth transition-opacity"
+                    data-testid={`icon-picker-lib-remove-${img.id}`}
+                    title="Remove from library"
+                  >
+                    <X size={8} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
