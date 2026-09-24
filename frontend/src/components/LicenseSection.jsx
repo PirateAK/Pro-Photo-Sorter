@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen } from "lucide-react";
+import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen, LifeBuoy } from "lucide-react";
 import {
   getLicense,
   isTrialMode,
@@ -8,7 +8,9 @@ import {
   subscribeLicense,
   GUMROAD_PRODUCT_URL,
 } from "@/lib/license";
-import { isElectron, safetyInfo, safetyOpenFolder } from "@/lib/electronBridge";
+import { isElectron, safetyInfo, safetyOpenFolder, safetyReadLatest } from "@/lib/electronBridge";
+import { STATE_KEY } from "@/lib/storage";
+import { toast } from "sonner";
 
 /**
  * License management panel rendered inside the Help modal.
@@ -35,6 +37,37 @@ export default function LicenseSection() {
   }, [license]);
 
   const openSafetyFolder = async () => { await safetyOpenFolder(); };
+
+  // v1.3.1 — Manual "Restore from Safety-Backup" recovery hatch.
+  // Reads Documents\Pro Photo Sorter\Safety-Backups\latest.json and writes
+  // the state key back into localStorage. Belt-and-suspenders alongside the
+  // automatic boot-restore fix, and the only recourse if the user is
+  // already inside the app with an empty tag library (Kurt's v1.3.1
+  // install scenario).
+  const restoreFromSafety = async () => {
+    if (!window.confirm(
+      "Restore tag packs from Safety-Backup?\n\n" +
+      "This will OVERWRITE your current tag library with the last saved copy from\n" +
+      "Documents\\Pro Photo Sorter\\Safety-Backups\\latest.json.\n\n" +
+      "The app will reload immediately after."
+    )) return;
+    const res = await safetyReadLatest();
+    if (!res?.data?.state || typeof res.data.state !== "string") {
+      toast.error("No Safety-Backup found", {
+        description: "Documents\\Pro Photo Sorter\\Safety-Backups\\latest.json is missing or empty.",
+      });
+      return;
+    }
+    try {
+      JSON.parse(res.data.state); // sanity-check parseable
+    } catch (e) {
+      toast.error("Safety-Backup is corrupted", { description: e.message });
+      return;
+    }
+    localStorage.setItem(STATE_KEY, res.data.state);
+    toast.success("Restored — reloading…");
+    setTimeout(() => window.location.reload(), 800);
+  };
 
   const openBuyPage = () => {
     // Electron: main process opens in default browser via preload bridge if
@@ -103,13 +136,26 @@ export default function LicenseSection() {
               This means <strong>updates, reinstalls, and userData renames can no longer wipe your data</strong> — on next launch the app auto-restores from here.
             </p>
             <div className="font-mono text-dim break-all">{safety.safetyDir}</div>
-            <button
-              onClick={openSafetyFolder}
-              data-testid="license-open-safety-btn"
-              className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
-            >
-              <FolderOpen size={12} /> Open Safety-Backup folder
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={openSafetyFolder}
+                data-testid="license-open-safety-btn"
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+              >
+                <FolderOpen size={12} /> Open Safety-Backup folder
+              </button>
+              <button
+                onClick={restoreFromSafety}
+                disabled={!safety.latestExists}
+                data-testid="license-restore-safety-btn"
+                title={safety.latestExists
+                  ? "Overwrite current tag library with the last saved copy from latest.json"
+                  : "Waiting for first save — no backup on disk yet"}
+                className="px-2 py-1 rounded bg-primary-earth/20 hover:bg-primary-earth/40 border border-primary-earth/60 text-primary-earth inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <LifeBuoy size={12} /> Restore tags from Safety-Backup
+              </button>
+            </div>
           </div>
         )}
 

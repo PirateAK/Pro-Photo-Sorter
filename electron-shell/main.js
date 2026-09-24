@@ -135,7 +135,24 @@ function safetyReadLatestSync() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-Menu.setApplicationMenu(null);
+// v1.3.1 — keep the menu bar hidden (Kurt likes the chrome-free look) but
+// register a hidden accelerator so DevTools (F12 / Ctrl+Shift+I) is
+// available for support/recovery when he needs it. Previously
+// Menu.setApplicationMenu(null) also killed the shortcut, which locked
+// out DevTools during the v1.3.1 tag-wipe incident.
+const devToolsMenu = Menu.buildFromTemplate([
+  {
+    label: 'PPS',
+    visible: false,
+    submenu: [
+      { role: 'toggleDevTools', accelerator: 'F12' },
+      { role: 'toggleDevTools', accelerator: 'CmdOrCtrl+Shift+I' },
+      { role: 'reload',         accelerator: 'CmdOrCtrl+R' },
+      { role: 'forceReload',    accelerator: 'CmdOrCtrl+Shift+R' },
+    ],
+  },
+]);
+Menu.setApplicationMenu(devToolsMenu);
 
 // electron-updater logging goes to renderer console via IPC.
 autoUpdater.autoDownload = false;      // We ask the user first.
@@ -151,6 +168,7 @@ function createWindow() {
     height: 1000,
     title: 'Pro Photo Sorter',
     backgroundColor: '#1a1715',
+    autoHideMenuBar: true,   // v1.3.1 — keep chrome-free, F12/DevTools still work
     icon: path.join(__dirname, 'icon.png'),
     webPreferences: {
       contextIsolation: true,
@@ -159,6 +177,7 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
     },
   });
+  win.setMenuBarVisibility(false);   // hide immediately (autoHide alone shows briefly on Alt)
 
   const indexPath = app.isPackaged
     ? path.join(process.resourcesPath, 'app', 'build', 'index.html')
