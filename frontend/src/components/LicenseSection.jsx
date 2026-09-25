@@ -204,6 +204,22 @@ export default function LicenseSection() {
               >
                 <Images size={12} /> Restore bundled samples
               </button>
+              <button
+                onClick={() => {
+                  // v1.4.2 — Coach-mark reset. Clears the sentinel so the
+                  // next app reload fires the first-run "starter photos are
+                  // waiting" toast again.
+                  localStorage.removeItem("pps.coachmark.samples.v1");
+                  toast.success("Coach-mark reset", {
+                    description: "The starter-photos welcome toast will fire again the next time you launch the app.",
+                  });
+                }}
+                data-testid="license-reset-coachmark-btn"
+                title="Re-arms the first-run welcome toast so it fires on your next app launch."
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+              >
+                <LifeBuoy size={12} /> Show me again next launch
+              </button>
             </div>
           </div>
         )}

@@ -18,8 +18,11 @@ import {
   Info,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   CheckSquare,
   Square,
+  ArrowLeftRight,
+  FolderPlus,
   X as XIcon,
 } from "lucide-react";
 
@@ -30,6 +33,7 @@ import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
 import SubfolderBar from "@/components/SubfolderBar";
 import SubfolderCascade, { resolveSubChain, deepestWithFilenames } from "@/components/SubfolderCascade";
+import SecondaryStrip from "@/components/SecondaryStrip";
 import DateTagDropdowns, { DATE_STAMP_IDS } from "@/components/DateTagDropdowns";
 import IconOverlay from "@/components/IconOverlay";
 import ZoomablePreview from "@/components/ZoomablePreview";
@@ -69,7 +73,7 @@ import UpdateBanner from "@/components/UpdateBanner";
 import { isTrialMode, applyTrialSuffix, TRIAL_WATERMARK_TEXT } from "@/lib/license";
 import { maybeAutoBackup } from "@/lib/backups";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
-import { isElectron, totalFreeBytes, formatBytes } from "@/lib/electronBridge";
+import { isElectron, totalFreeBytes, formatBytes, samplesInfo, samplesOpenFolder } from "@/lib/electronBridge";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -180,6 +184,22 @@ export default function App() {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [exif, setExif] = useState(null);
+
+  // v1.4.2 — Multi-Source Roots. Kurt can open a SECOND source folder and
+  // both trees live in the left rail as collapsible accordions. The bottom
+  // filmstrip splits 50/50 so both roots' photos are always visible.
+  // Only one root is "active" (feeds the viewer + Store/Delete) at a time;
+  // clicking a thumb in the OTHER strip triggers an atomic swap so all
+  // downstream code paths keep operating on primary state, untouched.
+  //   • secondary = null when the user hasn't opened a second root yet
+  //   • secondary.expanded controls the left-rail accordion open/close
+  const [secondary, setSecondary] = useState(null);
+  // Accordion state for the PRIMARY rail. Independent from secondary so
+  // Kurt can collapse either or both.
+  const [primaryExpanded, setPrimaryExpanded] = useState(true);
+  const patchSecondary = useCallback((patch) => {
+    setSecondary((s) => (s ? { ...s, ...patch } : s));
+  }, []);
 
   // Destination
   const [destRoot, setDestRoot] = useState(null);
@@ -564,6 +584,50 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [destRoot]);
 
+  // v1.4.2 — First-run coach-mark for the bundled Samples folder. Fires
+  // ONCE per install (localStorage sentinel `pps.coachmark.samples.v1`)
+  // unless the user hits "Show me again" in the Help panel, which clears
+  // the sentinel and re-triggers on the next reload. Electron-only —
+  // browser builds have no Samples folder to point at.
+  useEffect(() => {
+    if (!isElectron()) return;
+    let cancelled = false;
+    (async () => {
+      if (localStorage.getItem("pps.coachmark.samples.v1") === "dismissed") return;
+      const info = await samplesInfo();
+      if (cancelled) return;
+      if (!info?.ok || !info.exists || !info.fileCount) return;
+      // Delay so the app UI settles first — the toast lands after the
+      // filmstrip and toolbar have painted, not on top of the boot flash.
+      setTimeout(() => {
+        if (cancelled) return;
+        toast(
+          `Welcome aboard! ${info.fileCount} starter photo${info.fileCount === 1 ? "" : "s"} are waiting for you.`,
+          {
+            description: `They live in ${info.samplesDir}. Give them a try — click Open Samples to load them into the app.`,
+            duration: 20000,
+            action: {
+              label: "Open Samples",
+              onClick: async () => {
+                await samplesOpenFolder();
+                localStorage.setItem("pps.coachmark.samples.v1", "dismissed");
+              },
+            },
+            cancel: {
+              label: "Dismiss",
+              onClick: () => localStorage.setItem("pps.coachmark.samples.v1", "dismissed"),
+            },
+            onDismiss: () => localStorage.setItem("pps.coachmark.samples.v1", "dismissed"),
+            onAutoClose: () => localStorage.setItem("pps.coachmark.samples.v1", "dismissed"),
+          }
+        );
+      }, 1500);
+    })();
+    return () => { cancelled = true; };
+    // Fires exactly once per app mount (StrictMode-safe via the cancelled flag).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Show a friendly toast for folder-picker errors. For the "stuck picker"
   // family of errors (which need a page reload to fully recover), include
   // a "Restart" action button that reloads the app window — resets
@@ -646,6 +710,103 @@ export default function App() {
     toast.success(`Reopened destination: ${name}`);
     try { await addRecent("dest", h, name); } catch { /* ignore */ }
   };
+
+  // ── v1.4.2 · Multi-Source Roots ─────────────────────────────────────────
+  // Opens a second directory and stores it in `secondary`. The secondary
+  // tree lives entirely in its own state slot; primary state is left
+  // untouched. When Kurt wants to work with the secondary he clicks a
+  // thumb in the secondary filmstrip (or hits the Swap button), which
+  // triggers `swapPrimaryAndSecondary` — an atomic exchange of all
+  // source-side state fields so the primary code path can operate on
+  // what USED to be secondary without any refactor.
+  const pickSecondarySource = async () => {
+    try {
+      const h = await pickDirectory({ id: "pps-source-2" });
+      // First pass — set up secondary with the root and empty images so
+      // the accordion header renders while we load.
+      setSecondary({
+        root: h,
+        rootName: h.name,
+        treeKey: 1,
+        currentFolder: h,
+        currentPath: h.name,
+        images: [],
+        loadingImages: true,
+        expanded: true,
+      });
+      try {
+        const imgs = await listImagesInDir(h);
+        patchSecondary({ images: imgs, loadingImages: false });
+        if (imgs.length === 0) toast("No images in that second folder");
+      } catch (e) {
+        patchSecondary({ images: [], loadingImages: false });
+        toast.error("Could not read the second folder");
+      }
+      toast.success(`Loaded second source: ${h.name}`);
+      try { await addRecent("source", h, h.name); } catch { /* ignore */ }
+    } catch (e) {
+      if (e?.name === "AbortError") return;
+      handlePickerError(e);
+    }
+  };
+
+  const closeSecondarySource = () => {
+    setSecondary(null);
+  };
+
+  const onSelectSecondarySourceFolder = useCallback(async (node, path) => {
+    patchSecondary({
+      currentFolder: node.handle,
+      currentPath: path,
+      images: [],
+      loadingImages: true,
+    });
+    try {
+      const imgs = await listImagesInDir(node.handle);
+      patchSecondary({ images: imgs, loadingImages: false });
+      if (imgs.length === 0) toast("No images in this folder");
+    } catch (e) {
+      patchSecondary({ images: [], loadingImages: false });
+      toast.error("Could not read folder");
+    }
+  }, [patchSecondary]);
+
+  // Atomic swap of primary and secondary state. After this call:
+  //   • sourceRoot, currentSourceFolder, currentSourcePath, images = what
+  //     USED to live in `secondary`
+  //   • `secondary` = a snapshot of what USED to be primary
+  //   • selectedIdx resets to `targetIdx` (defaults to 0) — the thumb the
+  //     user clicked becomes the new active photo without any lag.
+  // Session stats, ratings, appliedByImage all stay put — they're keyed
+  // by full path so they follow the photos across the swap naturally.
+  const swapPrimaryAndSecondary = useCallback((targetIdx = 0) => {
+    if (!secondary || !secondary.root) return;
+    // Snapshot current primary before overwriting.
+    const primarySnap = {
+      root: sourceRoot,
+      rootName: sourceRootName,
+      treeKey: sourceTreeKey + 1,
+      currentFolder: currentSourceFolder,
+      currentPath: currentSourcePath,
+      images,
+      loadingImages,
+      expanded: secondary.expanded, // keep the visible pane open
+    };
+    setSourceRoot(secondary.root);
+    setSourceRootName(secondary.rootName);
+    setSourceTreeKey((k) => k + 1);
+    setCurrentSourceFolder(secondary.currentFolder);
+    setCurrentSourcePath(secondary.currentPath);
+    setImages(secondary.images || []);
+    setLoadingImages(!!secondary.loadingImages);
+    setSelectedIdx(Math.max(0, Math.min(targetIdx, (secondary.images || []).length - 1)));
+    setBatchSelected(new Set());
+    setCompareMode(1);
+    setSecondary(sourceRoot ? primarySnap : null);
+    toast.success(`Now sorting: ${secondary.rootName}`, {
+      description: "Primary and secondary roots swapped. Store/Delete now act on this source.",
+    });
+  }, [secondary, sourceRoot, sourceRootName, sourceTreeKey, currentSourceFolder, currentSourcePath, images, loadingImages]);
 
   // When user clicks a folder in the source tree
   const onSelectSourceFolder = useCallback(async (node, path) => {
@@ -1723,48 +1884,143 @@ export default function App() {
       <div className="app-grid" data-testid="app-root">
       <Toaster theme={settings.theme || "dark"} position="bottom-right" richColors closeButton />
 
-      {/* LEFT — Source drive tree */}
-      <div className="region-left">
-        <div className="px-3 py-2.5 border-b border-app flex items-center justify-between shrink-0">
-          <div className="min-w-0 flex-1">
-            <div className="text-[10px] uppercase tracking-widest text-dim font-heading">Source</div>
-            <div className="text-sm font-medium truncate" data-testid="source-root-name">
-              {sourceRootName || "Not connected"}
+      {/* LEFT — Source drive tree(s) — v1.4.2 collapsible accordions */}
+      <div className="region-left flex flex-col min-h-0">
+        {/* Primary accordion */}
+        <div className={`flex flex-col min-h-0 ${primaryExpanded ? "flex-1" : "shrink-0"}`}>
+          <button
+            onClick={() => setPrimaryExpanded((v) => !v)}
+            className="w-full px-3 py-2 border-b border-app flex items-center gap-2 hover:bg-surface-hover text-left"
+            data-testid="source-accordion-primary-toggle"
+            title={primaryExpanded ? "Collapse primary source" : "Expand primary source"}
+          >
+            {primaryExpanded ? <ChevronDown size={13} className="text-dim shrink-0" /> : <ChevronRight size={13} className="text-dim shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] uppercase tracking-widest text-dim font-heading">Source A · Primary</div>
+              <div className="text-sm font-medium truncate" data-testid="source-root-name">
+                {sourceRootName || "Not connected"}
+              </div>
             </div>
-          </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <button
-              onClick={pickSource}
-              className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
-              data-testid="pick-source-btn"
-            >
-              <FolderOpen size={12} /> Open
-            </button>
-            <button
-              onClick={() => { setShowDrives(true); refreshFreeSpace(); }}
-              className="w-6 h-6 rounded flex items-center justify-center text-dim hover:text-primary-earth hover:bg-app"
-              data-testid="source-drives-btn"
-              title="Show drives & free space"
-            >
-              <HardDrive size={13} />
-            </button>
-            <RecentFoldersDropdown kind="source" onPick={pickRecentSource} />
-          </div>
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              <button
+                onClick={pickSource}
+                className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
+                data-testid="pick-source-btn"
+              >
+                <FolderOpen size={12} /> Open
+              </button>
+              <button
+                onClick={() => { setShowDrives(true); refreshFreeSpace(); }}
+                className="w-6 h-6 rounded flex items-center justify-center text-dim hover:text-primary-earth hover:bg-app"
+                data-testid="source-drives-btn"
+                title="Show drives & free space"
+              >
+                <HardDrive size={13} />
+              </button>
+              <RecentFoldersDropdown kind="source" onPick={pickRecentSource} />
+            </div>
+          </button>
+          {primaryExpanded && (
+            <div className="flex flex-col min-h-0 flex-1">
+              {sourceRoot ? (
+                <FileTree
+                  rootHandle={sourceRoot}
+                  rootName={sourceRootName}
+                  remountKey={sourceTreeKey}
+                  onSelectFolder={onSelectSourceFolder}
+                  selectedPath={currentSourcePath}
+                  testIdPrefix="source"
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-6 text-center text-dim text-xs">
+                  Click <strong className="text-primary-earth">Open</strong> to browse a source folder.
+                </div>
+              )}
+            </div>
+          )}
         </div>
-        {sourceRoot ? (
-          <FileTree
-            rootHandle={sourceRoot}
-            rootName={sourceRootName}
-            remountKey={sourceTreeKey}
-            onSelectFolder={onSelectSourceFolder}
-            selectedPath={currentSourcePath}
-            testIdPrefix="source"
-          />
-        ) : (
-          <div className="flex-1 flex items-center justify-center p-6 text-center text-dim text-xs">
-            Click <strong className="text-primary-earth">Open</strong> to browse a source folder.
-          </div>
-        )}
+
+        {/* v1.4.2 — Secondary source accordion. Appears below the primary,
+            fully independent tree. Clicking a thumb in its filmstrip below
+            triggers an atomic swap so the app's core code path always
+            operates on primary state. */}
+        <div className={`flex flex-col min-h-0 border-t border-app ${secondary?.expanded ? "flex-1" : "shrink-0"}`}>
+          <button
+            onClick={() => {
+              if (!secondary) return;
+              patchSecondary({ expanded: !secondary.expanded });
+            }}
+            className="w-full px-3 py-2 flex items-center gap-2 hover:bg-surface-hover text-left"
+            data-testid="source-accordion-secondary-toggle"
+            title={secondary ? (secondary.expanded ? "Collapse second source" : "Expand second source") : "Add a second source folder"}
+          >
+            {secondary?.expanded ? <ChevronDown size={13} className="text-dim shrink-0" /> : <ChevronRight size={13} className="text-dim shrink-0" />}
+            <div className="min-w-0 flex-1">
+              <div className="text-[10px] uppercase tracking-widest text-dim font-heading">Source B · Secondary</div>
+              <div className="text-sm font-medium truncate" data-testid="source-secondary-root-name">
+                {secondary?.rootName || "Not added"}
+              </div>
+            </div>
+            <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
+              {!secondary ? (
+                <button
+                  onClick={pickSecondarySource}
+                  className="px-2 py-1 rounded bg-primary-earth/20 hover:bg-primary-earth/40 border border-primary-earth/60 text-primary-earth text-xs font-medium flex items-center gap-1"
+                  data-testid="pick-secondary-source-btn"
+                  title="Open a second source folder — its tree and photos will stack below the primary, and both filmstrips render side-by-side."
+                >
+                  <FolderPlus size={12} /> Add second
+                </button>
+              ) : (
+                <>
+                  <button
+                    onClick={() => swapPrimaryAndSecondary(0)}
+                    className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
+                    data-testid="swap-sources-btn"
+                    title="Swap: make Source B the primary. Store/Delete then act on it. Primary swaps into secondary slot with all its state preserved."
+                  >
+                    <ArrowLeftRight size={12} /> Swap
+                  </button>
+                  <button
+                    onClick={pickSecondarySource}
+                    className="w-6 h-6 rounded flex items-center justify-center text-dim hover:text-primary-earth hover:bg-app"
+                    data-testid="pick-secondary-source-btn-replace"
+                    title="Replace the secondary source with a different folder"
+                  >
+                    <FolderOpen size={13} />
+                  </button>
+                  <button
+                    onClick={closeSecondarySource}
+                    className="w-6 h-6 rounded flex items-center justify-center text-dim hover:text-danger-earth hover:bg-app"
+                    data-testid="close-secondary-source-btn"
+                    title="Close the secondary source"
+                  >
+                    <XIcon size={13} />
+                  </button>
+                </>
+              )}
+            </div>
+          </button>
+          {secondary?.expanded && (
+            <div className="flex flex-col min-h-0 flex-1 border-t border-app">
+              {secondary.root ? (
+                <FileTree
+                  rootHandle={secondary.root}
+                  rootName={secondary.rootName}
+                  remountKey={secondary.treeKey}
+                  onSelectFolder={onSelectSecondarySourceFolder}
+                  selectedPath={secondary.currentPath}
+                  testIdPrefix="source-b"
+                />
+              ) : (
+                <div className="flex-1 flex items-center justify-center p-4 text-center text-dim text-[11px]">
+                  Click <strong className="text-primary-earth">Add second</strong> above to open another source folder.
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
         {totalFree !== null && (
           <div
             className="px-3 py-1.5 border-t border-app text-[10px] text-dim font-mono flex items-center justify-between gap-2 shrink-0"
@@ -2675,7 +2931,13 @@ export default function App() {
           stats={sessionStats}
           onReset={() => setSessionStats({ stored: 0, moved: 0, deleted: 0, skipped: 0, rated: 0, enhanced: 0 })}
         />
-        <div className="relative flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0 flex">
+        {/* v1.4.2 — When a secondary source is loaded, the bottom row splits
+            into two side-by-side strips. Primary (left) keeps every existing
+            interaction; secondary (right) is read-only until Kurt clicks a
+            thumb, which triggers `swapPrimaryAndSecondary` so all downstream
+            store/delete/tag paths remain the SAME primary code path. */}
+        <div className="relative flex-1 min-w-0" data-testid="primary-filmstrip-wrap">
         {/* Prev arrow — v1.2.9 explicit text-white so the chevron reads
             on every theme (Kurt reported invisible arrows in light). */}
         {filmstripCanScroll.left && (
@@ -2779,6 +3041,20 @@ export default function App() {
           })()
         )}
         </div>
+        </div>
+        {secondary && (
+          <SecondaryStrip
+            images={secondary.images || []}
+            loading={secondary.loadingImages}
+            rootName={secondary.rootName || ""}
+            currentPath={secondary.currentPath || ""}
+            ratings={ratings}
+            minStarFilter={settings.minStarFilter || 0}
+            thumbSize={settings.thumbSize || 128}
+            onThumbClick={(i) => swapPrimaryAndSecondary(i)}
+            onSwap={() => swapPrimaryAndSecondary(0)}
+          />
+        )}
         </div>
       </div>
 
