@@ -204,6 +204,22 @@ export default function LicenseSection() {
               >
                 <Images size={12} /> Restore bundled samples
               </button>
+              <button
+                onClick={() => {
+                  // v1.4.2 — Coach-mark reset. Clears the sentinel so the
+                  // next app reload fires the first-run "starter photos are
+                  // waiting" toast again.
+                  localStorage.removeItem("pps.coachmark.samples.v1");
+                  toast.success("Coach-mark reset", {
+                    description: "The starter-photos welcome toast will fire again the next time you launch the app.",
+                  });
+                }}
+                data-testid="license-reset-coachmark-btn"
+                title="Re-arms the first-run welcome toast so it fires on your next app launch."
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+              >
+                <LifeBuoy size={12} /> Show me again next launch
+              </button>
             </div>
           </div>
         )}
@@ -292,6 +308,50 @@ export default function LicenseSection() {
         <p><strong>One-time internet ping.</strong> Activation calls Gumroad exactly once to verify the key. After that, the app runs 100% offline forever — perfect for boats, bush planes, and satellite internet.</p>
         <p><strong>Can't find your key?</strong> Check your Gumroad receipt email or visit your Gumroad library at <a href="https://gumroad.com/library" onClick={(e) => { e.preventDefault(); openBuyPage(); }} className="text-primary-earth underline">gumroad.com/library</a>.</p>
       </div>
+
+      {/* v1.4.2 — Sample Photos pane also shown to trial users so they can
+          find the coach-mark reset and restore-samples controls without
+          being licensed. Renders only in Electron (samples don't exist in
+          the browser preview). */}
+      {isElectron() && samples?.samplesDir && (
+        <div className="pane rounded p-3 space-y-2 text-xs" data-testid="license-samples-panel-trial">
+          <div className="flex items-center gap-2 text-sm">
+            <Images size={16} className="text-primary-earth" />
+            <strong>Sample Photos: {samples.fileCount > 0 ? `${samples.fileCount} on disk` : "Missing"}</strong>
+          </div>
+          <p className="text-dim leading-relaxed">
+            Six bundled starter photos live in your Documents folder so you always have something to
+            practise on — trial or licensed. Missing them? Restore anytime, no internet needed.
+          </p>
+          <div className="font-mono text-dim break-all">{samples.samplesDir}</div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={openSamplesFolder}
+              className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+            >
+              <FolderOpen size={12} /> Open Samples folder
+            </button>
+            <button
+              onClick={restoreSamples}
+              className="px-2 py-1 rounded bg-primary-earth/20 hover:bg-primary-earth/40 border border-primary-earth/60 text-primary-earth inline-flex items-center gap-1"
+            >
+              <Images size={12} /> Restore bundled samples
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem("pps.coachmark.samples.v1");
+                toast.success("Coach-mark reset", {
+                  description: "The starter-photos welcome toast will fire again the next time you launch the app.",
+                });
+              }}
+              data-testid="license-reset-coachmark-btn-trial"
+              className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+            >
+              <LifeBuoy size={12} /> Show me again next launch
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -73,6 +73,28 @@ export default function SubfolderCascade({
 
   return (
     <div className="flex flex-col gap-1 min-w-0 flex-1" data-testid="subfolder-cascade">
+      {/* v1.4.1 — Live breadcrumb pill. Renders only when the user has
+          picked at least one sub-folder, so it never adds noise on packs
+          that don't nest. Shows the full drill-down path at a glance. */}
+      {chain.length > 0 && (
+        <div
+          className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded self-start bg-primary-earth/10 border border-primary-earth/30 max-w-full"
+          data-testid="subfolder-breadcrumb"
+        >
+          <span className="uppercase tracking-widest font-heading text-dim shrink-0">Path:</span>
+          <span className="truncate">
+            <span className="font-semibold text-primary-earth">{pack?.name}</span>
+            {chain.map((s, i) => (
+              <React.Fragment key={s.id}>
+                <span className="text-dim mx-1">›</span>
+                <span className={i === chain.length - 1 ? "font-semibold text-primary-earth" : "text-app"}>
+                  {s.name}
+                </span>
+              </React.Fragment>
+            ))}
+          </span>
+        </div>
+      )}
       {rows.map((row, depth) => {
         const activeSubId = activeSubfolderPath[depth] || null;
         return (

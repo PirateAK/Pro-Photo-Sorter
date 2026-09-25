@@ -1880,11 +1880,54 @@ function SubfolderSection({
                       } catch { /* ignore */ }
                     }}
                   >
-                    <div className="text-[10px] uppercase tracking-wider text-dim font-heading mb-1.5 flex items-center justify-between">
-                      <span>Filename tags for "{sf.name}"</span>
-                      <span className="text-[9px] normal-case tracking-normal italic text-dim">
-                        Drag chip = move · Ctrl+drag = copy · Right-click = menu
-                      </span>
+                    <div className="text-[10px] uppercase tracking-wider text-dim font-heading mb-1.5 flex items-center justify-between gap-2">
+                      <span className="truncate">Filename tags for "{sf.name}"</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {/* v1.4.1 — Bulk convert filename tags → nested
+                            sub-folders. Only surfaces when there is at
+                            least one tag to move. */}
+                        {items.length > 0 && onReplaceSubfolderNode && (
+                          <button
+                            onClick={() => {
+                              if (!window.confirm(
+                                `Convert all ${items.length} filename tag(s) into nested sub-folders under "${sf.name}"?\n\n` +
+                                `Each tag becomes a new sub-folder with an empty filename tag list (ready for players / etc.). ` +
+                                `Existing nested sub-folders are kept.`
+                              )) return;
+                              const existing = Array.isArray(sf.subfolders) ? sf.subfolders : [];
+                              const seen = new Set(existing.map((c) => (c.name || "").toLowerCase()));
+                              const newOnes = [];
+                              for (const t of items) {
+                                const nm = (t.label || "").toLowerCase();
+                                if (seen.has(nm)) continue;
+                                seen.add(nm);
+                                newOnes.push({
+                                  id: uid("sf"),
+                                  name: (t.label || "Nested").slice(0, 60),
+                                  iconType: t.iconType || "lucide",
+                                  iconName: t.iconName || "Folder",
+                                  ...(t.iconData ? { iconData: t.iconData } : {}),
+                                  filenameItems: [],
+                                  subfolders: [],
+                                });
+                              }
+                              onReplaceSubfolderNode(sf.id, {
+                                ...sf,
+                                filenameItems: [],
+                                subfolders: [...existing, ...newOnes],
+                              });
+                            }}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-primary-earth/15 hover:bg-primary-earth/30 border border-primary-earth/40 text-[10px] normal-case tracking-normal text-primary-earth"
+                            data-testid={`subfolder-bulk-nest-${sf.id}`}
+                            title={`Move every filename tag on "${sf.name}" into its own nested sub-folder — great for teams → per-team rosters.`}
+                          >
+                            <FolderPlus size={10} /> Convert all → nested
+                          </button>
+                        )}
+                        <span className="text-[9px] normal-case tracking-normal italic text-dim">
+                          Drag chip = move · Ctrl+drag = copy · Right-click = menu
+                        </span>
+                      </div>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {items.length === 0 ? (
@@ -1934,13 +1977,17 @@ function SubfolderSection({
                       </button>
                     </div>
 
-                    {/* v1.4.0 — Unlimited nested sub-folders. Managed by a
-                        self-contained recursive editor so the surrounding
-                        SubfolderSection stays flat. */}
+                    {/* v1.4.0 · v1.4.1 — Unlimited nested sub-folders.
+                        Managed by a self-contained recursive editor so the
+                        surrounding SubfolderSection stays flat. The
+                        ancestorPath starts at the CATEGORY name so nested
+                        rows show a full "Sports › Baseball (AL) › …"
+                        breadcrumb at every depth. */}
                     {onReplaceSubfolderNode && (
                       <NestedSubfolderEditor
                         node={sf}
                         onChange={(patched) => onReplaceSubfolderNode(sf.id, patched)}
+                        ancestorPath={[{ name: pack?.name }]}
                       />
                     )}
                   </div>
@@ -1967,6 +2014,33 @@ function SubfolderSection({
             onRemoveItem(ctxMenu.sfId, ctxMenu.itemId);
             setCtxMenu(null);
           }}
+          onNest={onReplaceSubfolderNode ? () => {
+            // v1.4.1 — promote a single filename tag on this sub-folder
+            // into a fresh nested sub-folder (same name + icon).
+            const sf = subs.find((s) => s.id === ctxMenu.sfId);
+            const it = (sf?.filenameItems || []).find((x) => x.id === ctxMenu.itemId);
+            if (!sf || !it) { setCtxMenu(null); return; }
+            if (!window.confirm(`Convert filename tag "${it.label}" into a nested sub-folder under "${sf.name}"?`)) {
+              setCtxMenu(null); return;
+            }
+            onReplaceSubfolderNode(sf.id, {
+              ...sf,
+              filenameItems: (sf.filenameItems || []).filter((x) => x.id !== it.id),
+              subfolders: [
+                ...(sf.subfolders || []),
+                {
+                  id: uid("sf"),
+                  name: (it.label || "Nested").slice(0, 60),
+                  iconType: it.iconType || "lucide",
+                  iconName: it.iconName || "Folder",
+                  ...(it.iconData ? { iconData: it.iconData } : {}),
+                  filenameItems: [],
+                  subfolders: [],
+                },
+              ],
+            });
+            setCtxMenu(null);
+          } : null}
         />
       )}
     </div>
@@ -2046,7 +2120,7 @@ function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext, armedIco
  * Shows the current subfolder + a list of every OTHER subfolder as
  * Move-to and Copy-to targets, plus a Remove item.
  */
-function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRemove }) {
+function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRemove, onNest }) {
   const others = (allSubs || []).filter((s) => s.id !== fromSfId);
   const style = {
     position: "fixed",
@@ -2099,6 +2173,16 @@ function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRem
         </>
       )}
       <div className="h-px bg-app/60 my-1" />
+      {onNest && (
+        <button
+          onClick={onNest}
+          className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-surface-hover text-primary-earth"
+          data-testid="subfolder-item-ctx-nest"
+          title="Convert this filename tag into a nested sub-folder under its current parent."
+        >
+          <FolderPlus size={12} /> → Nest this tag (make it a sub-folder)
+        </button>
+      )}
       <button
         onClick={onRemove}
         className="w-full flex items-center gap-2 px-3 py-1.5 text-xs text-left hover:bg-surface-hover text-[color:var(--danger,#c0392b)]"
