@@ -24,7 +24,14 @@ export default function SubfolderBar({
   const subs = Array.isArray(subfolders) ? subfolders : [];
   if (subs.length === 0) return null;
 
-  const label = depth === 0 ? "Sub-Folder" : `Level ${depth + 1}`;
+  // v1.4.1 — At depth 0 keep the classic "SUB-FOLDER" label. Deeper rows
+  // print the immediate parent's own name with a trailing arrow so Kurt
+  // sees exactly WHERE he is in the tree at a glance
+  // (e.g. "Baseball (AL) →").
+  const parentName = parentPathLabels[parentPathLabels.length - 1];
+  const label = depth === 0
+    ? "Sub-Folder"
+    : (parentName ? `${parentName} →` : `Level ${depth + 1}`);
   const pathHint = parentPathLabels.filter(Boolean).join(" › ");
 
   return (
