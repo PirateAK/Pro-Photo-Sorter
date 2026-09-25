@@ -7,6 +7,7 @@ import { totalCount } from "../lib/tags";
 import { parseTagList, serializePack as serializePackText, serializePacks as serializePacksText } from "../lib/tagpackText";
 import { toast } from "sonner";
 import NestedSubfolderEditor from "./NestedSubfolderEditor";
+import PasteRosterButton from "./PasteRosterButton";
 
 // Curated built-in icons
 const BUILTIN_ICONS = [
@@ -1975,6 +1976,24 @@ function SubfolderSection({
                       >
                         <Plus size={11} /> Add
                       </button>
+                      {/* v1.4.3-hotfix — Paste Roster bulk add. Kurt pastes
+                          a comma- or newline-separated list and every entry
+                          becomes a filename tag on THIS sub-folder in one
+                          shot. Skips labels that already exist here. */}
+                      <PasteRosterButton
+                        testId={`subfolder-paste-${sf.id}`}
+                        targetName={sf.name}
+                        onCommit={(labels) => {
+                          const existing = new Set((sf.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+                          const toAdd = labels.filter((l) => !existing.has(l.toLowerCase()));
+                          let added = 0;
+                          for (const label of toAdd) {
+                            onAddItem(sf.id, label);
+                            added += 1;
+                          }
+                          return added;
+                        }}
+                      />
                     </div>
 
                     {/* v1.4.0 · v1.4.1 — Unlimited nested sub-folders.
