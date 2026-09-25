@@ -31,6 +31,7 @@
 import React, { useState } from "react";
 import { Plus, Trash2, Pencil, ChevronDown, ChevronRight, FolderPlus, CornerDownRight, ArrowRight, MoveRight } from "lucide-react";
 import { uid } from "../lib/storage";
+import PasteRosterButton from "./PasteRosterButton";
 
 function makeNested(name, seed = {}) {
   return {
@@ -379,6 +380,31 @@ export default function NestedSubfolderEditor({
                         >
                           <Plus size={10} /> Tag
                         </button>
+                        {/* v1.4.3-hotfix — Paste roster into this nested
+                            child. Bulk-adds filename tags atomically via a
+                            single onChange to keep undo/redo clean. */}
+                        <PasteRosterButton
+                          testId={`nested-paste-${c.id}`}
+                          targetName={c.name}
+                          compact
+                          onCommit={(labels) => {
+                            const existing = new Set((c.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+                            const additions = labels
+                              .filter((l) => !existing.has(l.toLowerCase()))
+                              .map((label) => ({
+                                id: uid("it"),
+                                label: label.slice(0, 60),
+                                iconType: "lucide",
+                                iconName: "Tag",
+                              }));
+                            if (additions.length === 0) return 0;
+                            patchChildNode(c.id, {
+                              ...c,
+                              filenameItems: [...(c.filenameItems || []), ...additions],
+                            });
+                            return additions.length;
+                          }}
+                        />
                       </div>
 
                       {depth < maxDepthHint ? (

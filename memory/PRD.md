@@ -1277,3 +1277,15 @@ Kurt's UX picks: 1-c collapsible accordions in the left rail, 2-c split-filmstri
 **Test posture**
 - All 13 Node `.mjs` regression suites green (43 unit assertions).
 - testing_agent Playwright pass: **95% initial → 100% after fixes** — nested-button DOM issue fixed and re-verified manually via screenshot tool (aria-expanded flips cleanly `true → false → true` on chevron/label clicks; Open button coordinates confirm proper stopPropagation isolation).
+
+
+### Backlog — Documentation Refresh (queued for next session, top priority)
+
+Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to reflect v1.4.0 → v1.4.2 changes before the next release.
+
+**Files to refresh:**
+- `/app/ReadMe.txt` — Add sections on Multi-Source Roots, nested sub-folders, Custom Filename Templates, First-run Samples, Coach-Mark.
+- `/app/dist-docs/Quick Start.pdf` — Regenerate via `/app/scripts/build-docs-pdf.js`. Add: "Add second source", "Convert filename tag → nested sub-folder", "Save Custom template".
+- `/app/dist-docs/User Guide.pdf` — Full walkthrough for all v1.4.x features (nested trees, tag→nest conversion, split filmstrip, atomic swap, coach-mark).
+
+**Do BEFORE** any coding on Editor Round-trip / RAW / Paste Roster / XMP Sidecars so retail buyers on the next thumb-drive shipment aren't handed outdated docs.
