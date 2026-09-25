@@ -1213,3 +1213,36 @@ Kurt's testing team delivered three requirements. Batched cleanly in one shot; t
 - `.pps-iconpack.json` pack signing
 - In-app contact-sheet fancy preview with mini-filmstrip
 - Hard-coded trial limit
+
+
+### Iteration 29 — v1.4.1 · Connection Visibility + Tag→Nest Conversion (2026-02-19)
+
+Kurt discovered that when he wanted `Sports › Baseball (AL) › Boston Red Sox › {player}.jpg`, his existing team names were stored as *filename tags* under Baseball (AL), not as sub-folders — so picking a team didn't drill deeper. Also, nested sub-folder rows didn't visibly show their parent connection.
+
+**Fix batch (UX picks: 1-ii `Baseball (AL) →`, 2-i leave empty after bulk):**
+
+- 🧭 **Connection Visibility** in Tag Manager:
+  - Breadcrumb strip above every "Nested sub-folders" section: `Nested under: Sports › Baseball (AL) › …` (last segment bold, earth-tone). Auto-updates at every recursion depth via `ancestorPath` prop.
+  - Left tree-line rail with `CornerDownRight` glyphs on every nested row — the tree literally looks like a tree.
+- 🧭 **Connection Visibility** on main window:
+  - `SubfolderBar` label at depth > 0 now reads `${parentName} →` (arrow-style, e.g. `Baseball (AL) →`) instead of generic `Level 2`.
+  - New live breadcrumb pill `subfolder-breadcrumb` above the cascade: `Path: Sports › Baseball (AL) › Boston Red Sox`. Renders only when the user has picked at least one sub-folder.
+- 🔁 **Tag → Nested Sub-folder Conversion** — three flavors from one shared seed helper (`tagToNestedSeed`):
+  - **Per-tag context menu** in main SubfolderSection: right-click any filename chip → "→ Nest this tag (make it a sub-folder)". Confirms, then moves it into a fresh nested row with same name/icon.
+  - **Per-tag inline arrow** in NestedSubfolderEditor: every filename tag chip inside a nested child shows a small `→` button that promotes it into a nested grandchild.
+  - **Bulk "Convert all → nested"** in two places (parity):
+    1. In the Tag Manager's `Filename tags for …` header (data-testid `subfolder-bulk-nest-<sfid>`).
+    2. In the green-tinted callout at the top of the nested editor (data-testid `nested-bulk-convert-<node.id>`).
+  - Duplicates skipped by lower-case name match; existing nested children preserved. Custom-image icon data carried through unchanged.
+
+**Version bump**
+- All three version stamps → **1.4.1** (build date 2026-02-19).
+
+**Files touched**
+- Rewritten: `frontend/src/components/NestedSubfolderEditor.jsx` (breadcrumb + tree-line + promote logic).
+- Updated: `frontend/src/components/SubfolderBar.jsx` (arrow-style label), `frontend/src/components/SubfolderCascade.jsx` (breadcrumb pill), `frontend/src/components/CategoryManager.jsx` (bulk header button + right-click Nest menu item), `frontend/src/buildInfo.json`, `frontend/package.json`, `electron-shell/package.json`.
+- New: `frontend/tests/tagPromote.test.mjs` (6 assertions covering single/bulk promotion, icon preservation, duplicate skip, empty no-op).
+
+**Test posture**
+- All 13 Node `.mjs` regression suites green (43 assertions total from v1.4.0/v1.4.1).
+- testing_agent Playwright pass: **100% — 9/9 verified features**, zero ui_bugs, zero regressions from v1.4.0.

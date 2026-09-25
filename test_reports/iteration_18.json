@@ -1,0 +1,33 @@
+{
+  "summary": "v1.4.1 frontend patch validated end-to-end via Playwright against the preview URL. All requested UX additions work correctly and no regressions from v1.4.0 were found.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_features": [
+    "Build meta shows 'v1.4.1 · 2026-02-19' bottom-right; no console errors on load.",
+    "Tag Manager → Wildlife → expand Mammals: 'Nested under: Wildlife › Mammals' breadcrumb rendered inside expanded body with the trailing segment bold in earth-tone.",
+    "Green-tinted callout inside expanded body: 'Turn all 4 filename tag(s) on \"Mammals\" into nested sub-folders.' with data-testid nested-bulk-convert-wf-sub-mammals. Clicking fires window.confirm; on accept ALL 4 tags removed from filename list AND appear as 4 new nested rows (portrait, action, feeding, closeup) with empty filename tag lists.",
+    "Right-click on filename tag chip subfolder-item-wf-sub-mammals-wf-mm-1 opens context menu with '→ Nest this tag (make it a sub-folder)' (data-testid subfolder-item-ctx-nest). Clicking + confirm removes tag from list and adds it as a new nested row.",
+    "Header 'Filename tags for \"Mammals\"' area shows a 'Convert all → nested' button with data-testid subfolder-bulk-nest-wf-sub-mammals whenever tag count ≥ 1.",
+    "Inside NestedSubfolderEditor, per-tag promote arrow present as data-testid nested-tag-promote-<tagid>. Clicking + confirm promotes the tag into a grandchild of that nested node (verified: added 'playerA' under portrait → appeared as a grandchild sub-folder).",
+    "Main window: after picking Mammals chip, a second row appears whose LEFT label reads 'MAMMALS →' (from parent name, not generic 'Level 2').",
+    "Main window: subfolder-breadcrumb pill visible above the cascade with text 'Path: Wildlife › Mammals'. Live-updates to 'Path: Wildlife › Mammals › portrait' after drilling one level. Disappears when selection cleared (chain.length===0 branch).",
+    "Pre-existing v1.4.0 testids nested-subfolders-toggle and template-save-custom-btn are still present. template-custom-chips/template-error only render conditionally which is expected."
+  ],
+  "test_report_links": [],
+  "action_items": [],
+  "critical_code_review_comments": [
+    "Minor: SubfolderBar depth-1+ label uses fallback 'Level N' only when parentPathLabels last entry is empty — since SubfolderCascade always passes parent names for known chain entries, the fallback path is effectively dead but harmless.",
+    "Minor UX: On breadcrumb pill and 'Nested under:' strip, the '›' separator uses text-dim which contrasts well; last segment in earth-tone is legible on the dark theme. No issue.",
+    "NestedSubfolderEditor duplicates tag-promote logic between per-tag inline handler and top-level promoteTagToNested. Consider extracting to reduce duplication in a future refactor (non-blocking)."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "100%"},
+  "seed_data_creation": "None; used the built-in Wildlife starter pack's Mammals sub-folder with 4 filename tags.",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "v1.4.1 patch is verified end-to-end. Key testids: nested-bulk-convert-<sfid>, subfolder-bulk-nest-<sfid>, subfolder-item-ctx-nest, nested-tag-promote-<tagid>, subfolder-breadcrumb, palette-row-subfolder-l<depth>. Remember to attach page.on('dialog', d=>d.accept()) since every conversion routes through window.confirm."
+}
