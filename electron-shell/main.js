@@ -100,6 +100,51 @@ migrateFromLegacyElectronShellSync();
 const SAFETY_DIR = path.join(app.getPath('documents'), 'Pro Photo Sorter', 'Safety-Backups');
 const SAFETY_LATEST = path.join(SAFETY_DIR, 'latest.json');
 
+// v1.4.0 — First-run sample folder. On first launch we copy the six bundled
+// starter photos into %USERPROFILE%\Documents\Pro Photo Sorter\Samples\ so
+// new users have real images to poke at without needing to hunt for their
+// own. A sentinel .samples-copied file prevents duplicate copies on every
+// subsequent launch; the user can still trigger a re-copy from Settings
+// (pps:samples-reset IPC).
+const SAMPLES_DIR = path.join(app.getPath('documents'), 'Pro Photo Sorter', 'Samples');
+const SAMPLES_SENTINEL = path.join(SAMPLES_DIR, '.samples-copied');
+function bundledSamplesDir() {
+  return app.isPackaged
+    ? path.join(process.resourcesPath, 'samples')
+    : path.join(__dirname, 'samples');
+}
+function copyBundledSamplesSync({ force = false } = {}) {
+  const src = bundledSamplesDir();
+  if (!fs.existsSync(src)) return { ok: false, copied: 0, reason: 'no-bundled-samples' };
+  fs.mkdirSync(SAMPLES_DIR, { recursive: true });
+  let copied = 0;
+  for (const entry of fs.readdirSync(src, { withFileTypes: true })) {
+    if (!entry.isFile()) continue;
+    if (!/\.(jpe?g|png|webp)$/i.test(entry.name)) continue;
+    const to = path.join(SAMPLES_DIR, entry.name);
+    if (!force && fs.existsSync(to)) continue;
+    try {
+      fs.copyFileSync(path.join(src, entry.name), to);
+      copied += 1;
+    } catch { /* ignore single-file failures */ }
+  }
+  try {
+    fs.writeFileSync(
+      SAMPLES_SENTINEL,
+      `Copied on ${new Date().toISOString()} (v${app.getVersion()}). Delete this file to force a re-copy.\n`,
+      'utf8'
+    );
+  } catch { /* ignore */ }
+  return { ok: true, copied, samplesDir: SAMPLES_DIR };
+}
+function ensureSamplesOnFirstRun() {
+  try {
+    if (!fs.existsSync(SAMPLES_SENTINEL)) copyBundledSamplesSync();
+  } catch (err) {
+    console.warn('[PPS] Sample copy failed:', err && err.message);
+  }
+}
+
 function ensureSafetyDir() {
   try { fs.mkdirSync(SAFETY_DIR, { recursive: true }); } catch { /* ignore */ }
 }
@@ -379,5 +424,43 @@ ipcMain.handle('pps:safety-info', async () => {
   };
 });
 
-app.whenReady().then(createWindow);
+// ── IPC: First-run Sample folder (v1.4.0) ──────────────────────────────────
+ipcMain.handle('pps:samples-info', async () => {
+  const exists = fs.existsSync(SAMPLES_DIR);
+  const files = exists
+    ? fs.readdirSync(SAMPLES_DIR).filter((f) => /\.(jpe?g|png|webp)$/i.test(f))
+    : [];
+  return {
+    ok: true,
+    samplesDir: SAMPLES_DIR,
+    exists,
+    sentinelExists: fs.existsSync(SAMPLES_SENTINEL),
+    fileCount: files.length,
+    files,
+  };
+});
+
+ipcMain.handle('pps:samples-restore', async () => {
+  try {
+    const result = copyBundledSamplesSync({ force: true });
+    return result;
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+ipcMain.handle('pps:samples-open-folder', async () => {
+  try {
+    fs.mkdirSync(SAMPLES_DIR, { recursive: true });
+    await shell.openPath(SAMPLES_DIR);
+    return { ok: true, path: SAMPLES_DIR };
+  } catch (e) {
+    return { ok: false, error: e?.message || String(e) };
+  }
+});
+
+app.whenReady().then(() => {
+  ensureSamplesOnFirstRun();
+  createWindow();
+});
 app.on('window-all-closed', () => process.platform !== 'darwin' && app.quit());

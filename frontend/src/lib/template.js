@@ -140,3 +140,75 @@ export const TEMPLATE_PRESETS = [
   { name: "Studio format", value: "{date}-{folders}-{tags}{ext}" },
   { name: "Original preserved", value: "{folders}/{tags}_{original}{ext}" },
 ];
+
+// v1.4.0 — Valid tokens for the Custom Filename Template validator. Kept in
+// sync with the switch in renderTemplate() above. Any {token} on the input
+// that isn't in this list (or the numbered folderN/tagN/labelN patterns) is
+// flagged as invalid so bad templates never silently produce empty paths.
+export const TEMPLATE_TOKEN_NAMES = new Set([
+  "folders", "tags", "allLabels", "date", "stars", "original", "ext",
+  // Legacy aliases still supported
+  "folder", "labels",
+]);
+export const NUMBERED_TOKEN_RE = /^(?:folder|tag|label)\d+$/;
+
+/**
+ * Scan a template string for unknown {tokens}. Returns:
+ *   { ok: true }                 if every token is valid,
+ *   { ok: false, invalid: [...], suggestions: {...} } otherwise.
+ * Suggestions map each bad token to its closest valid token (Levenshtein
+ * distance ≤ 3) so the caller can offer "did you mean {folders}?" hints.
+ */
+export function validateTemplate(template) {
+  const text = template || "";
+  const tokens = [...text.matchAll(/\{(\w+)\}/g)].map((m) => m[1]);
+  const invalid = [];
+  const validList = [...TEMPLATE_TOKEN_NAMES];
+  for (const t of tokens) {
+    if (TEMPLATE_TOKEN_NAMES.has(t)) continue;
+    if (NUMBERED_TOKEN_RE.test(t)) continue;
+    invalid.push(t);
+  }
+  if (invalid.length === 0) return { ok: true };
+  const suggestions = {};
+  for (const bad of invalid) {
+    let best = null;
+    let bestDist = Infinity;
+    for (const good of validList) {
+      const d = levenshtein(bad.toLowerCase(), good.toLowerCase());
+      if (d < bestDist) { bestDist = d; best = good; }
+    }
+    if (best && bestDist <= 3) suggestions[bad] = best;
+  }
+  return { ok: false, invalid, suggestions };
+}
+
+// Small self-contained edit distance so we don't need a dependency.
+function levenshtein(a, b) {
+  if (a === b) return 0;
+  if (!a.length) return b.length;
+  if (!b.length) return a.length;
+  const prev = new Array(b.length + 1);
+  const curr = new Array(b.length + 1);
+  for (let j = 0; j <= b.length; j += 1) prev[j] = j;
+  for (let i = 1; i <= a.length; i += 1) {
+    curr[0] = i;
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      curr[j] = Math.min(curr[j - 1] + 1, prev[j] + 1, prev[j - 1] + cost);
+    }
+    for (let j = 0; j <= b.length; j += 1) prev[j] = curr[j];
+  }
+  return prev[b.length];
+}
+
+/**
+ * Auto-name a custom template using the user's own string. Uses the first
+ * non-token word (case-preserving), else falls back to "Custom".
+ */
+export function autoNameForTemplate(template) {
+  const stripped = (template || "").replace(/\{[^}]+\}/g, " ").replace(/[^A-Za-z0-9]+/g, " ").trim();
+  const first = stripped.split(/\s+/).find(Boolean);
+  const name = (first || "Custom").slice(0, 24);
+  return name.charAt(0).toUpperCase() + name.slice(1);
+}

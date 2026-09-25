@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen, LifeBuoy } from "lucide-react";
+import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen, LifeBuoy, Images } from "lucide-react";
 import {
   getLicense,
   isTrialMode,
@@ -8,7 +8,7 @@ import {
   subscribeLicense,
   GUMROAD_PRODUCT_URL,
 } from "@/lib/license";
-import { isElectron, safetyInfo, safetyOpenFolder, safetyReadLatest } from "@/lib/electronBridge";
+import { isElectron, safetyInfo, safetyOpenFolder, safetyReadLatest, samplesInfo, samplesRestore, samplesOpenFolder } from "@/lib/electronBridge";
 import { STATE_KEY } from "@/lib/storage";
 import { toast } from "sonner";
 
@@ -25,6 +25,7 @@ export default function LicenseSection() {
   const [error, setError] = useState("");
   const [okMsg, setOkMsg] = useState("");
   const [safety, setSafety] = useState(null);
+  const [samples, setSamples] = useState(null);
 
   useEffect(() => subscribeLicense(() => setLicense(getLicense())), []);
   useEffect(() => {
@@ -32,11 +33,28 @@ export default function LicenseSection() {
     (async () => {
       const res = await safetyInfo();
       if (!cancelled && res?.ok) setSafety(res);
+      const s = await samplesInfo();
+      if (!cancelled && s?.ok) setSamples(s);
     })();
     return () => { cancelled = true; };
   }, [license]);
 
   const openSafetyFolder = async () => { await safetyOpenFolder(); };
+  const openSamplesFolder = async () => { await samplesOpenFolder(); };
+  const restoreSamples = async () => {
+    const res = await samplesRestore();
+    if (res?.ok) {
+      toast.success(`Restored ${res.copied} sample photo${res.copied === 1 ? "" : "s"}`, {
+        icon: "🖼️",
+        description: `They're now in ${res.samplesDir}. Open the folder to load them in the app.`,
+      });
+      // Refresh info
+      const s = await samplesInfo();
+      if (s?.ok) setSamples(s);
+    } else {
+      toast.error("Sample restore failed", { description: res?.error || "unknown" });
+    }
+  };
 
   // v1.3.1 — Manual "Restore from Safety-Backup" recovery hatch.
   // Reads Documents\Pro Photo Sorter\Safety-Backups\latest.json and writes
@@ -154,6 +172,37 @@ export default function LicenseSection() {
                 className="px-2 py-1 rounded bg-primary-earth/20 hover:bg-primary-earth/40 border border-primary-earth/60 text-primary-earth inline-flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <LifeBuoy size={12} /> Restore tags from Safety-Backup
+              </button>
+            </div>
+          </div>
+        )}
+
+        {isElectron() && samples?.samplesDir && (
+          <div className="pane rounded p-3 space-y-2 text-xs" data-testid="license-samples-panel">
+            <div className="flex items-center gap-2 text-sm">
+              <Images size={16} className="text-primary-earth" />
+              <strong>Sample Photos: {samples.fileCount > 0 ? `${samples.fileCount} on disk` : "Missing"}</strong>
+            </div>
+            <p className="text-dim leading-relaxed">
+              Six bundled starter photos live in your Documents folder so you always have something to
+              practise on. If you deleted them, restore anytime — no internet needed.
+            </p>
+            <div className="font-mono text-dim break-all">{samples.samplesDir}</div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={openSamplesFolder}
+                data-testid="license-open-samples-btn"
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+              >
+                <FolderOpen size={12} /> Open Samples folder
+              </button>
+              <button
+                onClick={restoreSamples}
+                data-testid="license-restore-samples-btn"
+                title="Copies the six bundled sample photos back into your Documents\Pro Photo Sorter\Samples\ folder."
+                className="px-2 py-1 rounded bg-primary-earth/20 hover:bg-primary-earth/40 border border-primary-earth/60 text-primary-earth inline-flex items-center gap-1"
+              >
+                <Images size={12} /> Restore bundled samples
               </button>
             </div>
           </div>

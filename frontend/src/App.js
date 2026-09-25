@@ -29,6 +29,7 @@ import Thumbnail from "@/components/Thumbnail";
 import CategoryManager from "@/components/CategoryManager";
 import IconPalette from "@/components/IconPalette";
 import SubfolderBar from "@/components/SubfolderBar";
+import SubfolderCascade, { resolveSubChain, deepestWithFilenames } from "@/components/SubfolderCascade";
 import DateTagDropdowns, { DATE_STAMP_IDS } from "@/components/DateTagDropdowns";
 import IconOverlay from "@/components/IconOverlay";
 import ZoomablePreview from "@/components/ZoomablePreview";
@@ -111,17 +112,21 @@ function baseName(name) {
 }
 
 /**
- * v1.2.1 — Compose destination folder parts.
- * Order: [Pack name] / [folder-tag chips clicked] / [active subfolder name]
+ * v1.2.1 · v1.4.0 — Compose destination folder parts.
+ * Order: [Pack name] / [folder-tag chips clicked] / [nested sub-folder names…]
  * The pack name becomes the outermost folder so photos stay grouped by
  * subject (e.g. /Wedding/Ceremony/Brides family/…). Any null/empty part
  * is dropped so packs with no name or no active subfolder still work.
+ *
+ * v1.4.0: `subChain` is an array of sub-folder objects (top → bottom) so
+ * unlimited nested depth appends cleanly to the path.
  */
-function composeDestFolderParts(activePack, folderPartsFromTemplate, activeSub) {
+function composeDestFolderParts(activePack, folderPartsFromTemplate, subChain) {
+  const chainNames = Array.isArray(subChain) ? subChain.map((s) => s?.name) : [];
   return [
     activePack?.name,
     ...(folderPartsFromTemplate || []),
-    activeSub?.name,
+    ...chainNames,
   ].filter((p) => p && String(p).trim().length > 0);
 }
 
@@ -143,19 +148,23 @@ export default function App() {
   const setFoldersCatId = useCallback((id) => {
     setFoldersCatIdRaw(id);
     setSettings({ ...settings, foldersCatId: id });
-    // Reset subfolder selection when the parent pack changes (v1.1.6)
-    setActiveSubfolderId(null);
+    // Reset sub-folder cascade when the parent pack changes (v1.1.6 · v1.4.0)
+    setActiveSubfolderPath([]);
   }, [settings, setSettings]);
   const setTagsCatId = useCallback((id) => {
     setTagsCatIdRaw(id);
     setSettings({ ...settings, tagsCatId: id });
   }, [settings, setSettings]);
 
-  // v1.1.6 — Sub-folder navigation. When a pack has subfolders defined, a
-  // middle SUBFOLDER bar shows chips; clicking one sets this state, prepends
-  // the subfolder name to the destination folder path in storeCurrent, and
-  // swaps the Filename bar to show that subfolder's filenameItems.
-  const [activeSubfolderId, setActiveSubfolderId] = useState(null);
+  // v1.1.6 · v1.4.0 — Sub-folder cascade. When a pack has subfolders defined,
+  // a middle SUB-FOLDER bar (or a stack of them, one per nested depth) shows
+  // chips; clicking one drills to that level and prepends the name to the
+  // destination folder path. Filenames come from the deepest picked
+  // sub-folder that has any (falling back through ancestors if empty).
+  //
+  // `activeSubfolderPath` is a top → bottom array of sub-folder IDs.
+  // Empty array = no sub-folder chosen.
+  const [activeSubfolderPath, setActiveSubfolderPath] = useState([]);
 
   // Source
   const [sourceRoot, setSourceRoot] = useState(null);
@@ -1094,8 +1103,8 @@ export default function App() {
       // v1.2.1: folder path is [Pack]/[folder-tag chips]/[Subfolder].
       // See composeDestFolderParts() near top of file.
       const activePack = categories.find((c) => c.id === foldersCatId);
-      const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
-      const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, activeSub);
+      const subChain = resolveSubChain(activePack, activeSubfolderPath);
+      const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, subChain);
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
       try {
@@ -1270,8 +1279,8 @@ export default function App() {
       const anchorPath = destSelected?.path || destRootName;
       // v1.2.1: same [Pack]/[folder tags]/[Subfolder] structure as storeCurrent.
       const activePack = categories.find((c) => c.id === foldersCatId);
-      const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
-      const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, activeSub);
+      const subChain = resolveSubChain(activePack, activeSubfolderPath);
+      const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, subChain);
       const targetDir = await getOrCreateSubdir(anchor, effectiveFolderParts);
 
       const wmEnabled = isWatermarkOnFor(`${currentSourcePath}/${currentImage.name}`) || trial;
@@ -1492,8 +1501,8 @@ export default function App() {
           // as the normal store flow so auto-enhanced files land alongside
           // manually-stored ones.
           const activePack = categories.find((c) => c.id === foldersCatId);
-          const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
-          const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, activeSub);
+          const subChain = resolveSubChain(activePack, activeSubfolderPath);
+          const effectiveFolderParts = composeDestFolderParts(activePack, folderParts, subChain);
           targetDir = await getOrCreateSubdir(anchor, effectiveFolderParts);
         } else {
           // Save into the selected destination-tree folder
@@ -1669,14 +1678,14 @@ export default function App() {
       stars,
     });
     // v1.2.1: preview mirrors the storeCurrent layout —
-    //   [dest root] / [Pack] / [folder tags] / [Subfolder] / [filename]
+    //   [dest root] / [Pack] / [folder tags] / [Subfolder cascade] / [filename]
     const activePack = categories.find((c) => c.id === foldersCatId);
-    const activeSub = activeSubfolderId && activePack?.subfolders?.find((s) => s.id === activeSubfolderId);
+    const subChain = resolveSubChain(activePack, activeSubfolderPath);
     // Show preview whenever ANY of: pack selected, folder tags applied,
     // filename tags applied, or subfolder chosen.
-    if (!activePack && !hasAnyIcons && !activeSub) return null;
+    if (!activePack && !hasAnyIcons && subChain.length === 0) return null;
     const root = destSelected?.path || destRootName || "…";
-    const folderChain = composeDestFolderParts(activePack, rendered.folderParts || [], activeSub);
+    const folderChain = composeDestFolderParts(activePack, rendered.folderParts || [], subChain);
     const filePart = hasAnyIcons
       ? (rendered.fileName || "(pick filename tags)")
       : "(pick filename tags)";
@@ -1684,7 +1693,7 @@ export default function App() {
       ? `${folderChain.join("/")}/${filePart}`
       : filePart;
     return `${root} / ${joined}`;
-  }, [currentOverlay, hasAnyIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif, categories, foldersCatId, activeSubfolderId]);
+  }, [currentOverlay, hasAnyIcons, currentImage, destSelected, destRootName, settings.filenameTemplate, ratings, currentSourcePath, exif, categories, foldersCatId, activeSubfolderPath]);
 
   // ------------------------------------------------------------------------
   // Render
@@ -2196,8 +2205,15 @@ export default function App() {
               {(() => {
                 const activePack = categories.find((c) => c.id === foldersCatId);
                 const hasSubs = activePack?.subfolders?.length > 0;
-                const activeSub = hasSubs && activeSubfolderId
-                  ? activePack.subfolders.find((s) => s.id === activeSubfolderId)
+                // v1.4.0 — resolve the cascade chain and pick the deepest
+                // sub-folder that actually has filename tags. If the leaf
+                // sub-folder is a "container" (no tags), we fall back to the
+                // nearest ancestor with tags so drilling deeper never leaves
+                // Kurt staring at an empty filename bar.
+                const subChain = resolveSubChain(activePack, activeSubfolderPath);
+                const activeSub = deepestWithFilenames(subChain) || (subChain.length ? subChain[subChain.length - 1] : null);
+                const overrideLabel = activeSub && activePack
+                  ? [activePack.name, ...subChain.map((s) => s.name)].join(" › ")
                   : null;
                 return (
                   <>
@@ -2216,10 +2232,11 @@ export default function App() {
                       />
                       {hasSubs && (
                         <div className="flex-1 min-w-0 flex items-center pl-2 border-l border-app/60">
-                          <SubfolderBar
-                            active={activePack}
-                            activeSubfolderId={activeSubfolderId}
-                            onSetSubfolder={setActiveSubfolderId}
+                          <SubfolderCascade
+                            pack={activePack}
+                            activeSubfolderPath={activeSubfolderPath}
+                            onSetPath={setActiveSubfolderPath}
+                            enableNestedSubfolders={settings.enableNestedSubfolders !== false}
                           />
                         </div>
                       )}
@@ -2237,7 +2254,7 @@ export default function App() {
                       onOpenManager={() => setShowCatMgr(true)}
                       hidePicker
                       overrideItems={activeSub ? activeSub.filenameItems : null}
-                      overrideLabel={activeSub ? `${activePack.name} › ${activeSub.name}` : null}
+                      overrideLabel={overrideLabel}
                     />
                   </>
                 );
@@ -2479,10 +2496,20 @@ export default function App() {
                   // pack + subfolder so the panel reflects the full path
                   // (matches the "Will store to: …" preview).
                   const pack = categories.find((c) => c.id === foldersCatId);
-                  const sub = activeSubfolderId && pack?.subfolders?.find((s) => s.id === activeSubfolderId);
+                  const subChain = resolveSubChain(pack, activeSubfolderPath);
                   const out = [];
                   if (pack?.name) out.push({ id: `ctx-pack-${pack.id}`, label: pack.name, iconType: "lucide", iconName: "Package", source: "pack", position: "leading" });
-                  if (sub?.name) out.push({ id: `ctx-sub-${sub.id}`, label: sub.name, iconType: sub.iconType || "lucide", iconName: sub.iconName || "Folder", iconData: sub.iconData, source: "subfolder", position: "trailing" });
+                  subChain.forEach((sub, i) => {
+                    out.push({
+                      id: `ctx-sub-${sub.id}`,
+                      label: sub.name,
+                      iconType: sub.iconType || "lucide",
+                      iconName: sub.iconName || "Folder",
+                      iconData: sub.iconData,
+                      source: i === 0 ? "subfolder" : "nested-subfolder",
+                      position: "trailing",
+                    });
+                  });
                   return out;
                 })()}
                 onReorderFolders={(nl) => reorderRow("folders", nl)}
