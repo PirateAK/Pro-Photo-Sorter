@@ -107,8 +107,38 @@ export default function NestedSubfolderEditor({
     });
   };
   const addTagToChild = (childId) => {
-    const lbl = (tagDrafts[childId] || "").trim();
-    if (!lbl) return;
+    const raw = tagDrafts[childId] || "";
+    if (!raw.trim()) return;
+    // v1.4.3-hotfix2 — Smart bulk. If the input contains commas or
+    // newlines, split into many tags at once. Otherwise fall back to
+    // single-tag add. Kurt can paste "Rutschman, Henderson, Mullins"
+    // straight into the nested tag input and hit Enter.
+    if (/[,\n]/.test(raw)) {
+      const labels = raw.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+      onChange({
+        ...node,
+        subfolders: children.map((c) => {
+          if (c.id !== childId) return c;
+          const existing = new Set((c.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+          const additions = [];
+          for (const label of labels) {
+            const key = label.toLowerCase();
+            if (existing.has(key)) continue;
+            existing.add(key);
+            additions.push({
+              id: uid("it"),
+              label: label.slice(0, 60),
+              iconType: "lucide",
+              iconName: "Tag",
+            });
+          }
+          return { ...c, filenameItems: [...(c.filenameItems || []), ...additions] };
+        }),
+      });
+      setTagDrafts({ ...tagDrafts, [childId]: "" });
+      return;
+    }
+    const lbl = raw.trim();
     onChange({
       ...node,
       subfolders: children.map((c) => (c.id === childId
@@ -367,8 +397,8 @@ export default function NestedSubfolderEditor({
                           type="text"
                           value={tagDrafts[c.id] || ""}
                           onChange={(e) => setTagDrafts({ ...tagDrafts, [c.id]: e.target.value })}
-                          onKeyDown={(e) => { if (e.key === "Enter") addTagToChild(c.id); }}
-                          placeholder="New filename tag…"
+                          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTagToChild(c.id); } }}
+                          placeholder="New filename tag… (comma or newline separated for bulk)"
                           className="flex-1 bg-app border border-app rounded px-2 py-1 text-[11px] focus-ring"
                           data-testid={`nested-tag-input-${c.id}`}
                         />
@@ -377,8 +407,13 @@ export default function NestedSubfolderEditor({
                           disabled={!(tagDrafts[c.id] || "").trim()}
                           className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app text-[11px] disabled:opacity-40 flex items-center gap-1"
                           data-testid={`nested-tag-add-${c.id}`}
+                          title={/[,\n]/.test(tagDrafts[c.id] || "")
+                            ? `Add ${(tagDrafts[c.id] || "").split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length} tags in one shot`
+                            : "Add this filename tag"}
                         >
-                          <Plus size={10} /> Tag
+                          <Plus size={10} /> {/[,\n]/.test(tagDrafts[c.id] || "")
+                            ? `Add ${(tagDrafts[c.id] || "").split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length}`
+                            : "Tag"}
                         </button>
                         {/* v1.4.3-hotfix — Paste roster into this nested
                             child. Bulk-adds filename tags atomically via a

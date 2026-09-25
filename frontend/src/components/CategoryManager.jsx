@@ -1957,24 +1957,62 @@ function SubfolderSection({
                         onChange={(e) => setItemDrafts({ ...itemDrafts, [sf.id]: e.target.value })}
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
-                            onAddItem(sf.id, itDraft);
+                            e.preventDefault();
+                            // v1.4.3-hotfix2 — Smart bulk: if the input
+                            // holds commas or newlines, split into many
+                            // tags. Otherwise fall back to the single-tag
+                            // add. Kurt can now paste "Rutschman,
+                            // Henderson, Mullins" directly here and hit
+                            // Enter to tag them all at once.
+                            const val = itDraft;
+                            if (/[,\n]/.test(val)) {
+                              const labels = val.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+                              const existing = new Set((sf.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+                              let added = 0;
+                              for (const label of labels) {
+                                if (existing.has(label.toLowerCase())) continue;
+                                existing.add(label.toLowerCase());
+                                onAddItem(sf.id, label);
+                                added += 1;
+                              }
+                              if (added > 0) toast.success(`Added ${added} filename tag${added === 1 ? "" : "s"} to "${sf.name}"`);
+                              else toast("All those labels already exist here", { icon: "🟰" });
+                            } else {
+                              onAddItem(sf.id, val);
+                            }
                             setItemDrafts({ ...itemDrafts, [sf.id]: "" });
                           }
                         }}
-                        placeholder="New filename tag…"
+                        placeholder="New filename tag… (comma or newline separated for bulk)"
                         className="flex-1 bg-app border border-app rounded px-2 py-1 text-xs focus-ring"
                         data-testid={`subfolder-item-input-${sf.id}`}
                       />
                       <button
                         onClick={() => {
-                          onAddItem(sf.id, itDraft);
+                          const val = itDraft;
+                          if (/[,\n]/.test(val)) {
+                            const labels = val.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+                            const existing = new Set((sf.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+                            let added = 0;
+                            for (const label of labels) {
+                              if (existing.has(label.toLowerCase())) continue;
+                              existing.add(label.toLowerCase());
+                              onAddItem(sf.id, label);
+                              added += 1;
+                            }
+                            if (added > 0) toast.success(`Added ${added} filename tag${added === 1 ? "" : "s"} to "${sf.name}"`);
+                            else toast("All those labels already exist here", { icon: "🟰" });
+                          } else {
+                            onAddItem(sf.id, val);
+                          }
                           setItemDrafts({ ...itemDrafts, [sf.id]: "" });
                         }}
                         disabled={!itDraft.trim()}
                         className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs disabled:opacity-40 flex items-center gap-1"
                         data-testid={`subfolder-item-add-${sf.id}`}
+                        title={/[,\n]/.test(itDraft) ? `Add ${itDraft.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length} tags in one shot` : "Add this filename tag"}
                       >
-                        <Plus size={11} /> Add
+                        <Plus size={11} /> {/[,\n]/.test(itDraft) ? `Add ${itDraft.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length}` : "Add"}
                       </button>
                       {/* v1.4.3-hotfix — Paste Roster bulk add. Kurt pastes
                           a comma- or newline-separated list and every entry
