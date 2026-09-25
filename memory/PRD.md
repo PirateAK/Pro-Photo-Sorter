@@ -1246,3 +1246,34 @@ Kurt discovered that when he wanted `Sports › Baseball (AL) › Boston Red Sox
 **Test posture**
 - All 13 Node `.mjs` regression suites green (43 assertions total from v1.4.0/v1.4.1).
 - testing_agent Playwright pass: **100% — 9/9 verified features**, zero ui_bugs, zero regressions from v1.4.0.
+
+
+### Iteration 30 — v1.4.2 · Multi-Source Roots + Onboarding Coach-Mark (2026-02-19)
+
+Kurt's UX picks: 1-c collapsible accordions in the left rail, 2-c split-filmstrip with two side-by-side strips, 3-c first-launch coach-mark plus a "Show me again" reset in the Help panel. Paragraph 4 archived (Kurt said it was already covered).
+
+**Multi-Source Roots**
+- Added `secondary` state slot in `App.js` holding an independent `{root, rootName, treeKey, currentFolder, currentPath, images, loadingImages, expanded}`. Primary state is untouched.
+- Left rail split into two accordions: SOURCE A · PRIMARY (top) with existing tree + Open/HardDrive/Recent buttons; SOURCE B · SECONDARY (bottom) with "Add second" button and independent tree.
+- New actions in App.js: `pickSecondarySource`, `closeSecondarySource`, `onSelectSecondarySourceFolder`, `swapPrimaryAndSecondary(targetIdx)`.
+- Split filmstrip: bottom row splits 50/50 when secondary is loaded. New `SecondaryStrip` component renders the secondary photos with a "Swap" button on top and per-thumb click swap.
+- **Atomic swap architecture**: clicking a thumb in the secondary strip fires `swapPrimaryAndSecondary(i)` which atomically exchanges every primary source-state field with the secondary snapshot. This keeps every existing store/delete/tag/EXIF/ratings code path (130+ references) working against the "primary" without any refactor.
+
+**Onboarding Coach-Mark**
+- `useEffect` in App.js (~line 592) fires ONCE per install (localStorage sentinel `pps.coachmark.samples.v1`). Gated by `isElectron()` + `samplesInfo().exists`. Uses sonner toast with 20s duration, `Open Samples` action button, `Dismiss` cancel button; either interaction persists the sentinel.
+- LicenseSection.jsx: new "Show me again next launch" button in both the licensed samples pane AND (v1.4.2 fix) a new trial-mode samples pane so trial users can access it too. Clicking clears the sentinel and fires a confirmation toast.
+
+**Testing bugs found + fixed same pass**
+- testing_agent flagged nested-`<button>` DOM in the accordion headers → refactored outer element to `<div role="button" tabIndex={0}>` with keyboard handler. Verified click on chevron/label toggles cleanly (aria-expanded flips) and Open/Add-second buttons no longer accidentally trigger the accordion.
+- Samples pane was licensed-only → added trial-mode pane (`license-samples-panel-trial`) with the same three buttons so trial users can restore samples and reset the coach-mark.
+
+**Version bump**
+- All three version stamps → **1.4.2** (build date 2026-02-19).
+
+**Files touched**
+- New: `frontend/src/components/SecondaryStrip.jsx`.
+- Updated: `frontend/src/App.js` (secondary state + swap + split rail + split strip + coach-mark effect + fixed nested-button DOM), `frontend/src/components/LicenseSection.jsx` (coach-mark reset button in both licensed and trial branches), `frontend/src/buildInfo.json`, `frontend/package.json`, `electron-shell/package.json`.
+
+**Test posture**
+- All 13 Node `.mjs` regression suites green (43 unit assertions).
+- testing_agent Playwright pass: **95% initial → 100% after fixes** — nested-button DOM issue fixed and re-verified manually via screenshot tool (aria-expanded flips cleanly `true → false → true` on chevron/label clicks; Open button coordinates confirm proper stopPropagation isolation).

@@ -1888,10 +1888,19 @@ export default function App() {
       <div className="region-left flex flex-col min-h-0">
         {/* Primary accordion */}
         <div className={`flex flex-col min-h-0 ${primaryExpanded ? "flex-1" : "shrink-0"}`}>
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setPrimaryExpanded((v) => !v)}
-            className="w-full px-3 py-2 border-b border-app flex items-center gap-2 hover:bg-surface-hover text-left"
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setPrimaryExpanded((v) => !v);
+              }
+            }}
+            className="w-full px-3 py-2 border-b border-app flex items-center gap-2 hover:bg-surface-hover text-left cursor-pointer select-none"
             data-testid="source-accordion-primary-toggle"
+            aria-expanded={primaryExpanded}
             title={primaryExpanded ? "Collapse primary source" : "Expand primary source"}
           >
             {primaryExpanded ? <ChevronDown size={13} className="text-dim shrink-0" /> : <ChevronRight size={13} className="text-dim shrink-0" />}
@@ -1919,7 +1928,7 @@ export default function App() {
               </button>
               <RecentFoldersDropdown kind="source" onPick={pickRecentSource} />
             </div>
-          </button>
+          </div>
           {primaryExpanded && (
             <div className="flex flex-col min-h-0 flex-1">
               {sourceRoot ? (
@@ -1945,13 +1954,23 @@ export default function App() {
             triggers an atomic swap so the app's core code path always
             operates on primary state. */}
         <div className={`flex flex-col min-h-0 border-t border-app ${secondary?.expanded ? "flex-1" : "shrink-0"}`}>
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => {
               if (!secondary) return;
               patchSecondary({ expanded: !secondary.expanded });
             }}
-            className="w-full px-3 py-2 flex items-center gap-2 hover:bg-surface-hover text-left"
+            onKeyDown={(e) => {
+              if (!secondary) return;
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                patchSecondary({ expanded: !secondary.expanded });
+              }
+            }}
+            className="w-full px-3 py-2 flex items-center gap-2 hover:bg-surface-hover text-left cursor-pointer select-none"
             data-testid="source-accordion-secondary-toggle"
+            aria-expanded={!!secondary?.expanded}
             title={secondary ? (secondary.expanded ? "Collapse second source" : "Expand second source") : "Add a second source folder"}
           >
             {secondary?.expanded ? <ChevronDown size={13} className="text-dim shrink-0" /> : <ChevronRight size={13} className="text-dim shrink-0" />}
@@ -2000,7 +2019,7 @@ export default function App() {
                 </>
               )}
             </div>
-          </button>
+          </div>
           {secondary?.expanded && (
             <div className="flex flex-col min-h-0 flex-1 border-t border-app">
               {secondary.root ? (

@@ -1,0 +1,38 @@
+{
+  "summary": "v1.4.2 frontend patch validated end-to-end against the preview URL. Multi-source accordions render with the right testids and toggle correctly, split-filmstrip wrapper is in place, secondary strip stays hidden until a secondary source is added, and the coach-mark reset button in Help > License clears the localStorage sentinel and fires the correct success toast. Coach-mark toast itself is correctly gated by isElectron() and does NOT fire in browser mode (expected). No regressions on Settings modal or Tag Manager from v1.4.0/v1.4.1. One HTML-validity warning found (nested <button> in the primary/secondary accordion header) — non-fatal but should be fixed.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "SourceAccordion (primary + secondary headers)", "issue": "The accordion header <button data-testid=source-accordion-*-toggle> contains inner <button> elements (pick-source-btn, pick-secondary-source-btn, recent-folders dropdown). This produces a React hydration warning ('<button> cannot be a descendant of <button>') and, more importantly, a default page.click() on the accordion toggle lands on the inner Open/Add-second button, so the accordion does not toggle when clicked near the right side. Toggling only works if the click hits the chevron/label region on the left.", "selector": "[data-testid=source-accordion-primary-toggle]", "priority": "MEDIUM"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "verified_features": [
+    "Build meta reads 'v1.4.2 · 2026-02-19' bottom-right; no console errors, no page errors, no crashes on load.",
+    "Primary accordion: header text 'SOURCE A · PRIMARY', Open button + HardDrive icon + recent-folders dropdown all render. Clicking the header (excluding inner buttons) flips chevron between lucide-chevron-down and lucide-chevron-right and title toggles between 'Collapse primary source' and 'Expand primary source'. testid `source-accordion-primary-toggle` present.",
+    "Secondary accordion: header 'SOURCE B · SECONDARY', shows 'Not added' + 'Add second' button (`pick-secondary-source-btn`). Clicking Add second fires without error in browser (picker not available — expected). testid `source-accordion-secondary-toggle` toggles the section.",
+    "Bottom filmstrip wrapper `primary-filmstrip-wrap` exists. `secondary-filmstrip-wrap` count = 0 while no secondary source is loaded (as designed).",
+    "Coach-mark toast is browser-side gated by isElectron() — did NOT fire in Playwright preview. Confirmed no spurious toast on load.",
+    "Settings modal (top toolbar) still shows Filename Template section with `template-save-custom-btn` and Nested Sub-Folders `nested-subfolders-toggle`. No v1.4.0/v1.4.1 regressions.",
+    "Help > License (with an activated-license fixture + electronAPI stub): `license-samples-panel` renders and contains all THREE buttons — `license-open-samples-btn`, `license-restore-samples-btn`, and `license-reset-coachmark-btn`.",
+    "Clicking `license-reset-coachmark-btn` removes localStorage key `pps.coachmark.samples.v1` (verified pre='1' → post=null) and fires a sonner success toast titled 'Coach-mark reset' with description 'The starter-photos welcome toast will fire again the next time you launch the app.'",
+    "Tag Manager still opens (Tags toolbar → Tag Manager), Wildlife pack + Mammals/Birds/Reptiles/Fish/Insects sub-folders render, no regressions from v1.4.1. subfolder-bulk-nest / nested-bulk-convert testids continue to render per pack state."
+  ],
+  "test_report_links": [],
+  "action_items": [
+    "Fix nested-<button> DOM in the left-rail source accordion headers so the header toggle is a <div role='button' tabindex='0'> (or a <button> with the pick/recent-folder controls moved outside as siblings). This clears the React hydration warning AND ensures a click anywhere on the header row toggles the accordion — currently a click that lands on the Open / Add-second / recent-folders sub-buttons is intercepted and the accordion does not toggle."
+  ],
+  "critical_code_review_comments": [
+    "LicenseSection.jsx sample-photos pane is inside the Licensed branch (line 126 gate). In Trial mode the panel — including the new Show me again next launch button — is not reachable. Kurt may want the coach-mark reset button available in Trial mode too, otherwise trial users who dismissed the toast can never re-arm it. Consider hoisting `license-samples-panel` (or at least the reset button) above the trial/licensed split.",
+    "App.js:1890+ — the accordion toggle is a <button> whose children include additional <button> elements. Invalid HTML per spec; React 18/19 flags it during dev-hydration. See action_items.",
+    "Coach-mark useEffect (App.js:592) correctly guards with `isElectron()` and `info.exists`. Consider also gating on `info.fileCount > 0` (already done) — code looks solid."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A (skipped per request)", "frontend": "95% (all target features pass; 1 HTML-validity/click-intercept issue on accordion header)"},
+  "seed_data_creation": "For the License > Samples pane verification I seeded via page.add_init_script: a fake `window.electronAPI` with samplesInfo/Restore/OpenFolder stubs AND a fake activated license under localStorage key `gvmaas.license.v1`. This was the only way to render the samples pane in browser preview; it is not a real code seed and does not persist.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "v1.4.2 shell verified in browser preview. Key testids: source-accordion-primary-toggle, source-accordion-secondary-toggle, pick-secondary-source-btn, primary-filmstrip-wrap, secondary-filmstrip-wrap (only when secondary loaded), license-samples-panel, license-open-samples-btn, license-restore-samples-btn, license-reset-coachmark-btn. To exercise the samples panel or coach-mark in browser preview you MUST stub window.electronAPI via page.add_init_script AND seed a fake license record at localStorage['gvmaas.license.v1'] before navigation — otherwise the pane is hidden behind isElectron() && licensed branch. Coach-mark toast: sonner v2 with 20s duration; localStorage sentinel key `pps.coachmark.samples.v1` (values: 'dismissed' or missing). The nested-button issue in the accordion header is the only real defect and blocks a broad center-of-header click from toggling.",
+  "rca of the issue": "Nested <button> DOM in App.js ~1891: the outer accordion toggle <button data-testid=source-accordion-primary-toggle> wraps the inner pick-source <button> and RecentSourcesDropdown <button>. Consequences: (1) React logs hydration warning; (2) Playwright default click centre coordinates land on inner buttons which stopPropagation the event, so the header toggle handler never runs — the accordion appears broken to a user aiming for the header row. Mitigation: change the outer element to <div role='button' tabIndex={0} onClick={toggle} onKeyDown={enterSpace}> or restructure so pick/dropdown buttons are siblings of the toggle rather than descendants."
+}
