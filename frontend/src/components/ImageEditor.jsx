@@ -54,6 +54,15 @@ export default function ImageEditor({
   const [showSaveLook, setShowSaveLook] = useState(false);
   const [lookName, setLookName] = useState("");
 
+  // v1.4.5 — Auto-Enhance as a toggle. The button lights up earth-orange
+  // when active. Clicking again reverts the three sliders it moved
+  // (brightness/contrast/saturation) to whatever they were BEFORE auto
+  // fired, leaving crop/rotate/sharpen/looks untouched. Any manual
+  // slider edit on B/C/S while auto is ON silently turns it OFF so
+  // Kurt's hand-edit becomes the new baseline.
+  const [autoOn, setAutoOn] = useState(false);
+  const preAutoRef = useRef(null); // { brightness, contrast, saturation }
+
   const canvasRef = useRef(null);
   const stageRef = useRef(null);
   const dragging = useRef(null);
@@ -103,26 +112,61 @@ export default function ImageEditor({
     setAspectRatio(null);
     setCropMode(false);
     workBmpRef.current = null;
+    // v1.4.5 — reset also clears any auto-enhance state so the button
+    // stops glowing after a full reset.
+    setAutoOn(false);
+    preAutoRef.current = null;
     lastSharpVal.current = -1;
   };
 
-  // Auto-tone the current image
+  // v1.4.5 — Auto-Enhance as toggle. First press: snapshot the current
+  // B/C/S, then run autoAnalyze and apply. Second press: restore the
+  // snapshotted values (undo auto only, leave crop/sharpen/rotate/look
+  // decisions alone).
   const applyAuto = () => {
+    if (autoOn) {
+      // Toggle OFF — restore pre-auto B/C/S
+      const snap = preAutoRef.current || { brightness: 0, contrast: 0, saturation: 0 };
+      setBrightness(snap.brightness);
+      setContrast(snap.contrast);
+      setSaturation(snap.saturation);
+      setAutoOn(false);
+      toast("Auto-Enhance removed", {
+        description: "Brightness / Contrast / Saturation restored.",
+        icon: "↩",
+      });
+      return;
+    }
     if (!imgEl) return;
+    // Toggle ON — snapshot current, then analyze + apply
+    preAutoRef.current = { brightness, contrast, saturation };
     const { brightness: b, contrast: c, saturation: s } = autoAnalyze(imgEl);
     setBrightness(b);
     setContrast(c);
     setSaturation(s);
-    toast.success("Auto-tone applied", {
+    setAutoOn(true);
+    toast.success("Auto-Enhance applied", {
       description: `Brightness ${b > 0 ? "+" : ""}${b} · Contrast ${c > 0 ? "+" : ""}${c} · Saturation ${s > 0 ? "+" : ""}${s}`,
     });
   };
+
+  // v1.4.5 — Wrapped B/C/S setters used by the sliders. Any manual edit
+  // while auto is ON silently exits auto so the new value becomes the
+  // fresh baseline (and a second click of Auto-Enhance would run
+  // against Kurt's new starting point).
+  const setBrightnessManual = (v) => { if (autoOn) setAutoOn(false); setBrightness(v); };
+  const setContrastManual = (v) => { if (autoOn) setAutoOn(false); setContrast(v); };
+  const setSaturationManual = (v) => { if (autoOn) setAutoOn(false); setSaturation(v); };
 
   const applyLook = (look) => {
     setBrightness(look.brightness || 0);
     setContrast(look.contrast || 0);
     setSaturation(look.saturation || 0);
     setSharpness(look.sharpness || 0);
+    // v1.4.5 — applying a look clears auto-enhance since the look now
+    // defines the current B/C/S baseline.
+    setAutoOn(false);
+    preAutoRef.current = null;
     toast(`Applied look: ${look.name}`);
   };
 
@@ -831,13 +875,13 @@ export default function ImageEditor({
           </div>
 
           {/* Brightness */}
-          {showSlider("Brightness", Sun, brightness, setBrightness, -80, 80, "brightness", null)}
+          {showSlider("Brightness", Sun, brightness, setBrightnessManual, -80, 80, "brightness", null)}
 
           {/* Contrast */}
-          {showSlider("Contrast", Contrast, contrast, setContrast, -50, 50, "contrast", null)}
+          {showSlider("Contrast", Contrast, contrast, setContrastManual, -50, 50, "contrast", null)}
 
           {/* Saturation */}
-          {showSlider("Saturation", Droplet, saturation, setSaturation, -100, 100, "saturation", null)}
+          {showSlider("Saturation", Droplet, saturation, setSaturationManual, -100, 100, "saturation", null)}
 
           {/* Sharpen */}
           <div>
@@ -863,12 +907,19 @@ export default function ImageEditor({
           <div>
             <button
               onClick={applyAuto}
-              disabled={!imgEl}
-              className="w-full px-2 py-1.5 rounded bg-primary-earth/15 border border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)] text-xs flex items-center justify-center gap-1 disabled:opacity-50"
+              disabled={!imgEl && !autoOn}
+              className={`w-full px-2 py-1.5 rounded border text-xs flex items-center justify-center gap-1 disabled:opacity-50 transition-colors ${
+                autoOn
+                  ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90"
+                  : "bg-primary-earth/15 border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)]"
+              }`}
               data-testid="auto-tone"
-              title="Analyze histogram and set brightness/contrast/saturation"
+              aria-pressed={autoOn}
+              title={autoOn
+                ? "Auto-Enhance ON — click to undo the auto adjustment (B/C/S will revert; crop/rotate/sharpen/looks stay)"
+                : "Analyze histogram and set brightness/contrast/saturation. Click again to undo just the auto part."}
             >
-              <Wand2 size={12} /> Auto-Enhance
+              <Wand2 size={12} /> {autoOn ? "Auto-Enhance ●" : "Auto-Enhance"}
             </button>
           </div>
 
