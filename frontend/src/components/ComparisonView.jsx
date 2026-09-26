@@ -84,7 +84,14 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
           />
         )
       ) : (
-        <div className="text-dim text-xs italic">Loading…</div>
+        // v1.4.5 — Matching loading placeholder so compare panes tell
+        // Kurt they're working instead of looking frozen.
+        <div className="flex flex-col items-center justify-center gap-2 p-6 rounded border-2 border-dashed border-primary-earth/50 animate-pulse" data-testid="compare-pane-loading">
+          <div className="w-8 h-8 border-2 border-primary-earth border-t-transparent rounded-full animate-spin" />
+          <span className="text-[10px] uppercase tracking-widest text-primary-earth font-heading">
+            Loading photo…
+          </span>
+        </div>
       )}
       {img && (
         <div
