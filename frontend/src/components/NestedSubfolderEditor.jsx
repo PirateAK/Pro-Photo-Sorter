@@ -30,8 +30,9 @@
 //     display (never mutated).
 import React, { useState } from "react";
 import { Plus, Trash2, Pencil, ChevronDown, ChevronRight, FolderPlus, CornerDownRight, ArrowRight, MoveRight } from "lucide-react";
+import { toast } from "sonner";
 import { uid } from "../lib/storage";
-import PasteRosterButton from "./PasteRosterButton";
+import PasteRosterButton, { parseRoster } from "./PasteRosterButton";
 
 function makeNested(name, seed = {}) {
   return {
@@ -82,11 +83,54 @@ export default function NestedSubfolderEditor({
   const parentTags = Array.isArray(node.filenameItems) ? node.filenameItems : [];
   const fullPath = [...ancestorPath.map((a) => a.name).filter(Boolean), node?.name].filter(Boolean);
 
+  // v1.4.5 — Smart bulk. If the input has commas / newlines / semicolons,
+  // treat it as a roster and create ONE nested sub-folder per label under
+  // this parent. Otherwise fall back to a single add. De-dupes against
+  // existing sibling names (case-insensitive) so re-pasting is safe.
   const addChild = () => {
-    const nm = draft.trim();
-    if (!nm) return;
-    onChange({ ...node, subfolders: [...children, makeNested(nm)] });
+    const raw = (draft || "").trim();
+    if (!raw) return;
+    const looksLikeList = /[,;\n]/.test(raw);
+    const labels = looksLikeList
+      ? parseRoster(raw)
+      : [raw.slice(0, 60)];
+    const existing = new Set(children.map((c) => (c.name || "").toLowerCase()));
+    const additions = [];
+    for (const label of labels) {
+      const key = label.toLowerCase();
+      if (existing.has(key)) continue;
+      existing.add(key);
+      additions.push(makeNested(label));
+    }
+    if (additions.length === 0) {
+      if (looksLikeList) toast("All those names already exist under this parent", { icon: "🟰" });
+      setDraft("");
+      return;
+    }
+    onChange({ ...node, subfolders: [...children, ...additions] });
     setDraft("");
+    if (looksLikeList) {
+      const skipped = labels.length - additions.length;
+      toast.success(
+        `Created ${additions.length} nested sub-folder${additions.length === 1 ? "" : "s"} under "${node.name}"`,
+        skipped > 0 ? { description: `${skipped} already existed and were skipped.` } : undefined,
+      );
+    }
+  };
+  // v1.4.5 — Bulk paste-roster commit for nested sub-folders. Same
+  // dedupe/limit rules as addChild but wired through the popover.
+  const commitPastedChildren = (labels) => {
+    const existing = new Set(children.map((c) => (c.name || "").toLowerCase()));
+    const additions = [];
+    for (const label of labels) {
+      const key = label.toLowerCase();
+      if (existing.has(key)) continue;
+      existing.add(key);
+      additions.push(makeNested(label));
+    }
+    if (additions.length === 0) return 0;
+    onChange({ ...node, subfolders: [...children, ...additions] });
+    return additions.length;
   };
   const removeChild = (childId) => {
     const child = children.find((c) => c.id === childId);
@@ -248,8 +292,8 @@ export default function NestedSubfolderEditor({
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") addChild(); }}
-          placeholder={`New nested sub-folder under "${node.name}"…`}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addChild(); } }}
+          placeholder={`New nested sub-folder under "${node.name}"… (comma or newline separated for bulk)`}
           className="flex-1 bg-app border border-app rounded px-2 py-1 text-xs focus-ring"
           data-testid={`nested-add-input-${node.id}`}
         />
@@ -258,10 +302,24 @@ export default function NestedSubfolderEditor({
           disabled={!draft.trim()}
           className="px-2 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] text-[11px] font-medium disabled:opacity-40 flex items-center gap-1"
           data-testid={`nested-add-btn-${node.id}`}
-          title="Add a nested sub-folder"
+          title={/[,;\n]/.test(draft || "")
+            ? `Add ${parseRoster(draft || "").length} nested sub-folders in one shot`
+            : "Add a nested sub-folder"}
         >
-          <Plus size={10} /> Nest
+          <Plus size={10} /> {/[,;\n]/.test(draft || "")
+            ? `Nest ${parseRoster(draft || "").length}`
+            : "Nest"}
         </button>
+        {/* v1.4.5 — Paste-roster popover for nested sub-folders. Same
+            behavior as the filename-tag paste roster but creates new
+            sibling nested nodes under this parent. */}
+        <PasteRosterButton
+          testId={`nested-paste-child-${node.id}`}
+          targetName={node.name}
+          buttonLabel="Paste list"
+          compact
+          onCommit={commitPastedChildren}
+        />
       </div>
 
       {children.length === 0 ? (
@@ -292,7 +350,15 @@ export default function NestedSubfolderEditor({
                   {!isLast && <div className="w-px flex-1 bg-primary-earth/30" />}
                 </div>
 
-                <div className="flex-1 rounded border border-app bg-app/40 min-w-0">
+                <div
+                  className={`flex-1 rounded border min-w-0 transition-colors ${
+                    expanded
+                      ? "border-primary-earth bg-primary-earth/10 shadow-[0_0_0_1px_var(--primary-earth,#a3835a)]/20"
+                      : "border-app bg-app/40"
+                  }`}
+                  data-testid={`nested-row-body-${c.id}`}
+                  data-expanded={expanded ? "true" : "false"}
+                >
                   <div className="flex items-center gap-1 px-2 py-1">
                     <button
                       onClick={() => setExpandedId(expanded ? null : c.id)}

@@ -208,6 +208,36 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
       ],
     }));
   };
+  // v1.4.5 — Bulk add for pasted rosters. Skips names that already exist
+  // on this pack (case-insensitive) and returns how many were actually
+  // created so callers can toast the right count.
+  const addSubfolders = (names) => {
+    const clean = (Array.isArray(names) ? names : [])
+      .map((n) => (n || "").trim())
+      .filter(Boolean);
+    if (clean.length === 0) return 0;
+    let addedCount = 0;
+    updateCurrentPack((c) => {
+      const existing = new Set((c.subfolders || []).map((s) => (s.name || "").toLowerCase()));
+      const additions = [];
+      for (const nm of clean) {
+        const key = nm.toLowerCase();
+        if (existing.has(key)) continue;
+        existing.add(key);
+        additions.push({
+          id: uid("sf"),
+          name: nm.slice(0, 60),
+          iconType: "lucide",
+          iconName: "Folder",
+          filenameItems: [],
+        });
+      }
+      addedCount = additions.length;
+      if (additions.length === 0) return c;
+      return { ...c, subfolders: [...(c.subfolders || []), ...additions] };
+    });
+    return addedCount;
+  };
   const removeSubfolder = (sfId) => {
     const sf = (current?.subfolders || []).find((s) => s.id === sfId);
     if (!sf) return;
