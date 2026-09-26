@@ -2720,6 +2720,7 @@ export default function App() {
             compareMode > 1 ? (
               <>
                 <ComparisonView
+                  ref={zoomRef}
                   images={images}
                   selectedIdx={selectedIdx}
                   panes={compareMode}
