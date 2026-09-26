@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen, LifeBuoy, Images } from "lucide-react";
+import { KeyRound, CheckCircle2, ExternalLink, ShoppingCart, LogOut, ShieldCheck, FolderOpen, LifeBuoy, Images, Sparkles } from "lucide-react";
 import {
   getLicense,
   isTrialMode,
@@ -220,6 +220,14 @@ export default function LicenseSection() {
               >
                 <LifeBuoy size={12} /> Show me again next launch
               </button>
+              <button
+                onClick={() => window.dispatchEvent(new Event("pps.splash.request-show"))}
+                data-testid="license-view-splash-btn"
+                title="Re-open the welcome splash screen. A new splash appears once per release — this shows the current one anytime."
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+              >
+                <Sparkles size={12} /> View welcome splash
+              </button>
             </div>
           </div>
         )}
@@ -348,6 +356,14 @@ export default function LicenseSection() {
               className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
             >
               <LifeBuoy size={12} /> Show me again next launch
+            </button>
+            <button
+              onClick={() => window.dispatchEvent(new Event("pps.splash.request-show"))}
+              data-testid="license-view-splash-btn-trial"
+              title="Re-open the welcome splash screen. A new splash appears once per release — this shows the current one anytime."
+              className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app inline-flex items-center gap-1"
+            >
+              <Sparkles size={12} /> View welcome splash
             </button>
           </div>
         </div>

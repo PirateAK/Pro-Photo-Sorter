@@ -39,6 +39,7 @@ import IconOverlay from "@/components/IconOverlay";
 import ZoomablePreview from "@/components/ZoomablePreview";
 import StarRating from "@/components/StarRating";
 import SettingsModal from "@/components/SettingsModal";
+import SplashScreen from "@/components/SplashScreen";
 import ImageEditor from "@/components/ImageEditor";
 import ExifChip from "@/components/ExifChip";
 import { Settings as Cog, Star as StarIcon, Scissors, Wand2, Columns, FileEdit, FileText, Sparkles, Play, ChevronDown as ChevDown, MoveRight, Sun, Moon, Search, Zap, HardDrive, Copyright, HelpCircle, ZoomIn, ZoomOut, Maximize, PanelBottom, PanelTop, PanelLeft, PanelRight, ChevronUp, GripHorizontal, EyeOff, Film, Check } from "lucide-react";
@@ -285,6 +286,35 @@ export default function App() {
   const [showHelp, setShowHelp] = useState(false);
   const [helpInitialTab, setHelpInitialTab] = useState(null); // "license" | null
   const [showSettings, setShowSettings] = useState(false);
+  const [showSplash, setShowSplash] = useState(false);
+  // v1.4.5 — First-run splash screen. Fires ONCE per install via
+  // localStorage sentinel `pps.splash.v1`. Also re-openable from
+  // Help panel via the `pps.splash.request-show` custom event.
+  // v1.4.5 — First-run splash + version-keyed welcome. Sentinel is
+  // versioned (`pps.splash.seen.<version>`), so every time Kurt ships a
+  // new release with fresh splash copy, existing installs re-fire the
+  // splash exactly once — turning it into a lightweight "what's new"
+  // channel without any remote infrastructure. Users can also manually
+  // re-open from Help → View welcome splash.
+  useEffect(() => {
+    const key = `pps.splash.seen.${buildInfo.version || "unknown"}`;
+    if (localStorage.getItem(key) === "1") return;
+    // Small delay so the app UI paints first — the splash lands on top
+    // of a rendered app, not on a boot flash.
+    const t = setTimeout(() => setShowSplash(true), 400);
+    return () => clearTimeout(t);
+  }, []);
+  const dismissSplash = () => {
+    const key = `pps.splash.seen.${buildInfo.version || "unknown"}`;
+    localStorage.setItem(key, "1");
+    setShowSplash(false);
+  };
+  // Listen for the manual re-open event fired from Help panel.
+  useEffect(() => {
+    const h = () => setShowSplash(true);
+    window.addEventListener("pps.splash.request-show", h);
+    return () => window.removeEventListener("pps.splash.request-show", h);
+  }, []);
   const [showEditor, setShowEditor] = useState(false);
   const [showRename, setShowRename] = useState(false);
   const [showContact, setShowContact] = useState(false);
@@ -3207,6 +3237,20 @@ export default function App() {
       />
 
       <DrivesPanel open={showDrives} onClose={() => setShowDrives(false)} />
+
+      {/* v1.4.5 — First-run / per-version welcome splash. Kurt bumps
+          buildInfo.version + edits the highlights and every user sees
+          the new welcome exactly once on their next launch. */}
+      <SplashScreen
+        open={showSplash}
+        onClose={dismissSplash}
+        onOpenSamples={async () => {
+          try {
+            const { samplesOpenFolder } = await import("@/lib/electronBridge");
+            await samplesOpenFolder();
+          } catch { /* browser / no bridge */ }
+        }}
+      />
 
       <HelpModal
         open={showHelp}
