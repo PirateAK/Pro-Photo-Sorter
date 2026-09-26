@@ -787,28 +787,47 @@ export default function ImageEditor({
 
   if (!open) return null;
 
-  const showSlider = (label, Icon, val, setter, min, max, testid, help) => (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
-          <Icon size={11} /> {label}
+  const showSlider = (label, Icon, val, setter, min, max, testid, help) => {
+    // v1.4.5 — Value badge is now a click-to-reset pill.
+    //   • At 0    → subtle grey chip, disabled, tooltip "no change yet".
+    //   • Non-0   → earth-orange filled pill, hover ring, tooltip "Reset
+    //               to 0 (click)". Click sets the slider back to 0.
+    const changed = val !== 0;
+    const resetOne = () => setter(0);
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
+            <Icon size={11} /> {label}
+          </div>
+          <button
+            onClick={resetOne}
+            disabled={!changed}
+            className={`text-xs font-mono px-2 py-0.5 rounded-full border transition-colors ${
+              changed
+                ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90 cursor-pointer"
+                : "bg-app border-app text-dim cursor-default"
+            }`}
+            data-testid={`${testid}-value`}
+            aria-label={changed ? `Reset ${label} to 0` : `${label} unchanged`}
+            title={changed ? `Click to reset ${label} to 0` : `${label} is unchanged`}
+          >
+            {val > 0 ? `+${val}` : val}
+          </button>
         </div>
-        <span className="text-xs font-mono text-primary-earth" data-testid={`${testid}-value`}>
-          {val > 0 ? `+${val}` : val}
-        </span>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={val}
+          onChange={(e) => setter(parseInt(e.target.value, 10))}
+          className="w-full accent-[color:var(--primary)]"
+          data-testid={`${testid}-slider`}
+        />
+        {help && <p className="text-[10px] text-dim mt-0.5">{help}</p>}
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={val}
-        onChange={(e) => setter(parseInt(e.target.value, 10))}
-        className="w-full accent-[color:var(--primary)]"
-        data-testid={`${testid}-slider`}
-      />
-      {help && <p className="text-[10px] text-dim mt-0.5">{help}</p>}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/95" data-testid="image-editor">
@@ -944,9 +963,20 @@ export default function ImageEditor({
             </div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-dim">Fine-tune</span>
-              <span className="text-xs font-mono text-primary-earth" data-testid="angle-value">
+              <button
+                onClick={() => setAngle(0)}
+                disabled={angle === 0}
+                className={`text-xs font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                  angle !== 0
+                    ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90 cursor-pointer"
+                    : "bg-app border-app text-dim cursor-default"
+                }`}
+                data-testid="angle-value"
+                aria-label={angle !== 0 ? "Reset Fine-tune angle to 0°" : "Fine-tune unchanged"}
+                title={angle !== 0 ? "Click to reset Fine-tune angle to 0°" : "Fine-tune is unchanged"}
+              >
                 {angle > 0 ? `+${angle.toFixed(1)}` : angle.toFixed(1)}°
-              </span>
+              </button>
             </div>
             <input
               type="range"
@@ -999,7 +1029,20 @@ export default function ImageEditor({
               <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
                 <Zap size={11} /> Sharpen
               </div>
-              <span className="text-xs font-mono text-primary-earth" data-testid="sharpen-value">{sharpness}</span>
+              <button
+                onClick={() => setSharpness(0)}
+                disabled={sharpness === 0}
+                className={`text-xs font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                  sharpness !== 0
+                    ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90 cursor-pointer"
+                    : "bg-app border-app text-dim cursor-default"
+                }`}
+                data-testid="sharpen-value"
+                aria-label={sharpness !== 0 ? "Reset Sharpen to 0" : "Sharpen unchanged"}
+                title={sharpness !== 0 ? "Click to reset Sharpen to 0" : "Sharpen is unchanged"}
+              >
+                {sharpness}
+              </button>
             </div>
             <input
               type="range"
