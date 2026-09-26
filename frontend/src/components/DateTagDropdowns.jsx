@@ -61,24 +61,62 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
   const [day, setDay] = useState(initial.day);
   const [year, setYear] = useState(initial.year);
 
-  const nothingSelected = !month && !day && !year;
+  // v1.4.5 — EXIF-Follow Mode. Kurt's ask: EXIF button becomes a TOGGLE.
+  //   • First click  → enter EXIF-follow mode, auto-load the current
+  //                     image's shoot date AND keep the date in sync as
+  //                     he tabs through the filmstrip or swaps sources.
+  //   • Second click → exit EXIF-follow mode and reset the picker to
+  //                     today.
+  //   • Any manual dropdown edit → exit EXIF-follow mode silently so
+  //                     hand-edits don't get clobbered by the next photo.
+  const [exifMode, setExifMode] = useState(false);
 
-  // v1.3.1 — Load EXIF button. Grabs the machine-readable date parts
-  // computed upstream from the photo's EXIF DateTimeOriginal (or
-  // CreateDate fallback) and drops them straight into the M/D/Y
-  // selects. Handy when the photographer wants the original shoot
-  // date in the filename instead of the picker's default of "today".
-  const loadExif = () => {
-    if (!exifDateParts) return;
+  // While EXIF-follow mode is ON, mirror whichever photo's EXIF date is
+  // active into M/D/Y. `exifDateParts` is recomputed upstream every time
+  // the active image or source folder changes, so this effect fires
+  // naturally on both.
+  useEffect(() => {
+    if (!exifMode) return;
+    if (!exifDateParts) return; // no EXIF on this photo → hold last value
     setMonth(exifDateParts.month);
     setDay(exifDateParts.day);
     setYear(exifDateParts.year);
+  }, [exifMode, exifDateParts]);
+
+  const nothingSelected = !month && !day && !year;
+
+  // Manual-edit setters: if the user changes any dropdown while EXIF
+  // mode is on, exit the mode so their edit sticks.
+  const setMonthManual = (v) => { setMonth(v); if (exifMode) setExifMode(false); };
+  const setDayManual   = (v) => { setDay(v);   if (exifMode) setExifMode(false); };
+  const setYearManual  = (v) => { setYear(v);  if (exifMode) setExifMode(false); };
+
+  // v1.4.5 — EXIF button toggle. Turning ON immediately loads the
+  // current photo's EXIF date if one is available; turning OFF resets
+  // the picker to today.
+  const toggleExifMode = () => {
+    if (exifMode) {
+      // OFF → reset to today
+      setExifMode(false);
+      const t = todayParts();
+      setMonth(t.month);
+      setDay(t.day);
+      setYear(t.year);
+      return;
+    }
+    // ON → load EXIF immediately if we have one
+    setExifMode(true);
+    if (exifDateParts) {
+      setMonth(exifDateParts.month);
+      setDay(exifDateParts.day);
+      setYear(exifDateParts.year);
+    }
   };
-  const canLoadExif = !!exifDateParts && !disabled;
-  const exifMatches = exifDateParts &&
-    month === exifDateParts.month &&
-    day   === exifDateParts.day &&
-    year  === exifDateParts.year;
+  const canToggleExif = !disabled;
+  // For the "matches" visual we now check the mode itself — the button
+  // stays highlighted the entire time follow-mode is active, regardless
+  // of whether the current photo happens to have EXIF or not.
+  const exifActive = exifMode;
 
   const handleClick = () => {
     if (isApplied) {
@@ -109,32 +147,37 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
       <span className="text-[10px] uppercase tracking-widest font-heading text-primary-earth px-1 shrink-0" aria-hidden="true">
         Date
       </span>
-      {/* v1.3.1 — one-click "Load EXIF" that fills M/D/Y from the current
-          photo's shoot date. Hides when no photo is loaded / no EXIF
-          date is available. Highlights orange when the current picker
-          values already match the EXIF date. */}
+      {/* v1.4.5 — EXIF-Follow toggle. First press turns ON follow-mode
+          (auto-loads shoot date, tracks the current image and source
+          folder). Second press turns OFF and resets to today.
+          Manual edits also cancel follow-mode. */}
       <button
-        onClick={loadExif}
-        disabled={!canLoadExif}
+        onClick={toggleExifMode}
+        disabled={!canToggleExif}
         className={`px-1.5 py-1 rounded text-xs flex items-center gap-1 border transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
-          exifMatches
+          exifActive
             ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth"
             : "bg-app hover:bg-surface-hover border-app text-app"
         }`}
         data-testid="date-tag-load-exif"
+        aria-pressed={exifActive}
         title={
-          !exifDateParts
-            ? "This photo has no EXIF date"
-            : exifMatches
-            ? `Picker already set to EXIF date: ${exifDateParts.month} ${exifDateParts.day}, ${exifDateParts.year}`
-            : `Load EXIF date: ${exifDateParts.month} ${exifDateParts.day}, ${exifDateParts.year}`
+          disabled
+            ? "Load a photo to use EXIF-follow mode"
+            : exifActive
+            ? (exifDateParts
+                ? `EXIF-follow ON — tracking ${exifDateParts.month} ${exifDateParts.day}, ${exifDateParts.year}. Click to turn OFF and reset to today.`
+                : "EXIF-follow ON — this photo has no EXIF date, holding last value. Click to turn OFF and reset to today.")
+            : (exifDateParts
+                ? `Turn EXIF-follow ON — auto-loads ${exifDateParts.month} ${exifDateParts.day}, ${exifDateParts.year} and follows each new image.`
+                : "Turn EXIF-follow ON — will auto-load the shoot date whenever an image with EXIF is active.")
         }
       >
-        <Camera size={11} /> EXIF
+        <Camera size={11} /> EXIF{exifActive ? " ●" : ""}
       </button>
       <select
         value={month}
-        onChange={(e) => setMonth(e.target.value)}
+        onChange={(e) => setMonthManual(e.target.value)}
         disabled={disabled}
         className={cls}
         data-testid="date-tag-month"
@@ -147,7 +190,7 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
       </select>
       <select
         value={day}
-        onChange={(e) => setDay(e.target.value)}
+        onChange={(e) => setDayManual(e.target.value)}
         disabled={disabled}
         className={cls}
         data-testid="date-tag-day"
@@ -158,7 +201,7 @@ export default function DateTagDropdowns({ isApplied = false, disabled, onApply,
       </select>
       <select
         value={year}
-        onChange={(e) => setYear(e.target.value)}
+        onChange={(e) => setYearManual(e.target.value)}
         disabled={disabled}
         className={cls}
         data-testid="date-tag-year"
