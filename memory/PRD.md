@@ -1289,3 +1289,39 @@ Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to 
 - `/app/dist-docs/User Guide.pdf` — Full walkthrough for all v1.4.x features (nested trees, tag→nest conversion, split filmstrip, atomic swap, coach-mark).
 
 **Do BEFORE** any coding on Editor Round-trip / RAW / Paste Roster / XMP Sidecars so retail buyers on the next thumb-drive shipment aren't handed outdated docs.
+
+
+### Iteration 33 — v1.4.5 · Tag Manager smart-paste + reorder + safety cap (2026-09-26)
+
+**BIG BUG fix (Issue #11):** "New nested sub-folder" text box and "New sub-folder name" input didn't understand comma/newline/semicolon-separated lists — Kurt got either the last entry or the whole list as one row. Both inputs now smart-split into N sub-folders in a single atomic state update, with a compact `PasteRosterButton` popover alongside for full-roster pastes. Same treatment for the "New filename tag" input on the Filename Tags pane at the bottom of Tag Manager.
+
+**Safety fix — huge-paste freeze/lockup:**
+- New shared `guardLargePaste(labels, opts)` in `PasteRosterButton.jsx`:
+  - `> 250` items → confirm dialog "Large pastes can briefly freeze PPS while it saves. Continue?"
+  - `> 2000` items → hard cap with confirm to trim; toasts the drop count so Kurt sees what happened.
+- New atomic bulk helpers: `addSubfolders(names[])`, `addSubfolderItemsBulk(sfId, labels[])`, `reorderSubfolderItems(sfId, from, to)`, `moveSubfolderItemWithin(sfId, itemId, dir)`, `convertSubfolderItemToNested(sfId, itemId)` in CategoryManager. Every paste path now commits in ONE `updateCurrentPack` call — fixes the previous per-label loop that dropped state updates under React batching and could freeze the UI on large lists.
+- All paste inputs & popovers now accept **commas, semicolons, AND newlines** as separators.
+
+**Filename Tags pane (Convert / Reorder regressions restored):**
+- Drag handle (`GripVertical`) on every filename tag chip — drag any tag to reorder within its sub-folder.
+- Up/Down arrow buttons on hover (injury-friendly alternative to drag).
+- Per-tag **→ Nest** button on hover — promotes a single filename tag into a nested sub-folder under its owning sub-folder (previously only "Convert all → nested" existed).
+- Live hint above the grid: "Drag any tag to reorder, or use the ▲ ▼ buttons. Click → Nest to promote a single tag into its own nested sub-folder."
+
+**Nested Sub-Folder editor:**
+- Active-parent visual: the currently-expanded nested row gets a `border-primary-earth` ring + light tint so it's obvious which parent your paste will land under.
+- New `PasteRosterButton` alongside the "New nested sub-folder under X…" input for popover-driven bulk roster paste.
+
+**Version bump**
+- All three version stamps → **1.4.5** (build date 2026-09-26).
+
+**Files touched**
+- Updated: `frontend/src/components/PasteRosterButton.jsx` (semicolons + `guardLargePaste` + `SAFE_PASTE_WARN_AT/HARD_CAP` exports), `frontend/src/components/NestedSubfolderEditor.jsx` (smart-split `addChild`, guardLargePaste on bulk tag-add, active-parent ring, PasteRosterButton for child creation), `frontend/src/components/CategoryManager.jsx` (bulk helpers, reorder helper, convert-one helper, `SubfolderFilenameEditor` overhaul with drag+arrows+convert, sub-folder input paste-roster wiring), `frontend/tests/pasteRoster.test.mjs` (16 assertions — semicolons added), `frontend/src/buildInfo.json`, `frontend/package.json`, `electron-shell/package.json`.
+
+**Test posture**
+- All 14 Node `.mjs` regression suites green.
+- Smoke test via Playwright screenshot tool: bulk-paste "Bear, Fox, Otter" into Mammals → 3 tags added atomically, toast fires, Convert/Up/Down buttons render on every chip (7/7/7 for the 7-tag Mammals list), Paste List popover discoverable at every level.
+
+**Deferred to v1.4.6 (Kurt's explicit next-up request):**
+- Multi-select mode for filename tags (checkbox toggle + batch "Move to sub-folder…" / "Convert selected → nested" / "Delete selected") — Kurt asked to smoke-test v1.4.5 before layering this in.
+- Docs refresh (`ReadMe.txt`, `Quick Start.pdf`, `User Guide.pdf`) — still the top-priority pre-feature task per v1.4.2 backlog note.

@@ -1,16 +1,28 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Settings as Cog, X, Info, Trash2, MoveRight, Copy, Star, Layers, Sun, Moon, Type, PackagePlus, MapPin, Save as SaveIcon, AlertCircle } from "lucide-react";
 import { TEMPLATE_TOKENS, TEMPLATE_PRESETS, renderTemplate, validateTemplate, autoNameForTemplate } from "../lib/template";
-import { clearThumbCache } from "../lib/thumbCache";
+import { clearThumbCache, getThumbCacheStats } from "../lib/thumbCache";
 import { paintWatermark, WATERMARK_FONTS } from "../lib/watermark";
 import { toast } from "sonner";
 
 export default function SettingsModal({ open, onClose, settings, onChange, previewImageHandle, onRestoreStarterPacks }) {
   const [local, setLocal] = useState(settings);
 
-  // Re-sync local state whenever the modal is (re)opened.
+  // v1.4.5 — Thumb-cache stats + two-step confirm.
+  //   `thumbStats`: cached last read, shown in the description.
+  //   `showClearConfirm`: null | { count, bytes, formatted } — non-null
+  //   pops the confirmation modal.
+  const [thumbStats, setThumbStats] = useState(null);
+  const [showClearConfirm, setShowClearConfirm] = useState(null);
+
+  // Re-sync local state whenever the modal is (re)opened. Also fetch
+  // thumb-cache stats so Kurt sees the current size in the description
+  // without having to click anything.
   useEffect(() => {
-    if (open) setLocal(settings);
+    if (open) {
+      setLocal(settings);
+      getThumbCacheStats().then(setThumbStats).catch(() => {});
+    }
   }, [open, settings]);
 
   // Local Escape handler — bypasses App.js keyboard guard when typing in input
@@ -781,14 +793,25 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
                 <p className="text-xs text-dim">
                   Thumbnails are cached on disk (IndexedDB) so folders load instantly next time.
                 </p>
+                {thumbStats && (
+                  <p className="text-[11px] text-primary-earth font-mono mt-1" data-testid="thumb-cache-stats">
+                    Currently cached: {thumbStats.formatted}
+                  </p>
+                )}
               </div>
               <button
                 onClick={async () => {
-                  await clearThumbCache();
-                  toast.success("Thumbnail cache cleared");
+                  // v1.4.5 — Two-step confirm. Fetch fresh stats so the
+                  // count/size shown matches what's actually about to be
+                  // deleted right now (previous cached number may be
+                  // stale after Kurt browsed more folders).
+                  const stats = await getThumbCacheStats();
+                  setThumbStats(stats);
+                  setShowClearConfirm(stats);
                 }}
                 className="px-3 py-1.5 rounded bg-app border border-app hover:bg-surface-hover text-xs flex items-center gap-1 shrink-0"
                 data-testid="clear-thumb-cache"
+                title="Delete every cached thumbnail. Next folder open will re-decode from disk."
               >
                 <Trash2 size={12} /> Clear cache
               </button>
@@ -897,6 +920,68 @@ export default function SettingsModal({ open, onClose, settings, onChange, previ
           </button>
         </div>
       </div>
+
+      {/* v1.4.5 — Two-step confirmation for the thumbnail cache wipe.
+          Renders on top of the Settings modal (higher z-index) so it
+          feels like a modal-inside-a-modal. Blocks all other interaction
+          until the user answers, and shows the exact count + bytes that
+          are about to be deleted. */}
+      {showClearConfirm && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+          onClick={() => setShowClearConfirm(null)}
+          data-testid="clear-thumb-confirm-backdrop"
+        >
+          <div
+            className="w-[min(480px,90vw)] rounded-lg bg-surface border-2 border-danger-earth shadow-2xl overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="clear-thumb-confirm"
+          >
+            <div className="px-4 py-3 border-b border-app flex items-center gap-2 bg-danger-earth/10">
+              <Trash2 size={16} className="text-danger-earth" />
+              <h3 className="font-heading font-semibold text-sm">Clear thumbnail cache?</h3>
+            </div>
+            <div className="px-4 py-3 space-y-2 text-sm">
+              <p>
+                About to delete <strong className="text-primary-earth font-mono">{showClearConfirm.formatted}</strong> from IndexedDB.
+              </p>
+              <p className="text-xs text-dim leading-relaxed">
+                Existing folders will still open just fine — the app just regenerates thumbs on demand.
+                For a folder of ~1,000 photos, expect the FIRST open after this to take a few extra seconds
+                while thumbs re-decode from the source files. Subsequent opens are instant again.
+              </p>
+              <p className="text-xs text-dim">
+                This cannot be undone. Continue?
+              </p>
+            </div>
+            <div className="px-4 py-3 border-t border-app flex items-center justify-end gap-2 bg-app/40">
+              <button
+                onClick={() => setShowClearConfirm(null)}
+                className="px-3 py-1.5 rounded bg-app border border-app hover:bg-surface-hover text-sm"
+                data-testid="clear-thumb-confirm-cancel"
+                autoFocus
+              >
+                Keep thumbnails
+              </button>
+              <button
+                onClick={async () => {
+                  await clearThumbCache();
+                  const fresh = await getThumbCacheStats();
+                  setThumbStats(fresh);
+                  setShowClearConfirm(null);
+                  toast.success("Thumbnail cache cleared", {
+                    description: `Freed ${showClearConfirm.formatted}. Next folder open will re-decode from disk.`,
+                  });
+                }}
+                className="px-4 py-1.5 rounded bg-danger-earth text-white font-medium text-sm hover:opacity-90"
+                data-testid="clear-thumb-confirm-yes"
+              >
+                <Trash2 size={12} className="inline-block mr-1" /> Yes, clear it
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

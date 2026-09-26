@@ -4,7 +4,7 @@ import {
   Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
   Wand2, Palette, Trash2, Plus, ChevronLeft, ChevronRight,
   ChevronUp, ChevronDown, PanelBottom, PanelTop, PanelLeft, PanelRight,
-  EyeOff, Film,
+  EyeOff, Film, Check, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
@@ -53,6 +53,56 @@ export default function ImageEditor({
   const [peeking, setPeeking] = useState(false);
   const [showSaveLook, setShowSaveLook] = useState(false);
   const [lookName, setLookName] = useState("");
+
+  // v1.4.5 — Auto-Enhance as a toggle. The button lights up earth-orange
+  // when active. Clicking again reverts the three sliders it moved
+  // (brightness/contrast/saturation) to whatever they were BEFORE auto
+  // fired, leaving crop/rotate/sharpen/looks untouched. Any manual
+  // slider edit on B/C/S while auto is ON silently turns it OFF so
+  // Kurt's hand-edit becomes the new baseline.
+  const [autoOn, setAutoOn] = useState(false);
+  const preAutoRef = useRef(null); // { brightness, contrast, saturation }
+
+  // v1.4.5 — Edit history for "Reset to last". Each destructive
+  // operation (apply-crop-in-place, in the future rotate-and-bake, etc.)
+  // pushes a snapshot. Capacity capped at 10 to bound memory.
+  //   Snapshot = { imgEl, brightness, contrast, saturation, sharpness,
+  //                rotation, angle, crop, aspectRatio, cropMode,
+  //                autoOn, preAuto, label }
+  const historyRef = useRef([]);
+  const [historyLen, setHistoryLen] = useState(0); // for UI re-render only
+  const pushHistory = (label) => {
+    if (!imgEl) return;
+    historyRef.current.push({
+      imgEl,
+      brightness, contrast, saturation, sharpness,
+      rotation, angle, crop, aspectRatio, cropMode,
+      autoOn, preAuto: preAutoRef.current ? { ...preAutoRef.current } : null,
+      label,
+    });
+    if (historyRef.current.length > 10) historyRef.current.shift();
+    setHistoryLen(historyRef.current.length);
+  };
+  const popHistory = () => {
+    const snap = historyRef.current.pop();
+    setHistoryLen(historyRef.current.length);
+    if (!snap) return;
+    setImgEl(snap.imgEl);
+    setBrightness(snap.brightness);
+    setContrast(snap.contrast);
+    setSaturation(snap.saturation);
+    setSharpness(snap.sharpness);
+    setRotation(snap.rotation);
+    setAngle(snap.angle);
+    setCrop(snap.crop);
+    setAspectRatio(snap.aspectRatio);
+    setCropMode(snap.cropMode);
+    setAutoOn(snap.autoOn);
+    preAutoRef.current = snap.preAuto;
+    workBmpRef.current = null;
+    lastSharpVal.current = -1;
+    toast("Reverted last edit", { description: snap.label || "", icon: "↩" });
+  };
 
   const canvasRef = useRef(null);
   const stageRef = useRef(null);
@@ -103,19 +153,94 @@ export default function ImageEditor({
     setAspectRatio(null);
     setCropMode(false);
     workBmpRef.current = null;
+    // v1.4.5 — reset also clears any auto-enhance state so the button
+    // stops glowing after a full reset.
+    setAutoOn(false);
+    preAutoRef.current = null;
+    // Also clear the "reset to last" history — a full reset is a fresh
+    // start; there's nothing to revert TO from here.
+    historyRef.current = [];
+    setHistoryLen(0);
     lastSharpVal.current = -1;
   };
 
-  // Auto-tone the current image
+  // v1.4.5 — Auto-Enhance as toggle. First press: snapshot the current
+  // B/C/S, then run autoAnalyze and apply. Second press: restore the
+  // snapshotted values (undo auto only, leave crop/sharpen/rotate/look
+  // decisions alone).
   const applyAuto = () => {
+    if (autoOn) {
+      // Toggle OFF — restore pre-auto B/C/S
+      const snap = preAutoRef.current || { brightness: 0, contrast: 0, saturation: 0 };
+      setBrightness(snap.brightness);
+      setContrast(snap.contrast);
+      setSaturation(snap.saturation);
+      setAutoOn(false);
+      toast("Auto-Enhance removed", {
+        description: "Brightness / Contrast / Saturation restored.",
+        icon: "↩",
+      });
+      return;
+    }
     if (!imgEl) return;
+    // Toggle ON — snapshot current, then analyze + apply
+    preAutoRef.current = { brightness, contrast, saturation };
     const { brightness: b, contrast: c, saturation: s } = autoAnalyze(imgEl);
     setBrightness(b);
     setContrast(c);
     setSaturation(s);
-    toast.success("Auto-tone applied", {
+    setAutoOn(true);
+    toast.success("Auto-Enhance applied", {
       description: `Brightness ${b > 0 ? "+" : ""}${b} · Contrast ${c > 0 ? "+" : ""}${c} · Saturation ${s > 0 ? "+" : ""}${s}`,
     });
+  };
+
+  // v1.4.5 — Wrapped B/C/S setters used by the sliders. Any manual edit
+  // while auto is ON silently exits auto so the new value becomes the
+  // fresh baseline (and a second click of Auto-Enhance would run
+  // against Kurt's new starting point).
+  const setBrightnessManual = (v) => { if (autoOn) setAutoOn(false); setBrightness(v); };
+  const setContrastManual = (v) => { if (autoOn) setAutoOn(false); setContrast(v); };
+  const setSaturationManual = (v) => { if (autoOn) setAutoOn(false); setSaturation(v); };
+
+  // v1.4.5 — Apply crop IN-PLACE. Bakes the current crop rectangle into
+  // a new base image, resets pan/zoom/crop, and pushes a history entry
+  // so "Reset to last" can revert. All B/C/S/sharpen state stays on top
+  // of the newly cropped base, matching the visual preview Kurt already
+  // saw. Save-to-disk is still separate — this is purely an in-editor
+  // step so he can crop → sharpen → auto → crop again → …
+  const applyCropInPlace = () => {
+    if (!imgEl || !crop || crop.w < 2 || crop.h < 2) return;
+    const iw = imgEl.width, ih = imgEl.height;
+    const cx = Math.max(0, Math.min(iw, Math.round(crop.x)));
+    const cy = Math.max(0, Math.min(ih, Math.round(crop.y)));
+    const cw = Math.max(1, Math.min(iw - cx, Math.round(crop.w)));
+    const ch = Math.max(1, Math.min(ih - cy, Math.round(crop.h)));
+    const off = document.createElement("canvas");
+    off.width = cw;
+    off.height = ch;
+    const octx = off.getContext("2d");
+    if (!octx) { toast.error("Crop failed — canvas unavailable"); return; }
+    octx.drawImage(imgEl, cx, cy, cw, ch, 0, 0, cw, ch);
+    // Snapshot BEFORE swapping imgEl so "Reset to last" restores the
+    // uncropped state (crop, cropMode, everything).
+    pushHistory(`Cropped ${cw}×${ch}`);
+    const url = off.toDataURL("image/png");
+    const nextImg = new Image();
+    nextImg.onload = () => {
+      setImgEl(nextImg);
+      setCrop(null);
+      setCropMode(false);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      workBmpRef.current = null;
+      lastSharpVal.current = -1;
+      toast.success(`Cropped to ${cw} × ${ch}`, {
+        description: "Edit more, then Save to write the final JPG.",
+      });
+    };
+    nextImg.onerror = () => toast.error("Crop failed to load");
+    nextImg.src = url;
   };
 
   const applyLook = (look) => {
@@ -123,6 +248,10 @@ export default function ImageEditor({
     setContrast(look.contrast || 0);
     setSaturation(look.saturation || 0);
     setSharpness(look.sharpness || 0);
+    // v1.4.5 — applying a look clears auto-enhance since the look now
+    // defines the current B/C/S baseline.
+    setAutoOn(false);
+    preAutoRef.current = null;
     toast(`Applied look: ${look.name}`);
   };
 
@@ -414,8 +543,18 @@ export default function ImageEditor({
     const cy = e.clientY - rect.top;
     if (cropMode && canCrop) {
       const p = canvasToImage(cx, cy);
-      cropDrag.current = { start: p };
-      setCrop({ x: p.x, y: p.y, w: 0, h: 0 });
+      // v1.4.5 — If click lands INSIDE the current crop rectangle, enter
+      // move-mode: drag repositions the whole crop instead of restarting
+      // a new one. Only starts a fresh crop when the user clicks
+      // OUTSIDE the current region.
+      if (crop && crop.w > 0 && crop.h > 0 &&
+          p.x >= crop.x && p.x <= crop.x + crop.w &&
+          p.y >= crop.y && p.y <= crop.y + crop.h) {
+        cropDrag.current = { mode: "move", startPointer: p, startCrop: { ...crop } };
+      } else {
+        cropDrag.current = { mode: "draw", start: p };
+        setCrop({ x: p.x, y: p.y, w: 0, h: 0 });
+      }
     } else {
       dragging.current = { startX: e.clientX - pan.x, startY: e.clientY - pan.y };
     }
@@ -433,15 +572,30 @@ export default function ImageEditor({
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
       const p = canvasToImage(cx, cy);
-      const s = cropDrag.current.start;
       const iw = imgEl.width, ih = imgEl.height;
+      // v1.4.5 — Move-mode: translate the whole crop rectangle by the
+      // pointer delta since drag start, clamped to image bounds.
+      if (cropDrag.current.mode === "move") {
+        const start = cropDrag.current.startPointer;
+        const orig = cropDrag.current.startCrop;
+        const dx = p.x - start.x;
+        const dy = p.y - start.y;
+        let nx = orig.x + dx;
+        let ny = orig.y + dy;
+        // Clamp to image
+        nx = Math.max(0, Math.min(iw - orig.w, nx));
+        ny = Math.max(0, Math.min(ih - orig.h, ny));
+        setCrop({ x: nx, y: ny, w: orig.w, h: orig.h });
+        return;
+      }
+      // Draw-mode: original behaviour
+      const s = cropDrag.current.start;
       let x = Math.max(0, Math.min(iw, Math.min(s.x, p.x)));
       let y = Math.max(0, Math.min(ih, Math.min(s.y, p.y)));
       let w = Math.max(1, Math.min(iw - x, Math.abs(p.x - s.x)));
       let h = Math.max(1, Math.min(ih - y, Math.abs(p.y - s.y)));
       // Constrain to aspect ratio if locked
       if (aspectRatio) {
-        // choose the dominant dimension and derive the other
         const drawFromCornerX = p.x >= s.x;
         const drawFromCornerY = p.y >= s.y;
         if (w / h > aspectRatio) {
@@ -633,28 +787,47 @@ export default function ImageEditor({
 
   if (!open) return null;
 
-  const showSlider = (label, Icon, val, setter, min, max, testid, help) => (
-    <div>
-      <div className="flex items-center justify-between mb-1">
-        <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
-          <Icon size={11} /> {label}
+  const showSlider = (label, Icon, val, setter, min, max, testid, help) => {
+    // v1.4.5 — Value badge is now a click-to-reset pill.
+    //   • At 0    → subtle grey chip, disabled, tooltip "no change yet".
+    //   • Non-0   → earth-orange filled pill, hover ring, tooltip "Reset
+    //               to 0 (click)". Click sets the slider back to 0.
+    const changed = val !== 0;
+    const resetOne = () => setter(0);
+    return (
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
+            <Icon size={11} /> {label}
+          </div>
+          <button
+            onClick={resetOne}
+            disabled={!changed}
+            className={`text-xs font-mono px-2 py-0.5 rounded-full border transition-colors ${
+              changed
+                ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90 cursor-pointer"
+                : "bg-app border-app text-dim cursor-default"
+            }`}
+            data-testid={`${testid}-value`}
+            aria-label={changed ? `Reset ${label} to 0` : `${label} unchanged`}
+            title={changed ? `Click to reset ${label} to 0` : `${label} is unchanged`}
+          >
+            {val > 0 ? `+${val}` : val}
+          </button>
         </div>
-        <span className="text-xs font-mono text-primary-earth" data-testid={`${testid}-value`}>
-          {val > 0 ? `+${val}` : val}
-        </span>
+        <input
+          type="range"
+          min={min}
+          max={max}
+          value={val}
+          onChange={(e) => setter(parseInt(e.target.value, 10))}
+          className="w-full accent-[color:var(--primary)]"
+          data-testid={`${testid}-slider`}
+        />
+        {help && <p className="text-[10px] text-dim mt-0.5">{help}</p>}
       </div>
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={val}
-        onChange={(e) => setter(parseInt(e.target.value, 10))}
-        className="w-full accent-[color:var(--primary)]"
-        data-testid={`${testid}-slider`}
-      />
-      {help && <p className="text-[10px] text-dim mt-0.5">{help}</p>}
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/95" data-testid="image-editor">
@@ -790,9 +963,20 @@ export default function ImageEditor({
             </div>
             <div className="flex items-center justify-between mb-1">
               <span className="text-[10px] text-dim">Fine-tune</span>
-              <span className="text-xs font-mono text-primary-earth" data-testid="angle-value">
+              <button
+                onClick={() => setAngle(0)}
+                disabled={angle === 0}
+                className={`text-xs font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                  angle !== 0
+                    ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90 cursor-pointer"
+                    : "bg-app border-app text-dim cursor-default"
+                }`}
+                data-testid="angle-value"
+                aria-label={angle !== 0 ? "Reset Fine-tune angle to 0°" : "Fine-tune unchanged"}
+                title={angle !== 0 ? "Click to reset Fine-tune angle to 0°" : "Fine-tune is unchanged"}
+              >
                 {angle > 0 ? `+${angle.toFixed(1)}` : angle.toFixed(1)}°
-              </span>
+              </button>
             </div>
             <input
               type="range"
@@ -831,13 +1015,13 @@ export default function ImageEditor({
           </div>
 
           {/* Brightness */}
-          {showSlider("Brightness", Sun, brightness, setBrightness, -80, 80, "brightness", null)}
+          {showSlider("Brightness", Sun, brightness, setBrightnessManual, -80, 80, "brightness", null)}
 
           {/* Contrast */}
-          {showSlider("Contrast", Contrast, contrast, setContrast, -50, 50, "contrast", null)}
+          {showSlider("Contrast", Contrast, contrast, setContrastManual, -50, 50, "contrast", null)}
 
           {/* Saturation */}
-          {showSlider("Saturation", Droplet, saturation, setSaturation, -100, 100, "saturation", null)}
+          {showSlider("Saturation", Droplet, saturation, setSaturationManual, -100, 100, "saturation", null)}
 
           {/* Sharpen */}
           <div>
@@ -845,7 +1029,20 @@ export default function ImageEditor({
               <div className="text-[10px] uppercase tracking-widest text-dim font-heading flex items-center gap-1">
                 <Zap size={11} /> Sharpen
               </div>
-              <span className="text-xs font-mono text-primary-earth" data-testid="sharpen-value">{sharpness}</span>
+              <button
+                onClick={() => setSharpness(0)}
+                disabled={sharpness === 0}
+                className={`text-xs font-mono px-2 py-0.5 rounded-full border transition-colors ${
+                  sharpness !== 0
+                    ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90 cursor-pointer"
+                    : "bg-app border-app text-dim cursor-default"
+                }`}
+                data-testid="sharpen-value"
+                aria-label={sharpness !== 0 ? "Reset Sharpen to 0" : "Sharpen unchanged"}
+                title={sharpness !== 0 ? "Click to reset Sharpen to 0" : "Sharpen is unchanged"}
+              >
+                {sharpness}
+              </button>
             </div>
             <input
               type="range"
@@ -863,12 +1060,19 @@ export default function ImageEditor({
           <div>
             <button
               onClick={applyAuto}
-              disabled={!imgEl}
-              className="w-full px-2 py-1.5 rounded bg-primary-earth/15 border border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)] text-xs flex items-center justify-center gap-1 disabled:opacity-50"
+              disabled={!imgEl && !autoOn}
+              className={`w-full px-2 py-1.5 rounded border text-xs flex items-center justify-center gap-1 disabled:opacity-50 transition-colors ${
+                autoOn
+                  ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth hover:opacity-90"
+                  : "bg-primary-earth/15 border-primary-earth text-primary-earth hover:bg-primary-earth hover:text-[color:var(--text-inverse)]"
+              }`}
               data-testid="auto-tone"
-              title="Analyze histogram and set brightness/contrast/saturation"
+              aria-pressed={autoOn}
+              title={autoOn
+                ? "Auto-Enhance ON — click to undo the auto adjustment (B/C/S will revert; crop/rotate/sharpen/looks stay)"
+                : "Analyze histogram and set brightness/contrast/saturation. Click again to undo just the auto part."}
             >
-              <Wand2 size={12} /> Auto-Enhance
+              <Wand2 size={12} /> {autoOn ? "Auto-Enhance ●" : "Auto-Enhance"}
             </button>
           </div>
 
@@ -967,9 +1171,9 @@ export default function ImageEditor({
                 cropMode ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent" : "bg-app border-app hover:bg-surface-hover"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
               data-testid="crop-toggle"
-              title={canCrop ? "Draw a crop region" : "Reset rotation to crop"}
+              title={canCrop ? "Draw a new crop region — drag inside an existing one to move it" : "Reset rotation to crop"}
             >
-              <Crop size={12} /> {cropMode ? "Cropping — drag on image" : "Draw crop region"}
+              <Crop size={12} /> {cropMode ? "Cropping — drag to draw or move" : "Draw crop region"}
             </button>
             {crop && (
               <div className="text-[10px] text-dim mt-2 font-mono">
@@ -985,13 +1189,30 @@ export default function ImageEditor({
           </div>
 
           {/* Reset */}
-          <button
-            onClick={resetTransform}
-            className="w-full px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
-            data-testid="editor-reset"
-          >
-            <RotateCcw size={12} /> Reset all edits
-          </button>
+          <div className="flex gap-1">
+            {/* v1.4.5 — "Reset to last" reverts JUST the previous
+                destructive edit (currently: apply-crop). Full history
+                stack of 10, disabled when nothing to pop. */}
+            <button
+              onClick={popHistory}
+              disabled={historyLen === 0}
+              className="flex-1 px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="editor-reset-last"
+              title={historyLen > 0
+                ? `Undo the last destructive edit (${historyLen} step${historyLen === 1 ? "" : "s"} in history)`
+                : "No destructive edits yet — apply a crop first, then this reverts it."}
+            >
+              <Undo2 size={12} /> Reset to last{historyLen > 0 ? ` (${historyLen})` : ""}
+            </button>
+            <button
+              onClick={resetTransform}
+              className="flex-1 px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
+              data-testid="editor-reset"
+              title="Discard every edit and restart from the original file"
+            >
+              <RotateCcw size={12} /> Reset all edits
+            </button>
+          </div>
 
           <div className="pt-3 border-t border-app text-[10px] text-dim">
             <p className="mb-1">Non-destructive: your original file is never touched. A new JPG is written next to it.</p>
@@ -1015,6 +1236,39 @@ export default function ImageEditor({
             onPointerCancel={onPointerUp}
             data-testid="editor-canvas"
           />
+
+          {/* v1.4.5 — Floating "Apply crop" pill. Shows whenever the
+              user has drawn or dragged a valid crop rectangle. Sitting
+              at the top-center of the stage keeps it in reach whether
+              the crop is in the corner or the middle of the frame,
+              without occluding the crop overlay itself. */}
+          {crop && crop.w > 2 && crop.h > 2 && canCrop && !peeking && (
+            <div
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pane rounded-full border-2 border-primary-earth backdrop-blur px-2 py-1 shadow-lg"
+              style={{ background: "color-mix(in srgb, var(--surface) 90%, transparent)" }}
+              data-testid="crop-apply-pill"
+            >
+              <span className="text-[10px] font-mono text-dim px-1">
+                {Math.round(crop.w)}×{Math.round(crop.h)}
+              </span>
+              <button
+                onClick={applyCropInPlace}
+                className="px-3 py-1 rounded-full bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
+                data-testid="crop-apply-btn"
+                title="Bake the crop into the working image so you can keep editing on the cropped version. Reset to last will undo this."
+              >
+                <Check size={12} /> Apply crop
+              </button>
+              <button
+                onClick={() => { setCrop(null); }}
+                className="px-2 py-1 rounded-full bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+                data-testid="crop-cancel-btn"
+                title="Discard the current crop rectangle without applying"
+              >
+                <X size={12} /> Cancel
+              </button>
+            </div>
+          )}
           {!imgEl && (
             <div className="absolute inset-0 flex items-center justify-center text-dim">
               Loading image…

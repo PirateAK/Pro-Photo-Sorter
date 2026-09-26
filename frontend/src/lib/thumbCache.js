@@ -66,6 +66,47 @@ export async function clearThumbCache() {
   } catch {}
 }
 
+// v1.4.5 — Stats for the "clear cache" confirmation. Counts entries and
+// estimates on-disk size by summing every data-URL string length (which
+// approximates base64 payload bytes closely enough for a user prompt).
+// Returns { count, bytes, formatted } — `formatted` is a friendly
+// display like "1,247 thumbs · 43.2 MB".
+export async function getThumbCacheStats() {
+  try {
+    const db = await openDB();
+    return await new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE, "readonly");
+      const store = tx.objectStore(STORE);
+      let count = 0;
+      let bytes = 0;
+      const req = store.openCursor();
+      req.onsuccess = (e) => {
+        const cursor = e.target.result;
+        if (cursor) {
+          count += 1;
+          const v = cursor.value;
+          if (typeof v === "string") bytes += v.length;
+          cursor.continue();
+        } else {
+          resolve({ count, bytes, formatted: formatStats(count, bytes) });
+        }
+      };
+      req.onerror = () => reject(req.error);
+    });
+  } catch {
+    return { count: 0, bytes: 0, formatted: "0 thumbs · 0 B" };
+  }
+}
+
+function formatStats(count, bytes) {
+  const units = ["B", "KB", "MB", "GB"];
+  let n = bytes;
+  let u = 0;
+  while (n >= 1024 && u < units.length - 1) { n /= 1024; u += 1; }
+  const size = n >= 100 || u === 0 ? Math.round(n) : n.toFixed(1);
+  return `${count.toLocaleString()} thumb${count === 1 ? "" : "s"} · ${size} ${units[u]}`;
+}
+
 export async function getThumbnail(fileHandle, key) {
   if (mem.has(key)) return mem.get(key);
   if (inflight.has(key)) return inflight.get(key);

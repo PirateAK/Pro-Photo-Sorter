@@ -37,11 +37,32 @@ export default function Thumbnail({ file, cacheKey, active, batchMode, batchSele
       {src ? (
         <img src={src} alt={file.name} style={{ height: size }} className="w-auto object-cover rounded" draggable={false} />
       ) : (
-        <div style={{ height: size, width: size }} className="bg-surface rounded flex items-center justify-center">
+        <div
+          style={{ height: size, width: Math.round(size * 0.75) }}
+          className={`rounded flex flex-col items-center justify-center gap-1.5 ${
+            err
+              ? "bg-surface border-2 border-dashed border-danger-earth/50"
+              : "bg-surface border-2 border-dashed border-primary-earth/50 animate-pulse"
+          }`}
+          data-testid={`thumb-loading-${file.name}`}
+        >
           {err ? (
-            <ImageIcon size={20} className="text-dim" />
+            <>
+              <ImageIcon size={Math.min(24, size / 5)} className="text-danger-earth" />
+              <span className="text-[9px] uppercase tracking-widest text-danger-earth font-heading px-1 text-center leading-tight">
+                Can't read
+              </span>
+            </>
           ) : (
-            <div className="w-4 h-4 border-2 border-primary-earth border-t-transparent rounded-full animate-spin" />
+            <>
+              <div className="w-5 h-5 border-2 border-primary-earth border-t-transparent rounded-full animate-spin" />
+              {/* v1.4.5 — Explicit label so Kurt (and every future user)
+                  never mistakes a re-generating thumb for a frozen app.
+                  Especially matters right after clearing the cache. */}
+              <span className="text-[9px] uppercase tracking-widest text-primary-earth font-heading px-1 text-center leading-tight">
+                Generating<br />thumbnail…
+              </span>
+            </>
           )}
         </div>
       )}
