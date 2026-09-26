@@ -4,7 +4,7 @@ import {
   Maximize2, Move, Scissors, RotateCw, Contrast, Droplet, Eye,
   Wand2, Palette, Trash2, Plus, ChevronLeft, ChevronRight,
   ChevronUp, ChevronDown, PanelBottom, PanelTop, PanelLeft, PanelRight,
-  EyeOff, Film,
+  EyeOff, Film, Check, Undo2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { sanitizeName } from "../lib/fsapi";
@@ -63,6 +63,47 @@ export default function ImageEditor({
   const [autoOn, setAutoOn] = useState(false);
   const preAutoRef = useRef(null); // { brightness, contrast, saturation }
 
+  // v1.4.5 — Edit history for "Reset to last". Each destructive
+  // operation (apply-crop-in-place, in the future rotate-and-bake, etc.)
+  // pushes a snapshot. Capacity capped at 10 to bound memory.
+  //   Snapshot = { imgEl, brightness, contrast, saturation, sharpness,
+  //                rotation, angle, crop, aspectRatio, cropMode,
+  //                autoOn, preAuto, label }
+  const historyRef = useRef([]);
+  const [historyLen, setHistoryLen] = useState(0); // for UI re-render only
+  const pushHistory = (label) => {
+    if (!imgEl) return;
+    historyRef.current.push({
+      imgEl,
+      brightness, contrast, saturation, sharpness,
+      rotation, angle, crop, aspectRatio, cropMode,
+      autoOn, preAuto: preAutoRef.current ? { ...preAutoRef.current } : null,
+      label,
+    });
+    if (historyRef.current.length > 10) historyRef.current.shift();
+    setHistoryLen(historyRef.current.length);
+  };
+  const popHistory = () => {
+    const snap = historyRef.current.pop();
+    setHistoryLen(historyRef.current.length);
+    if (!snap) return;
+    setImgEl(snap.imgEl);
+    setBrightness(snap.brightness);
+    setContrast(snap.contrast);
+    setSaturation(snap.saturation);
+    setSharpness(snap.sharpness);
+    setRotation(snap.rotation);
+    setAngle(snap.angle);
+    setCrop(snap.crop);
+    setAspectRatio(snap.aspectRatio);
+    setCropMode(snap.cropMode);
+    setAutoOn(snap.autoOn);
+    preAutoRef.current = snap.preAuto;
+    workBmpRef.current = null;
+    lastSharpVal.current = -1;
+    toast("Reverted last edit", { description: snap.label || "", icon: "↩" });
+  };
+
   const canvasRef = useRef(null);
   const stageRef = useRef(null);
   const dragging = useRef(null);
@@ -116,6 +157,10 @@ export default function ImageEditor({
     // stops glowing after a full reset.
     setAutoOn(false);
     preAutoRef.current = null;
+    // Also clear the "reset to last" history — a full reset is a fresh
+    // start; there's nothing to revert TO from here.
+    historyRef.current = [];
+    setHistoryLen(0);
     lastSharpVal.current = -1;
   };
 
@@ -157,6 +202,46 @@ export default function ImageEditor({
   const setBrightnessManual = (v) => { if (autoOn) setAutoOn(false); setBrightness(v); };
   const setContrastManual = (v) => { if (autoOn) setAutoOn(false); setContrast(v); };
   const setSaturationManual = (v) => { if (autoOn) setAutoOn(false); setSaturation(v); };
+
+  // v1.4.5 — Apply crop IN-PLACE. Bakes the current crop rectangle into
+  // a new base image, resets pan/zoom/crop, and pushes a history entry
+  // so "Reset to last" can revert. All B/C/S/sharpen state stays on top
+  // of the newly cropped base, matching the visual preview Kurt already
+  // saw. Save-to-disk is still separate — this is purely an in-editor
+  // step so he can crop → sharpen → auto → crop again → …
+  const applyCropInPlace = () => {
+    if (!imgEl || !crop || crop.w < 2 || crop.h < 2) return;
+    const iw = imgEl.width, ih = imgEl.height;
+    const cx = Math.max(0, Math.min(iw, Math.round(crop.x)));
+    const cy = Math.max(0, Math.min(ih, Math.round(crop.y)));
+    const cw = Math.max(1, Math.min(iw - cx, Math.round(crop.w)));
+    const ch = Math.max(1, Math.min(ih - cy, Math.round(crop.h)));
+    const off = document.createElement("canvas");
+    off.width = cw;
+    off.height = ch;
+    const octx = off.getContext("2d");
+    if (!octx) { toast.error("Crop failed — canvas unavailable"); return; }
+    octx.drawImage(imgEl, cx, cy, cw, ch, 0, 0, cw, ch);
+    // Snapshot BEFORE swapping imgEl so "Reset to last" restores the
+    // uncropped state (crop, cropMode, everything).
+    pushHistory(`Cropped ${cw}×${ch}`);
+    const url = off.toDataURL("image/png");
+    const nextImg = new Image();
+    nextImg.onload = () => {
+      setImgEl(nextImg);
+      setCrop(null);
+      setCropMode(false);
+      setZoom(1);
+      setPan({ x: 0, y: 0 });
+      workBmpRef.current = null;
+      lastSharpVal.current = -1;
+      toast.success(`Cropped to ${cw} × ${ch}`, {
+        description: "Edit more, then Save to write the final JPG.",
+      });
+    };
+    nextImg.onerror = () => toast.error("Crop failed to load");
+    nextImg.src = url;
+  };
 
   const applyLook = (look) => {
     setBrightness(look.brightness || 0);
@@ -458,8 +543,18 @@ export default function ImageEditor({
     const cy = e.clientY - rect.top;
     if (cropMode && canCrop) {
       const p = canvasToImage(cx, cy);
-      cropDrag.current = { start: p };
-      setCrop({ x: p.x, y: p.y, w: 0, h: 0 });
+      // v1.4.5 — If click lands INSIDE the current crop rectangle, enter
+      // move-mode: drag repositions the whole crop instead of restarting
+      // a new one. Only starts a fresh crop when the user clicks
+      // OUTSIDE the current region.
+      if (crop && crop.w > 0 && crop.h > 0 &&
+          p.x >= crop.x && p.x <= crop.x + crop.w &&
+          p.y >= crop.y && p.y <= crop.y + crop.h) {
+        cropDrag.current = { mode: "move", startPointer: p, startCrop: { ...crop } };
+      } else {
+        cropDrag.current = { mode: "draw", start: p };
+        setCrop({ x: p.x, y: p.y, w: 0, h: 0 });
+      }
     } else {
       dragging.current = { startX: e.clientX - pan.x, startY: e.clientY - pan.y };
     }
@@ -477,15 +572,30 @@ export default function ImageEditor({
       const cx = e.clientX - rect.left;
       const cy = e.clientY - rect.top;
       const p = canvasToImage(cx, cy);
-      const s = cropDrag.current.start;
       const iw = imgEl.width, ih = imgEl.height;
+      // v1.4.5 — Move-mode: translate the whole crop rectangle by the
+      // pointer delta since drag start, clamped to image bounds.
+      if (cropDrag.current.mode === "move") {
+        const start = cropDrag.current.startPointer;
+        const orig = cropDrag.current.startCrop;
+        const dx = p.x - start.x;
+        const dy = p.y - start.y;
+        let nx = orig.x + dx;
+        let ny = orig.y + dy;
+        // Clamp to image
+        nx = Math.max(0, Math.min(iw - orig.w, nx));
+        ny = Math.max(0, Math.min(ih - orig.h, ny));
+        setCrop({ x: nx, y: ny, w: orig.w, h: orig.h });
+        return;
+      }
+      // Draw-mode: original behaviour
+      const s = cropDrag.current.start;
       let x = Math.max(0, Math.min(iw, Math.min(s.x, p.x)));
       let y = Math.max(0, Math.min(ih, Math.min(s.y, p.y)));
       let w = Math.max(1, Math.min(iw - x, Math.abs(p.x - s.x)));
       let h = Math.max(1, Math.min(ih - y, Math.abs(p.y - s.y)));
       // Constrain to aspect ratio if locked
       if (aspectRatio) {
-        // choose the dominant dimension and derive the other
         const drawFromCornerX = p.x >= s.x;
         const drawFromCornerY = p.y >= s.y;
         if (w / h > aspectRatio) {
@@ -1018,9 +1128,9 @@ export default function ImageEditor({
                 cropMode ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent" : "bg-app border-app hover:bg-surface-hover"
               } disabled:opacity-40 disabled:cursor-not-allowed`}
               data-testid="crop-toggle"
-              title={canCrop ? "Draw a crop region" : "Reset rotation to crop"}
+              title={canCrop ? "Draw a new crop region — drag inside an existing one to move it" : "Reset rotation to crop"}
             >
-              <Crop size={12} /> {cropMode ? "Cropping — drag on image" : "Draw crop region"}
+              <Crop size={12} /> {cropMode ? "Cropping — drag to draw or move" : "Draw crop region"}
             </button>
             {crop && (
               <div className="text-[10px] text-dim mt-2 font-mono">
@@ -1036,13 +1146,30 @@ export default function ImageEditor({
           </div>
 
           {/* Reset */}
-          <button
-            onClick={resetTransform}
-            className="w-full px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
-            data-testid="editor-reset"
-          >
-            <RotateCcw size={12} /> Reset all edits
-          </button>
+          <div className="flex gap-1">
+            {/* v1.4.5 — "Reset to last" reverts JUST the previous
+                destructive edit (currently: apply-crop). Full history
+                stack of 10, disabled when nothing to pop. */}
+            <button
+              onClick={popHistory}
+              disabled={historyLen === 0}
+              className="flex-1 px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+              data-testid="editor-reset-last"
+              title={historyLen > 0
+                ? `Undo the last destructive edit (${historyLen} step${historyLen === 1 ? "" : "s"} in history)`
+                : "No destructive edits yet — apply a crop first, then this reverts it."}
+            >
+              <Undo2 size={12} /> Reset to last{historyLen > 0 ? ` (${historyLen})` : ""}
+            </button>
+            <button
+              onClick={resetTransform}
+              className="flex-1 px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
+              data-testid="editor-reset"
+              title="Discard every edit and restart from the original file"
+            >
+              <RotateCcw size={12} /> Reset all edits
+            </button>
+          </div>
 
           <div className="pt-3 border-t border-app text-[10px] text-dim">
             <p className="mb-1">Non-destructive: your original file is never touched. A new JPG is written next to it.</p>
@@ -1066,6 +1193,39 @@ export default function ImageEditor({
             onPointerCancel={onPointerUp}
             data-testid="editor-canvas"
           />
+
+          {/* v1.4.5 — Floating "Apply crop" pill. Shows whenever the
+              user has drawn or dragged a valid crop rectangle. Sitting
+              at the top-center of the stage keeps it in reach whether
+              the crop is in the corner or the middle of the frame,
+              without occluding the crop overlay itself. */}
+          {crop && crop.w > 2 && crop.h > 2 && canCrop && !peeking && (
+            <div
+              className="absolute top-3 left-1/2 -translate-x-1/2 z-30 flex items-center gap-2 pane rounded-full border-2 border-primary-earth backdrop-blur px-2 py-1 shadow-lg"
+              style={{ background: "color-mix(in srgb, var(--surface) 90%, transparent)" }}
+              data-testid="crop-apply-pill"
+            >
+              <span className="text-[10px] font-mono text-dim px-1">
+                {Math.round(crop.w)}×{Math.round(crop.h)}
+              </span>
+              <button
+                onClick={applyCropInPlace}
+                className="px-3 py-1 rounded-full bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium flex items-center gap-1 hover:opacity-90"
+                data-testid="crop-apply-btn"
+                title="Bake the crop into the working image so you can keep editing on the cropped version. Reset to last will undo this."
+              >
+                <Check size={12} /> Apply crop
+              </button>
+              <button
+                onClick={() => { setCrop(null); }}
+                className="px-2 py-1 rounded-full bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
+                data-testid="crop-cancel-btn"
+                title="Discard the current crop rectangle without applying"
+              >
+                <X size={12} /> Cancel
+              </button>
+            </div>
+          )}
           {!imgEl && (
             <div className="absolute inset-0 flex items-center justify-center text-dim">
               Loading image…
