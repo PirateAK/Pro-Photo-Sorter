@@ -87,7 +87,18 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
         <div className="text-dim text-xs italic">Loading…</div>
       )}
       {img && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 px-2 py-0.5 rounded-full bg-black/60 backdrop-blur text-[10px] font-mono flex items-center gap-1.5 pointer-events-none z-20">
+        <div
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none px-2 py-0.5 rounded-full backdrop-blur border text-[10px] font-mono flex items-center gap-1.5 shadow-sm"
+          style={{
+            // v1.4.5 — was `bg-black/60` which read as dark-on-dark in
+            // light mode. Now mirrors the zoom badge's approach: mostly
+            // opaque surface + regular text so both themes stay legible.
+            background: "color-mix(in srgb, var(--surface) 88%, transparent)",
+            color: "var(--text)",
+            borderColor: "color-mix(in srgb, var(--text) 20%, transparent)",
+          }}
+          data-testid="compare-pane-filename"
+        >
           {stars > 0 && (
             <span className="flex items-center gap-0.5 text-primary-earth">
               {Array.from({ length: stars }).map((_, k) => (
