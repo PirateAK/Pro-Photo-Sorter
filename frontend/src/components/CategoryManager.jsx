@@ -7,7 +7,8 @@ import { totalCount } from "../lib/tags";
 import { parseTagList, serializePack as serializePackText, serializePacks as serializePacksText } from "../lib/tagpackText";
 import { toast } from "sonner";
 import NestedSubfolderEditor from "./NestedSubfolderEditor";
-import PasteRosterButton from "./PasteRosterButton";
+import PasteRosterButton, { parseRoster, guardLargePaste } from "./PasteRosterButton";
+import { ArrowRight, GripVertical } from "lucide-react";
 
 // Curated built-in icons
 const BUILTIN_ICONS = [
@@ -276,6 +277,111 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
           : s
       ),
     }));
+  };
+  // v1.4.5 — Bulk add for pasted rosters. Atomic single-update so a
+  // 250-name paste doesn't fire 250 setState calls (which used to
+  // freeze/lock up PPS). Skips names already on the target sub-folder,
+  // case-insensitive, and returns the count that actually landed.
+  const addSubfolderItemsBulk = (sfId, labels) => {
+    const clean = (Array.isArray(labels) ? labels : [])
+      .map((l) => (l || "").trim())
+      .filter(Boolean);
+    if (clean.length === 0) return 0;
+    let added = 0;
+    updateCurrentPack((c) => {
+      const subs = c.subfolders || [];
+      const target = subs.find((s) => s.id === sfId);
+      if (!target) return c;
+      const existing = new Set((target.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+      const additions = [];
+      for (const label of clean) {
+        const key = label.toLowerCase();
+        if (existing.has(key)) continue;
+        existing.add(key);
+        additions.push({
+          id: uid("it"),
+          label: label.slice(0, 60),
+          iconType: "lucide",
+          iconName: "Tag",
+        });
+      }
+      added = additions.length;
+      if (additions.length === 0) return c;
+      return {
+        ...c,
+        subfolders: subs.map((s) =>
+          s.id === sfId ? { ...s, filenameItems: [...(s.filenameItems || []), ...additions] } : s
+        ),
+      };
+    });
+    return added;
+  };
+  // v1.4.5 — Reorder a filename tag WITHIN its own sub-folder. `dir`
+  // is +1/-1; clamps at ends. Used by the Filename Tags pane arrows.
+  const moveSubfolderItemWithin = (sfId, itemId, dir) => {
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) => {
+        if (s.id !== sfId) return s;
+        const list = [...(s.filenameItems || [])];
+        const idx = list.findIndex((it) => it.id === itemId);
+        if (idx < 0) return s;
+        const to = idx + dir;
+        if (to < 0 || to >= list.length) return s;
+        const [row] = list.splice(idx, 1);
+        list.splice(to, 0, row);
+        return { ...s, filenameItems: list };
+      }),
+    }));
+  };
+  // v1.4.5 — Reorder via drag: move item at `fromIdx` to `toIdx` in the
+  // filename tag list of `sfId`. Pure array splice; no server call.
+  const reorderSubfolderItems = (sfId, fromIdx, toIdx) => {
+    if (fromIdx === toIdx) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) => {
+        if (s.id !== sfId) return s;
+        const list = [...(s.filenameItems || [])];
+        if (fromIdx < 0 || fromIdx >= list.length) return s;
+        const [row] = list.splice(fromIdx, 1);
+        const clamped = Math.max(0, Math.min(toIdx, list.length));
+        list.splice(clamped, 0, row);
+        return { ...s, filenameItems: list };
+      }),
+    }));
+  };
+  // v1.4.5 — Convert a SINGLE filename tag into a nested sub-folder
+  // under its owning sub-folder (same name + icon). Kurt wanted per-tag
+  // "→ Nest" in addition to "Convert all → nested".
+  const convertSubfolderItemToNested = (sfId, itemId) => {
+    if (!current) return;
+    const sf = (current.subfolders || []).find((s) => s.id === sfId);
+    const it = sf?.filenameItems?.find((x) => x.id === itemId);
+    if (!sf || !it) return;
+    if (!window.confirm(`Convert filename tag "${it.label}" into a nested sub-folder under "${sf.name}"?`)) return;
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) =>
+        s.id !== sfId ? s : {
+          ...s,
+          filenameItems: (s.filenameItems || []).filter((x) => x.id !== itemId),
+          subfolders: [
+            ...(s.subfolders || []),
+            {
+              id: uid("sf"),
+              name: (it.label || "Nested").slice(0, 60),
+              iconType: it.iconType || "lucide",
+              iconName: it.iconName || "Folder",
+              ...(it.iconData ? { iconData: it.iconData } : {}),
+              filenameItems: [],
+              subfolders: [],
+            },
+          ],
+        }
+      ),
+    }));
+    toast.success(`Converted "${it.label}" to nested sub-folder`);
   };
   const removeSubfolderItem = (sfId, itemId) => {
     updateCurrentPack((c) => ({
@@ -1103,6 +1209,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                         if (latest) setSelectedSubId(latest.id);
                       }, 0);
                     }}
+                    onAddSubfoldersBulk={addSubfolders}
                     onRemoveSubfolder={(id) => {
                       if (selectedSubId === id) setSelectedSubId(null);
                       removeSubfolder(id);
@@ -1110,6 +1217,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                     onRenameSubfolder={renameSubfolder}
                     onMoveSubfolder={moveSubfolder}
                     onAddItem={addSubfolderItem}
+                    onAddItemsBulk={addSubfolderItemsBulk}
                     onRemoveItem={removeSubfolderItem}
                     onSwapItemIcon={swapSubfolderItemIcon}
                     onMoveSubfolderItem={moveSubfolderItem}
@@ -1138,8 +1246,12 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                       <SubfolderFilenameEditor
                         sub={selectedSub}
                         onAddItem={(label) => addSubfolderItem(selectedSub.id, label)}
+                        onAddItemsBulk={(labels) => addSubfolderItemsBulk(selectedSub.id, labels)}
                         onRemoveItem={(itemId) => removeSubfolderItem(selectedSub.id, itemId)}
                         onSwapItemIcon={(itemId, patch) => swapSubfolderItemIcon(selectedSub.id, itemId, patch)}
+                        onMoveItem={(itemId, dir) => moveSubfolderItemWithin(selectedSub.id, itemId, dir)}
+                        onReorderItems={(fromIdx, toIdx) => reorderSubfolderItems(selectedSub.id, fromIdx, toIdx)}
+                        onConvertToNested={(itemId) => convertSubfolderItemToNested(selectedSub.id, itemId)}
                       />
                     )}
                   </div>
@@ -1639,10 +1751,12 @@ function ChipRow({ it, listKey, onRemove, onSwapIcon }) {
 function SubfolderSection({
   pack,
   onAddSubfolder,
+  onAddSubfoldersBulk,    // v1.4.5 — bulk atomic add (fn(names[]) → addedCount)
   onRemoveSubfolder,
   onRenameSubfolder,
   onMoveSubfolder,
   onAddItem,
+  onAddItemsBulk,          // v1.4.5 — bulk atomic add for filename tags
   onRemoveItem,
   onSwapItemIcon,          // v1.2.1 — fn(sfId, itemId, iconPayload)
   onMoveSubfolderItem,     // v1.2.1 — fn(fromSfId, toSfId, itemId, "move"|"copy")
@@ -1713,9 +1827,32 @@ function SubfolderSection({
   };
 
   const submitAdd = () => {
-    const nm = draft.trim();
-    if (!nm) return;
-    onAddSubfolder(nm);
+    const raw = draft.trim();
+    if (!raw) return;
+    // v1.4.5 — Smart bulk. If Kurt types/pastes a comma / newline /
+    // semicolon separated list into the "New sub-folder" input, create
+    // one sub-folder per label in a single atomic commit. Falls back to
+    // the single-add path (which also auto-selects the new row) when
+    // only one name is present.
+    const looksLikeList = /[,;\n]/.test(raw);
+    if (looksLikeList && onAddSubfoldersBulk) {
+      const parsed = parseRoster(raw);
+      const guarded = guardLargePaste(parsed, { targetName: pack?.name });
+      if (!guarded.ok) return;
+      const added = onAddSubfoldersBulk(guarded.labels) || 0;
+      const skipped = guarded.labels.length - added;
+      if (added === 0) {
+        toast("All those sub-folders already exist here", { icon: "🟰" });
+      } else {
+        toast.success(
+          `Added ${added} sub-folder${added === 1 ? "" : "s"}${pack?.name ? ` to "${pack.name}"` : ""}`,
+          skipped > 0 ? { description: `${skipped} were already there.` } : undefined,
+        );
+      }
+      setDraft("");
+      return;
+    }
+    onAddSubfolder(raw);
     setDraft("");
   };
 
@@ -1738,8 +1875,8 @@ function SubfolderSection({
           type="text"
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") submitAdd(); }}
-          placeholder="New sub-folder name…"
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); submitAdd(); } }}
+          placeholder="New sub-folder name… (comma or newline for bulk)"
           className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
           data-testid="subfolder-new-name"
         />
@@ -1748,10 +1885,25 @@ function SubfolderSection({
           disabled={!draft.trim()}
           className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium disabled:opacity-40 flex items-center gap-1"
           data-testid="subfolder-add-btn"
-          title="Add a new sub-folder to this pack"
+          title={/[,;\n]/.test(draft || "")
+            ? `Add ${parseRoster(draft || "").length} sub-folders in one shot`
+            : "Add a new sub-folder to this pack"}
         >
-          <Plus size={12} /> Add
+          <Plus size={12} /> {/[,;\n]/.test(draft || "")
+            ? `Add ${parseRoster(draft || "").length}`
+            : "Add"}
         </button>
+        {/* v1.4.5 — Paste-roster for sub-folders. Same popover UX as
+            filename tags. Kurt can dump a team list here and instantly
+            get one sub-folder per team. */}
+        {onAddSubfoldersBulk && (
+          <PasteRosterButton
+            testId={`subfolder-paste-new`}
+            targetName={pack?.name}
+            buttonLabel="Paste list"
+            onCommit={(labels) => onAddSubfoldersBulk(labels) || 0}
+          />
+        )}
       </div>
 
       {/* Subfolder list */}
@@ -1988,24 +2140,22 @@ function SubfolderSection({
                         onKeyDown={(e) => {
                           if (e.key === "Enter") {
                             e.preventDefault();
-                            // v1.4.3-hotfix2 — Smart bulk: if the input
-                            // holds commas or newlines, split into many
-                            // tags. Otherwise fall back to the single-tag
-                            // add. Kurt can now paste "Rutschman,
-                            // Henderson, Mullins" directly here and hit
-                            // Enter to tag them all at once.
+                            // v1.4.5 — Smart bulk (atomic). Uses the new
+                            // onAddItemsBulk helper so a 500-label paste
+                            // is ONE state update instead of 500 (which
+                            // used to freeze PPS). Falls back to single
+                            // onAddItem when only one label is present.
                             const val = itDraft;
-                            if (/[,\n]/.test(val)) {
-                              const labels = val.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
-                              const existing = new Set((sf.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
-                              let added = 0;
-                              for (const label of labels) {
-                                if (existing.has(label.toLowerCase())) continue;
-                                existing.add(label.toLowerCase());
-                                onAddItem(sf.id, label);
-                                added += 1;
-                              }
-                              if (added > 0) toast.success(`Added ${added} filename tag${added === 1 ? "" : "s"} to "${sf.name}"`);
+                            if (/[,;\n]/.test(val) && onAddItemsBulk) {
+                              const parsed = parseRoster(val);
+                              const guarded = guardLargePaste(parsed, { targetName: sf.name });
+                              if (!guarded.ok) return;
+                              const added = onAddItemsBulk(sf.id, guarded.labels) || 0;
+                              const skipped = guarded.labels.length - added;
+                              if (added > 0) toast.success(
+                                `Added ${added} filename tag${added === 1 ? "" : "s"} to "${sf.name}"`,
+                                skipped > 0 ? { description: `${skipped} were already there.` } : undefined,
+                              );
                               else toast("All those labels already exist here", { icon: "🟰" });
                             } else {
                               onAddItem(sf.id, val);
@@ -2013,24 +2163,23 @@ function SubfolderSection({
                             setItemDrafts({ ...itemDrafts, [sf.id]: "" });
                           }
                         }}
-                        placeholder="New filename tag… (comma or newline separated for bulk)"
+                        placeholder="New filename tag… (comma, semicolon, or newline for bulk)"
                         className="flex-1 bg-app border border-app rounded px-2 py-1 text-xs focus-ring"
                         data-testid={`subfolder-item-input-${sf.id}`}
                       />
                       <button
                         onClick={() => {
                           const val = itDraft;
-                          if (/[,\n]/.test(val)) {
-                            const labels = val.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
-                            const existing = new Set((sf.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
-                            let added = 0;
-                            for (const label of labels) {
-                              if (existing.has(label.toLowerCase())) continue;
-                              existing.add(label.toLowerCase());
-                              onAddItem(sf.id, label);
-                              added += 1;
-                            }
-                            if (added > 0) toast.success(`Added ${added} filename tag${added === 1 ? "" : "s"} to "${sf.name}"`);
+                          if (/[,;\n]/.test(val) && onAddItemsBulk) {
+                            const parsed = parseRoster(val);
+                            const guarded = guardLargePaste(parsed, { targetName: sf.name });
+                            if (!guarded.ok) return;
+                            const added = onAddItemsBulk(sf.id, guarded.labels) || 0;
+                            const skipped = guarded.labels.length - added;
+                            if (added > 0) toast.success(
+                              `Added ${added} filename tag${added === 1 ? "" : "s"} to "${sf.name}"`,
+                              skipped > 0 ? { description: `${skipped} were already there.` } : undefined,
+                            );
                             else toast("All those labels already exist here", { icon: "🟰" });
                           } else {
                             onAddItem(sf.id, val);
@@ -2040,27 +2189,18 @@ function SubfolderSection({
                         disabled={!itDraft.trim()}
                         className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app text-xs disabled:opacity-40 flex items-center gap-1"
                         data-testid={`subfolder-item-add-${sf.id}`}
-                        title={/[,\n]/.test(itDraft) ? `Add ${itDraft.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length} tags in one shot` : "Add this filename tag"}
+                        title={/[,;\n]/.test(itDraft) ? `Add ${parseRoster(itDraft).length} tags in one shot` : "Add this filename tag"}
                       >
-                        <Plus size={11} /> {/[,\n]/.test(itDraft) ? `Add ${itDraft.split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length}` : "Add"}
+                        <Plus size={11} /> {/[,;\n]/.test(itDraft) ? `Add ${parseRoster(itDraft).length}` : "Add"}
                       </button>
-                      {/* v1.4.3-hotfix — Paste Roster bulk add. Kurt pastes
-                          a comma- or newline-separated list and every entry
-                          becomes a filename tag on THIS sub-folder in one
-                          shot. Skips labels that already exist here. */}
+                      {/* v1.4.5 — Paste Roster bulk add via popover. Now
+                          wired through onAddItemsBulk so the entire
+                          roster commits atomically. Skips labels that
+                          already exist here. */}
                       <PasteRosterButton
                         testId={`subfolder-paste-${sf.id}`}
                         targetName={sf.name}
-                        onCommit={(labels) => {
-                          const existing = new Set((sf.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
-                          const toAdd = labels.filter((l) => !existing.has(l.toLowerCase()));
-                          let added = 0;
-                          for (const label of toAdd) {
-                            onAddItem(sf.id, label);
-                            added += 1;
-                          }
-                          return added;
-                        }}
+                        onCommit={(labels) => onAddItemsBulk ? (onAddItemsBulk(sf.id, labels) || 0) : 0}
                       />
                     </div>
 
@@ -2290,14 +2430,42 @@ function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRem
  * addSubfolderItem / removeSubfolderItem / swapSubfolderItemIcon handlers
  * the inline chevron-expand editor uses, so state stays perfectly in sync.
  */
-function SubfolderFilenameEditor({ sub, onAddItem, onRemoveItem, onSwapItemIcon }) {
+function SubfolderFilenameEditor({
+  sub,
+  onAddItem,
+  onAddItemsBulk,        // v1.4.5 — atomic bulk-add (fn(labels[]) → count)
+  onRemoveItem,
+  onSwapItemIcon,
+  onMoveItem,            // v1.4.5 — fn(itemId, dir) — arrow-key reorder
+  onReorderItems,        // v1.4.5 — fn(fromIdx, toIdx) — drag reorder
+  onConvertToNested,     // v1.4.5 — fn(itemId) — per-tag → nested sub-folder
+}) {
   const [draft, setDraft] = useState("");
+  const [dragIdx, setDragIdx] = useState(null);   // v1.4.5 — currently dragged index
+  const [dropIdx, setDropIdx] = useState(null);   // v1.4.5 — hover target index
   const items = sub?.filenameItems || [];
 
   const add = () => {
-    const lbl = draft.trim();
-    if (!lbl) return;
-    onAddItem(lbl);
+    const raw = draft.trim();
+    if (!raw) return;
+    // v1.4.5 — Smart bulk (atomic). If Kurt pastes a roster into the
+    // "New filename tag" input, split and commit ONCE via the bulk
+    // helper. Falls back to single-add when only one label is present.
+    if (/[,;\n]/.test(raw) && onAddItemsBulk) {
+      const parsed = parseRoster(raw);
+      const guarded = guardLargePaste(parsed, { targetName: sub?.name });
+      if (!guarded.ok) return;
+      const added = onAddItemsBulk(guarded.labels) || 0;
+      const skipped = guarded.labels.length - added;
+      if (added > 0) toast.success(
+        `Added ${added} filename tag${added === 1 ? "" : "s"}${sub?.name ? ` to "${sub.name}"` : ""}`,
+        skipped > 0 ? { description: `${skipped} were already there.` } : undefined,
+      );
+      else toast("All those labels already exist here", { icon: "🟰" });
+      setDraft("");
+      return;
+    }
+    onAddItem(raw);
     setDraft("");
   };
 
@@ -2307,8 +2475,8 @@ function SubfolderFilenameEditor({ sub, onAddItem, onRemoveItem, onSwapItemIcon 
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder={`New filename tag for "${sub.name}"…`}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          placeholder={`New filename tag for "${sub.name}"… (comma, semicolon, or newline for bulk)`}
           className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
           data-testid="subfolder-filename-input"
         />
@@ -2317,33 +2485,133 @@ function SubfolderFilenameEditor({ sub, onAddItem, onRemoveItem, onSwapItemIcon 
           disabled={!draft.trim()}
           className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
           data-testid="subfolder-filename-add-btn"
+          title={/[,;\n]/.test(draft || "")
+            ? `Add ${parseRoster(draft || "").length} tags in one shot`
+            : "Add this filename tag"}
         >
-          <Plus size={12} /> Add
+          <Plus size={12} /> {/[,;\n]/.test(draft || "")
+            ? `Add ${parseRoster(draft || "").length}`
+            : "Add"}
         </button>
+        {/* v1.4.5 — Paste-roster popover on the Filename Tags pane too. */}
+        {onAddItemsBulk && (
+          <PasteRosterButton
+            testId={`subfolder-filename-paste-${sub.id}`}
+            targetName={sub?.name}
+            onCommit={(labels) => onAddItemsBulk(labels) || 0}
+          />
+        )}
       </div>
       {items.length === 0 ? (
         <p className="text-xs text-dim italic px-1">No filename tags yet. Add one above to get started.</p>
       ) : (
-        <div className="grid grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
-          {items.map((it) => (
-            <div
-              key={it.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded border border-app bg-app/40 group"
-              data-testid={`subfolder-filename-item-${it.id}`}
-            >
-              <TagChipIcon item={it} />
-              <span className="flex-1 text-sm truncate">{it.label}</span>
-              <button
-                onClick={() => onRemoveItem(it.id)}
-                className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] opacity-0 group-hover:opacity-100 transition-opacity"
-                data-testid={`subfolder-filename-remove-${it.id}`}
-                title="Remove this filename tag"
-              >
-                <Trash2 size={11} />
-              </button>
-            </div>
-          ))}
-        </div>
+        <>
+          <div className="text-[10px] text-dim px-1 flex items-center gap-2">
+            <GripVertical size={10} className="text-primary-earth/60" />
+            <span>Drag any tag to reorder, or use the ▲ ▼ buttons. Click <span className="text-primary-earth">→ Nest</span> to promote a single tag into its own nested sub-folder.</span>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
+            {items.map((it, idx) => {
+              const isDragging = dragIdx === idx;
+              const isDropTarget = dropIdx === idx && dragIdx !== null && dragIdx !== idx;
+              return (
+                <div
+                  key={it.id}
+                  draggable={!!onReorderItems}
+                  onDragStart={(e) => {
+                    if (!onReorderItems) return;
+                    setDragIdx(idx);
+                    // Non-conflicting MIME so this doesn't get picked up
+                    // by the icon-swap / cross-pack drop targets nearby.
+                    e.dataTransfer.setData("application/x-pps-filename-reorder", String(idx));
+                    e.dataTransfer.effectAllowed = "move";
+                  }}
+                  onDragOver={(e) => {
+                    if (!onReorderItems) return;
+                    if (dragIdx === null) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = "move";
+                    if (dropIdx !== idx) setDropIdx(idx);
+                  }}
+                  onDragLeave={() => { if (dropIdx === idx) setDropIdx(null); }}
+                  onDrop={(e) => {
+                    if (!onReorderItems) return;
+                    e.preventDefault();
+                    const from = Number(e.dataTransfer.getData("application/x-pps-filename-reorder"));
+                    setDragIdx(null);
+                    setDropIdx(null);
+                    if (Number.isFinite(from) && from !== idx) onReorderItems(from, idx);
+                  }}
+                  onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded border group transition-colors ${
+                    isDragging
+                      ? "border-primary-earth bg-primary-earth/20 opacity-50"
+                      : isDropTarget
+                      ? "border-primary-earth border-dashed bg-primary-earth/10"
+                      : "border-app bg-app/40"
+                  }`}
+                  data-testid={`subfolder-filename-item-${it.id}`}
+                  data-idx={idx}
+                >
+                  {/* v1.4.5 — Drag handle. Makes the whole row draggable
+                      but also gives Kurt a visible grab point. */}
+                  {onReorderItems && (
+                    <GripVertical
+                      size={10}
+                      className="text-dim group-hover:text-primary-earth cursor-grab active:cursor-grabbing shrink-0"
+                      title="Drag to reorder"
+                    />
+                  )}
+                  <TagChipIcon item={it} />
+                  <span className="flex-1 text-sm truncate">{it.label}</span>
+                  {/* v1.4.5 — Up/Down arrow buttons for injury-friendly
+                      reorder when dragging is too fussy. */}
+                  {onMoveItem && (
+                    <>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, -1); }}
+                        disabled={idx === 0}
+                        className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid={`subfolder-filename-up-${it.id}`}
+                        title="Move up"
+                      >
+                        <ArrowUp size={11} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, +1); }}
+                        disabled={idx === items.length - 1}
+                        className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100 transition-opacity"
+                        data-testid={`subfolder-filename-down-${it.id}`}
+                        title="Move down"
+                      >
+                        <ArrowDown size={11} />
+                      </button>
+                    </>
+                  )}
+                  {/* v1.4.5 — Per-tag Convert to nested sub-folder. */}
+                  {onConvertToNested && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onConvertToNested(it.id); }}
+                      className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth opacity-0 group-hover:opacity-100 transition-opacity"
+                      data-testid={`subfolder-filename-convert-${it.id}`}
+                      title={`Convert "${it.label}" → nested sub-folder under "${sub.name}"`}
+                    >
+                      <ArrowRight size={11} />
+                    </button>
+                  )}
+                  <button
+                    onClick={() => onRemoveItem(it.id)}
+                    className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] opacity-0 group-hover:opacity-100 transition-opacity"
+                    data-testid={`subfolder-filename-remove-${it.id}`}
+                    title="Remove this filename tag"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
     </div>
   );

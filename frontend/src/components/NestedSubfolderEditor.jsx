@@ -32,7 +32,7 @@ import React, { useState } from "react";
 import { Plus, Trash2, Pencil, ChevronDown, ChevronRight, FolderPlus, CornerDownRight, ArrowRight, MoveRight } from "lucide-react";
 import { toast } from "sonner";
 import { uid } from "../lib/storage";
-import PasteRosterButton, { parseRoster } from "./PasteRosterButton";
+import PasteRosterButton, { parseRoster, guardLargePaste } from "./PasteRosterButton";
 
 function makeNested(name, seed = {}) {
   return {
@@ -91,9 +91,15 @@ export default function NestedSubfolderEditor({
     const raw = (draft || "").trim();
     if (!raw) return;
     const looksLikeList = /[,;\n]/.test(raw);
-    const labels = looksLikeList
+    const parsed = looksLikeList
       ? parseRoster(raw)
       : [raw.slice(0, 60)];
+    // v1.4.5 — Safety cap on direct-input pastes too. Kurt can paste
+    // straight into the input without opening the popover, so the guard
+    // has to live in both commit paths.
+    const guarded = looksLikeList ? guardLargePaste(parsed, { targetName: node.name }) : { ok: true, labels: parsed };
+    if (!guarded.ok) return;
+    const labels = guarded.labels;
     const existing = new Set(children.map((c) => (c.name || "").toLowerCase()));
     const additions = [];
     for (const label of labels) {
@@ -157,8 +163,12 @@ export default function NestedSubfolderEditor({
     // newlines, split into many tags at once. Otherwise fall back to
     // single-tag add. Kurt can paste "Rutschman, Henderson, Mullins"
     // straight into the nested tag input and hit Enter.
-    if (/[,\n]/.test(raw)) {
-      const labels = raw.split(/[,\n]/).map((s) => s.trim()).filter(Boolean);
+    if (/[,;\n]/.test(raw)) {
+      const parsed = raw.split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+      const child = children.find((c) => c.id === childId);
+      const guarded = guardLargePaste(parsed, { targetName: child?.name });
+      if (!guarded.ok) return;
+      const labels = guarded.labels;
       onChange({
         ...node,
         subfolders: children.map((c) => {
@@ -464,7 +474,7 @@ export default function NestedSubfolderEditor({
                           value={tagDrafts[c.id] || ""}
                           onChange={(e) => setTagDrafts({ ...tagDrafts, [c.id]: e.target.value })}
                           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTagToChild(c.id); } }}
-                          placeholder="New filename tag… (comma or newline separated for bulk)"
+                          placeholder="New filename tag… (comma, semicolon, or newline for bulk)"
                           className="flex-1 bg-app border border-app rounded px-2 py-1 text-[11px] focus-ring"
                           data-testid={`nested-tag-input-${c.id}`}
                         />
@@ -473,12 +483,12 @@ export default function NestedSubfolderEditor({
                           disabled={!(tagDrafts[c.id] || "").trim()}
                           className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app text-[11px] disabled:opacity-40 flex items-center gap-1"
                           data-testid={`nested-tag-add-${c.id}`}
-                          title={/[,\n]/.test(tagDrafts[c.id] || "")
-                            ? `Add ${(tagDrafts[c.id] || "").split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length} tags in one shot`
+                          title={/[,;\n]/.test(tagDrafts[c.id] || "")
+                            ? `Add ${(tagDrafts[c.id] || "").split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).length} tags in one shot`
                             : "Add this filename tag"}
                         >
-                          <Plus size={10} /> {/[,\n]/.test(tagDrafts[c.id] || "")
-                            ? `Add ${(tagDrafts[c.id] || "").split(/[,\n]/).map((s) => s.trim()).filter(Boolean).length}`
+                          <Plus size={10} /> {/[,;\n]/.test(tagDrafts[c.id] || "")
+                            ? `Add ${(tagDrafts[c.id] || "").split(/[,;\n]/).map((s) => s.trim()).filter(Boolean).length}`
                             : "Tag"}
                         </button>
                         {/* v1.4.3-hotfix — Paste roster into this nested

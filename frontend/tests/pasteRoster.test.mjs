@@ -11,7 +11,8 @@ function parseRoster(text) {
       return t && !t.startsWith("//") && !t.startsWith("#");
     })
     .join(",");
-  const parts = cleaned.split(/[,\n]/);
+  // v1.4.5 — accept commas, semicolons, AND newlines as separators.
+  const parts = cleaned.split(/[,;\n]/);
   const seen = new Set();
   const out = [];
   for (const p of parts) {
@@ -29,6 +30,8 @@ const cases = [
   { name: "comma-separated roster", input: "Devers, Bogaerts, Story, Duran", want: ["Devers", "Bogaerts", "Story", "Duran"] },
   { name: "newline roster", input: "Devers\nBogaerts\nStory\nDuran", want: ["Devers", "Bogaerts", "Story", "Duran"] },
   { name: "mixed commas + newlines", input: "Devers, Bogaerts\nStory, Duran", want: ["Devers", "Bogaerts", "Story", "Duran"] },
+  { name: "v1.4.5 — semicolon separator", input: "Devers; Bogaerts; Story; Duran", want: ["Devers", "Bogaerts", "Story", "Duran"] },
+  { name: "v1.4.5 — mixed comma + semicolon + newline", input: "Devers, Bogaerts;Story\nDuran", want: ["Devers", "Bogaerts", "Story", "Duran"] },
   { name: "whitespace only entries skipped", input: "Devers, , , Story", want: ["Devers", "Story"] },
   { name: "case-insensitive dedupe keeps first spelling", input: "Devers, DEVERS, devers, Bogaerts", want: ["Devers", "Bogaerts"] },
   { name: "// comment lines ignored", input: "// AL East\nDevers\n// starters\nBogaerts", want: ["Devers", "Bogaerts"] },
@@ -36,6 +39,7 @@ const cases = [
   { name: "label capped at 60 chars", input: "a".repeat(80), want: ["a".repeat(60)] },
   { name: "empty input returns empty array", input: "", want: [] },
   { name: "only commas returns empty", input: ",,,,", want: [] },
+  { name: "only semicolons returns empty", input: ";;;;", want: [] },
   { name: "windows CRLF line endings", input: "Devers\r\nBogaerts\r\nStory", want: ["Devers", "Bogaerts", "Story"] },
   { name: "trailing/leading commas OK", input: ", Devers, Bogaerts, ", want: ["Devers", "Bogaerts"] },
   { name: "tab in the middle preserved as part of label", input: "Rafael\tDevers, Bogaerts", want: ["Rafael\tDevers", "Bogaerts"] },

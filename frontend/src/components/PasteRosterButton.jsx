@@ -36,7 +36,9 @@ export function parseRoster(text) {
       return t && !t.startsWith("//") && !t.startsWith("#");
     })
     .join(",");
-  const parts = cleaned.split(/[,\n]/);
+  // v1.4.5 — accept commas, newlines, AND semicolons as separators so
+  // Kurt can paste Excel columns / semicolon-separated exports.
+  const parts = cleaned.split(/[,;\n]/);
   const seen = new Set();
   const out = [];
   for (const p of parts) {
@@ -48,6 +50,47 @@ export function parseRoster(text) {
     out.push(label);
   }
   return out;
+}
+
+// v1.4.5 — Safety guardrails for very large pastes. Previous versions
+// froze/locked PPS when Kurt pasted thousands of names because every
+// commit would push a huge state-tree through localStorage in one
+// synchronous shot. These limits keep the app responsive AND give
+// Kurt an obvious "are you sure?" before he sinks a huge list.
+export const SAFE_PASTE_WARN_AT = 250;
+export const SAFE_PASTE_HARD_CAP = 2000;
+
+/**
+ * Enforces the safety limits on any parsed roster before it hits the
+ * heavy state update. Returns { ok, labels } — when `ok` is false the
+ * caller should abort. `labels` may be truncated to SAFE_PASTE_HARD_CAP.
+ */
+export function guardLargePaste(labels, opts = {}) {
+  const count = Array.isArray(labels) ? labels.length : 0;
+  if (count === 0) return { ok: false, labels: [] };
+  if (count > SAFE_PASTE_HARD_CAP) {
+    const kept = labels.slice(0, SAFE_PASTE_HARD_CAP);
+    const dropped = count - SAFE_PASTE_HARD_CAP;
+    const proceed = window.confirm(
+      `That paste has ${count.toLocaleString()} items — too many to add safely in one shot.\n\n` +
+      `PPS will keep the first ${SAFE_PASTE_HARD_CAP.toLocaleString()} and skip the remaining ${dropped.toLocaleString()}.\n\n` +
+      `Continue?`
+    );
+    if (!proceed) return { ok: false, labels: [] };
+    toast.warning(`Trimmed to ${SAFE_PASTE_HARD_CAP.toLocaleString()} items`, {
+      description: `${dropped.toLocaleString()} were dropped so PPS stays responsive.`,
+    });
+    return { ok: true, labels: kept };
+  }
+  if (count > SAFE_PASTE_WARN_AT) {
+    const target = opts.targetName ? ` into "${opts.targetName}"` : "";
+    const proceed = window.confirm(
+      `About to add ${count.toLocaleString()} items${target}.\n\n` +
+      `Large pastes can briefly freeze PPS while it saves. Continue?`
+    );
+    if (!proceed) return { ok: false, labels: [] };
+  }
+  return { ok: true, labels };
 }
 
 export default function PasteRosterButton({
@@ -66,11 +109,16 @@ export default function PasteRosterButton({
   }, [open]);
 
   const commit = () => {
-    const labels = parseRoster(text);
-    if (labels.length === 0) {
-      toast.error("No labels found", { description: "Separate with commas or new lines." });
+    const parsed = parseRoster(text);
+    if (parsed.length === 0) {
+      toast.error("No labels found", { description: "Separate with commas, semicolons or new lines." });
       return;
     }
+    // v1.4.5 — Safety cap. Warns/blocks huge pastes before the heavy
+    // state update fires so PPS doesn't freeze on multi-thousand rosters.
+    const guard = guardLargePaste(parsed, { targetName });
+    if (!guard.ok) return;
+    const labels = guard.labels;
     const added = onCommit(labels) ?? labels.length;
     if (added === 0) {
       toast("All those labels already exist on this sub-folder", { icon: "🟰" });
