@@ -1325,3 +1325,33 @@ Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to 
 **Deferred to v1.4.6 (Kurt's explicit next-up request):**
 - Multi-select mode for filename tags (checkbox toggle + batch "Move to sub-folder…" / "Convert selected → nested" / "Delete selected") — Kurt asked to smoke-test v1.4.5 before layering this in.
 - Docs refresh (`ReadMe.txt`, `Quick Start.pdf`, `User Guide.pdf`) — still the top-priority pre-feature task per v1.4.2 backlog note.
+
+
+### Iteration 34 — v1.4.5c · Post-smoke-test cleanups (2026-09-26)
+
+Kurt smoke-tested v1.4.5 and reported three regressions/gaps. All fixed in v1.4.5c, still under the v1.4.5 release band.
+
+**Item 3 fix — Compare View: click a pane to zoom, not to scroll the filmstrip**
+- Every pane in `ComparisonView` now renders `ZoomablePreview` (previously only the active pane did — inactive panes were plain `<img>`), so each side-by-side image is independently zoomable with mouse wheel / +− controls at rest.
+- `App.js` filmstrip auto-scroll `useEffect` now short-circuits when `compareMode > 1`, so clicking a pane in 2×/3× view no longer jerks the filmstrip out from under Kurt.
+
+**Item 6 fix — Editor: crop Cancel button now also exits crop mode**
+- The floating "Cancel" pill next to Apply crop now calls both `setCrop(null)` AND `setCropMode(false)`, matching Apply crop's behavior. Previously it discarded the rectangle but left the "Cropping — drag to draw or move" toggle lit.
+
+**Item 11 fix — Tag Manager: cross-folder tag drag + click-to-highlight**
+- Filename tag chips in the bottom "FILENAME TAGS for X" pane are now draggable with BOTH `application/x-pps-filename-reorder` (in-list reorder) AND `application/x-pps-sfitem` (cross-folder move) payloads. Whichever drop target hits wins.
+- Sub-folder row headers now accept `application/x-pps-sfitem` drops even when collapsed (previously only the expanded body did) — this unblocks the "only one folder open at a time" workflow Kurt described. Ctrl-drag copies; plain drag moves.
+- New row highlight state (`data-drop-active`) with primary-earth ring + tint when a tag is hovering the row header, so Kurt sees exactly where the drop will land.
+- Filename tag chips now click-to-highlight (single-select, click again to unselect). Selected chip shows a primary-earth ring + tint. Foundation for v1.4.6 multi-select + batch actions.
+- Bottom pane grid switched to `grid-cols-1 sm:grid-cols-2` and hover controls converted from `opacity-0` to `hidden group-hover:flex` so labels always take full width at rest and only reveal reorder/convert/remove buttons on hover — fixes cramped layout where labels were squeezed out by always-reserved icon space.
+- Toast on drop: "Moved filename tag to '<sub>'" (or "Copied…" on Ctrl-drag) so Kurt sees the drop landed.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5c** (build date 2026-09-26). `package.json` files stay at `1.4.5` since the release band is still v1.4.5.
+
+**Files touched**
+- `frontend/src/components/ComparisonView.jsx` (all panes zoomable), `frontend/src/App.js` (skip filmstrip auto-scroll in compare mode), `frontend/src/components/ImageEditor.jsx` (crop cancel exits crop mode), `frontend/src/components/CategoryManager.jsx` (row-header drop target, chip cross-folder drag payload, click-to-highlight state, layout de-cramping), `frontend/src/buildInfo.json`.
+
+**Test posture**
+- All 16 parseRoster regressions green (14 files total unchanged).
+- Live smoke test via Playwright: cross-folder move Mammals → Birds via row-header drop fires the `Moved filename tag to "Birds"` toast; chip labels visible ("action", "feeding", "closeup"); click at label area toggles `data-selected="true"` and shows the ring.
