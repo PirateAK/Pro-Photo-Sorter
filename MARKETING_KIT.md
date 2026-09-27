@@ -143,7 +143,39 @@ Version 1.4.7 · Assembled Feb 2026 for Captain Kurt's launch push
 
 ---
 
-## 6 · What I can build for you next (say the word)
+## 6 · Landing page + muskegman.com — go-live runbook (added Jun 2026)
+
+The site lives in `docs/` (single `index.html`, no build step). Hosted free on
+**GitHub Pages** from the existing `PirateAK/Pro-Photo-Sorter` repo — no new
+account, no hosting bill, free HTTPS.
+
+**A. Turn on GitHub Pages (one time, all clicking)**
+1. github.com/PirateAK/Pro-Photo-Sorter → **Settings** → **Pages** (left menu)
+2. Source: **Deploy from a branch** · Branch: **main** · Folder: **/docs** → **Save**
+3. ~2 min later the site is live at `https://pirateak.github.io/Pro-Photo-Sorter/`
+
+**B. Point muskegman.com at it (GoDaddy → My Products → DNS)**
+Delete any existing `A` record for `@` and any `CNAME` for `www`, then add:
+
+| Type | Name | Value | TTL |
+|---|---|---|---|
+| A | @ | 185.199.108.153 | 600 |
+| A | @ | 185.199.109.153 | 600 |
+| A | @ | 185.199.110.153 | 600 |
+| A | @ | 185.199.111.153 | 600 |
+| CNAME | www | pirateak.github.io | 600 |
+
+**C. Tell GitHub the domain**
+Settings → Pages → **Custom domain** → paste `muskegman.com` → **Save**.
+Wait for the green "DNS check successful", then tick **Enforce HTTPS**.
+(GitHub commits a `docs/CNAME` file for you — that's expected.)
+
+DNS can take 10 min – 24 h. Test at https://muskegman.com afterwards.
+
+**Swapping screenshots later:** overwrite `docs/assets/app-hero.png` with any
+real screenshot (1600×1000 or similar) and push — no code changes needed.
+
+
 
 - 🌐 **Landing page** — single-page React site with hero, feature grid, 3 demo GIFs, testimonials placeholder, Gumroad buy button. Deploys to Vercel/Netlify free tier. Estimated 1 session.
 - 📧 **Email drip sequence** — 5 emails for trial users who haven't converted (day 1, 3, 7, 14, 30). I'll draft all of them.
