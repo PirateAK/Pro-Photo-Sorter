@@ -330,8 +330,186 @@ The gear icon opens Settings:
 ## Reporting Bugs
 
 The bottom-right corner of the Destination panel shows the version and build
-date, e.g. `v1.0.0 · 2026-02-15`. **Please include this string** in any bug
+date, e.g. `v1.4.5e · 2026-09-26`. **Please include this string** in any bug
 report so we know exactly which build you're on.
 
 Screenshots, the source folder path, and the exact steps to reproduce are
 gold — the more you share, the faster the fix.
+
+
+---
+
+
+# New in v1.4 (September 2026)
+
+Everything below is **added on top** of the v1.3 workflow above — nothing was removed. If your muscle memory is from v1.3, keep doing what you're doing; the new features surface as extra buttons and gestures.
+
+## Splash Screen on Upgrades
+
+The first launch after installing a new version shows a one-page splash listing what changed. Click **Get Started** to dismiss it. A version-keyed sentinel makes sure it doesn't nag you again on subsequent launches — until the next version.
+
+You can force it back at any time from **Settings → Show welcome splash next launch**.
+
+
+## Sample Photos on First Run
+
+On very first launch we drop a small demo folder of nature photos in your `Documents\Pro Photo Sorter\Samples\` so you can practice sorting before touching your own shoot. When you load your own source, the samples slide out automatically.
+
+Restore or hide the samples any time from **Settings → Sample photos → Show me again next launch**.
+
+
+## Multi-Source Roots
+
+Your primary source loads with **Load Source** in the top-left. To add a second one alongside it (SD card + archive drive, for example), click the **+ Add another source** row in the same panel.
+
+- The filmstrip splits into two rows — one per source — so you can pull from both without unloading either
+- A collapsible accordion header keeps each source tidy
+- Cross-source drag works: pull a chip from any source into the tag pipeline; storing writes it wherever you point
+
+
+## Unlimited Nested Sub-Folders
+
+Sub-folders inside a Category can nest as deep as you want. The Tag Manager renders a tree line rail so you always know how deep you are. Sample flow:
+
+```
+Sports  (category)
+└─ Baseball (AL)                      ← top-level sub-folder
+   ├─ Baltimore Orioles               ← nested (depth 2)
+   │  ├─ Adley Rutschman              ← nested (depth 3)
+   │  └─ Gunnar Henderson
+   └─ Boston Red Sox
+      ├─ Rafael Devers
+      └─ Trevor Story
+```
+
+Every level is renamable (double-click), reorderable (up/down arrows or drag), collapsible (chevron), and its own filename tags carry through the destination path.
+
+
+## Custom Filename Templates
+
+Settings has a **Filename template** section. Pick a preset (Legacy PPS, Photographer-friendly, Date-first, etc.) or save your own using tokens like:
+
+- `{stars}` — star rating, e.g. `★★★☆☆`
+- `{tags}` — every filename tag joined with `_`
+- `{date}` — EXIF date in `YYYY-MM-DD`
+- `{orig}` — original filename without extension
+- `{seq}` — 3-digit sequence within the current run
+
+Templates are validated live — a bad token turns the field red before you can save.
+
+
+## Smart Paste (Rosters)
+
+Any input labeled "New tag…" or "New sub-folder name…" understands:
+
+- **Commas** — `Devers, Bogaerts, Story`
+- **Newlines** — one label per line (Excel column paste works)
+- **Semicolons** — `Devers; Bogaerts; Story`
+
+Paste 3 names, hit **Add**, and you get 3 separate chips. The button label updates to `Add 3` so you know how many will be created before you commit.
+
+Alongside the input there's also a dedicated **Paste list** button that opens a big text area for larger rosters. Rosters of 250+ items trigger a "Continue?" confirm dialog so a fat-finger doesn't lock up the app; anything over 2,000 items gets trimmed automatically with a friendly toast.
+
+
+## Cross-Folder Tag Drag
+
+Drag any filename-tag chip onto another sub-folder row (even one that's collapsed — the row auto-expands after ~500ms). Drop to **move**; hold **Ctrl** while dropping to **copy**. Works in three flavors:
+
+1. **Top-level** — drag a chip out of one top-level sub-folder onto another
+2. **Cross-sibling in nested** — inside a nested tree (e.g. Orioles → Red Sox), drag between team siblings
+3. **Cross-category** — drag onto any category name in the left rail to send the chip to that pack's `_Unsorted filenames` bucket
+
+
+## Multi-Select + Bulk Actions
+
+Every sub-folder's chevron-expanded chip area has a **[Select]** toggle button in its header.
+
+Flip it ON:
+- A checkbox appears on every chip
+- Click any chip (anywhere on it — not just the checkbox) to tick it
+- A floating bar slides in below the chips: `[N tags selected] · Select all · Clear · Convert · Delete`
+
+Available bulk actions:
+- **Delete** — every ticked chip goes to Chip Trash (undoable)
+- **Convert** — every ticked chip becomes its own nested sub-folder under the parent, with icon + name preserved. Collisions are skipped.
+- **Drag** — dragging any ticked chip carries the whole selection; drop on another sub-folder row to move them all together
+
+Multi-select works on:
+- Top-level sub-folder chips (Wildlife → Mammals → Red Fox / Black Bear / Moose…)
+- Nested chips (Sports → Baseball(AL) → Baltimore Orioles → players)
+
+**Single-click highlight**: Even with Select mode OFF, clicking a chip lights it up briefly so you get visual feedback that "yes, PPS heard you". Click again to un-highlight.
+
+
+## Chip Trash (Undo)
+
+Every filename-tag delete anywhere in the Tag Manager lands in a **Trash** bin. The button lives at the top of the Tag Manager and shows a live count: `Trash · 3`.
+
+Open it to see:
+- Every deleted chip with its icon
+- Breadcrumb path — `from Wildlife › Mammals`
+- Relative timestamp — `just now` / `2m ago` / `3d ago`
+- Checkboxes so you can Restore a subset
+- **Restore selected** puts them back in their original sub-folder (with `(restored)` suffix if a name collision happens)
+- **Empty trash** clears the bin permanently (asks first)
+
+The bin is capped at 200 items with oldest-first evict so it never leaks storage.
+
+
+## Compare View — Per-Pane Zoom
+
+Toolbar buttons **×1 / ×2 / ×3** switch how many images sit side-by-side.
+
+- Every pane is independently zoomable — mouse wheel over any pane zooms just that one
+- Left/right arrow buttons still work in compare mode — they advance the active pane
+- The filmstrip stops sliding out from under you while comparing
+- Star rating still applies to the active (highlighted) pane
+- Press **×1** to return to single view for tagging & icon-drag
+
+
+## Editor Auto-Enhance / Crop-in-Place / Reset-to-Last
+
+The Editor window (Ctrl+E) has three v1.4-specific goodies:
+
+- **Auto-Enhance toggle** — one click balances tone, saturation, and mild sharpen. Toggle it off to compare against the original.
+- **Draw crop region → floating Apply pill** — as soon as you draw a crop rectangle, an Apply/Cancel pill hovers over the top-center of the stage so it's always in reach. Apply crop bakes the crop in-place so you can keep editing on the cropped version.
+- **Reset to last** — 10-step history of destructive edits. One click reverts just the most recent bake. **Reset all** wipes every edit and reloads the original.
+- Cancel also exits crop mode (the "Draw crop region" toggle un-lights) so you're never stuck in cropping mode.
+- **Slider quick-reset** — click the value pill on any slider to snap it back to default.
+
+
+## Thumbnail Loading + Cache Stats
+
+The filmstrip now shows a dashed-border placeholder with a spinning ring while a thumbnail is being generated. Broken thumbnails get a red X badge so you can spot them at a glance.
+
+Settings → **Thumbnail cache** shows:
+- Total cache size in MB
+- Number of thumbnails cached
+- A **Clear** button that asks for confirmation before wiping (so you don't nuke a warm cache accidentally)
+
+
+## Keyboard Shortcuts (all)
+
+| Key | Action |
+| --- | --- |
+| Arrow keys | Previous / next photo |
+| 1 – 5 | Set star rating |
+| 0 | Clear star rating |
+| Space | Toggle repeat-last-tags |
+| Ctrl+E | Open Image Editor |
+| Ctrl+S | Store current photo |
+| Ctrl+Shift+W | Toggle watermark for this photo |
+| \\ or \` | Peek original (hold) inside Editor |
+| Enter | Commit current tag input |
+| Esc | Close pop-over / cancel crop / disarm icon |
+| F1 or ? | Toggle Help |
+| ×1 / ×2 / ×3 | Cycle compare view |
+
+
+## Getting Help
+
+- **Splash Screen** — from Settings → Show welcome splash next launch
+- **Coach-Mark tour** — from Settings → Show me again next launch (walks you through Load Source, Tag Manager, filmstrip)
+- **In-app Help panel** — Help button in the top toolbar
+- **Support email** — see ReadMe.txt on your install thumb drive
+

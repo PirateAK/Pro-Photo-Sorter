@@ -1358,6 +1358,31 @@ Kurt smoke-tested v1.4.5d and reported (a) he was clicking tags in the chevron-e
 - Live Playwright smoke: middle column no longer shows bottom pane (`filename-editor-pane` count = 0); single-click on a chevron chip flips `data-highlighted="true"`; [Select] on Mammals reveals 4 checkboxes; ticking 3 → bulk bar reads "3 tags selected"; Delete → Trash counter jumps to 3.
 
 
+### Iteration 37 — v1.4.5f · Docs refresh + Compare-view nav buttons (2026-09-26)
+
+**Compare-view nav buttons fix (Kurt reported after v1.4.5e):**
+- The Left/Right filmstrip navigation buttons were only rendered inside the single-view (`compareMode === 1`) branch of the App.js viewer ternary and therefore disappeared in ×2 / ×3.
+- Added a matching pair (`nav-prev-compare` / `nav-next-compare`) inside the compareMode > 1 branch. They call the same `goPrev` / `goNext` handlers (advancing the active pane's `selectedIdx`), respect the disabled states at either end of the filmstrip, and sit at the same 3-o'clock / 9-o'clock overlay position.
+
+**Docs refresh — the retail thumb-drive gate:**
+- `/app/ReadMe.txt` fully rewritten for v1.4.5. Sections: What's New in 1.4 (10 flagship features), Quick Install, First Launch, Tag Manager controls cheat-sheet, Keyboard Shortcuts, Trial vs Full License, Troubleshooting, Support.
+- `/app/QUICK_START.md` fully rewritten. Single-page cheat-sheet: Install → First Launch → Top 8 gestures table → Multi-select workflow → Compare view → License. Optimized for print + folded thumb-drive insert.
+- `/app/USER_GUIDE.md` appended a comprehensive "New in v1.4 (September 2026)" chapter covering: Splash Screen, First-Run Samples, Multi-Source Roots, Unlimited Nested Sub-Folders, Custom Filename Templates, Smart Paste, Cross-Folder Tag Drag, Multi-Select + Bulk Actions, Chip Trash, Compare View per-pane zoom, Editor Auto-Enhance/Crop-in-Place/Reset-to-Last, Thumbnail Loading + Cache Stats, complete Keyboard Shortcut table.
+- Regenerated `/app/dist-docs/Quick Start.pdf` (77 KB) and `/app/dist-docs/User Guide.pdf` (322 KB) via the existing `/app/scripts/build-docs-pdf.js` pipeline (puppeteer-core + Chromium). Both bundle-ready for the next thumb-drive shipment.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5f** (build date 2026-09-26).
+
+**Files touched**
+- Updated: `frontend/src/App.js` (compare-mode nav buttons), `frontend/src/buildInfo.json`, `ReadMe.txt`, `QUICK_START.md`, `USER_GUIDE.md`.
+- Regenerated: `dist-docs/Quick Start.pdf`, `dist-docs/User Guide.pdf`.
+
+**Deferred to v1.4.6:**
+- Editor Round-Trip (preserve tags through crop/rotate).
+- XMP Sidecars (write stars + tags for Lightroom sync).
+- Native RAW Previews (Kurt confirmed dcraw.exe bundle approach — path 4b).
+
+
 ### Backlog — Documentation Refresh (queued for next session, top priority)
 
 Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to reflect v1.4.0 → v1.4.2 changes before the next release.

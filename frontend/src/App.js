@@ -2767,6 +2767,29 @@ export default function App() {
                   <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Rate</span>
                   <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
                 </div>
+                {/* v1.4.5e — Nav buttons in compare mode. Kurt reported
+                    that left/right went missing in 2×/3× view. Advancing
+                    from the leftmost pane shifts the visible window one
+                    step and updates the active pane; keyboard arrows
+                    work identically. */}
+                <button
+                  onClick={goPrev}
+                  disabled={selectedIdx === 0}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed transition-colors z-30"
+                  data-testid="nav-prev-compare"
+                  title="Previous photo (←) — advances the active pane"
+                >
+                  <ChevronLeft size={20} strokeWidth={2.5} />
+                </button>
+                <button
+                  onClick={goNext}
+                  disabled={selectedIdx >= images.length - 1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed transition-colors z-30"
+                  data-testid="nav-next-compare"
+                  title="Next photo (→) — advances the active pane"
+                >
+                  <ChevronRight size={20} strokeWidth={2.5} />
+                </button>
                 {/* Hint that tagging is disabled in compare */}
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur border border-app text-[11px] text-dim">
                   Comparison mode · press <span className="kbd">×1</span> to tag & drag icons
