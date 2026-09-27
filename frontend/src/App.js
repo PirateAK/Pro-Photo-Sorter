@@ -129,9 +129,24 @@ function baseName(name) {
  */
 function composeDestFolderParts(activePack, folderPartsFromTemplate, subChain) {
   const chainNames = Array.isArray(subChain) ? subChain.map((s) => s?.name) : [];
+  // v1.4.7 — Kurt reported "Wildlife/unsorted/Birds/Bald_Eagle.jpg" when he
+  // picked a pack + sub-folder + filename tag but didn't drag any FOLDER
+  // chips into the Folders row. Root cause: renderTemplate() emits the
+  // string "unsorted" as a fallback for `{folders}` when the folders array
+  // is empty, so the template stage bakes an "unsorted" segment into
+  // folderPartsFromTemplate. The pack name + sub-folder chain ALREADY
+  // provide the folder context here, so that fallback becomes spurious
+  // and clutters the path. Strip it out whenever we have any other
+  // context (pack or sub-folder); keep it only when we're truly
+  // context-less so an orphan store still lands in a labeled bin.
+  const hasFolderContext = !!activePack?.name || chainNames.some((n) => n && String(n).trim().length > 0);
+  const cleanedTemplateParts = (folderPartsFromTemplate || []).filter((p) => {
+    if (!hasFolderContext) return true;
+    return String(p).trim().toLowerCase() !== "unsorted";
+  });
   return [
     activePack?.name,
-    ...(folderPartsFromTemplate || []),
+    ...cleanedTemplateParts,
     ...chainNames,
   ].filter((p) => p && String(p).trim().length > 0);
 }
