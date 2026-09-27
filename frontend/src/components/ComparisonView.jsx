@@ -67,22 +67,19 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
       data-active={active ? "true" : "false"}
     >
       {url ? (
-        active ? (
-          <ZoomablePreview
-            ref={zoomRef}
-            src={url}
-            alt={img?.name || ""}
-            resetKey={zoomResetKey || img?.name}
-            imgClassName=""
-          />
-        ) : (
-          <img
-            src={url}
-            alt={img?.name || ""}
-            className="max-w-full max-h-full object-contain"
-            draggable={false}
-          />
-        )
+        // v1.4.5 — ALL panes render ZoomablePreview (not just the active
+        // one) so Kurt can zoom into any of the side-by-side images
+        // independently with mouse wheel / +− controls. Clicking a
+        // pane still marks it active so keyboard shortcuts drive that
+        // pane, but the images no longer "slide left" the way a plain
+        // <img> switch used to feel.
+        <ZoomablePreview
+          ref={zoomRef}
+          src={url}
+          alt={img?.name || ""}
+          resetKey={zoomResetKey || img?.name}
+          imgClassName=""
+        />
       ) : (
         // v1.4.5 — Matching loading placeholder so compare panes tell
         // Kurt they're working instead of looking frozen.

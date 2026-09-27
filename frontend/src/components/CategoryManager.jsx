@@ -1924,7 +1924,9 @@ function SubfolderSection({
               <div
                 key={sf.id}
                 className={`rounded border transition-colors ${
-                  isSelected
+                  dropOverSfId === sf.id
+                    ? "border-primary-earth bg-primary-earth/20 ring-2 ring-primary-earth shadow-md"
+                    : isSelected
                     ? "border-primary-earth bg-primary-earth/10"
                     : springTargetRef.current === sf.id && !expanded
                     ? "border-primary-earth/70 bg-primary-earth/5"
@@ -1943,28 +1945,56 @@ function SubfolderSection({
                   onSelectSubfolder?.(sf.id);
                 }}
                 onDragOver={(e) => {
-                  // v1.2.9 — spring-load if a draggable payload is present
-                  // (any chip type: subfolder-item, palette icon, folder tag)
-                  // and this subfolder is currently collapsed.
-                  if (expanded) return;
                   const types = e.dataTransfer?.types || [];
+                  const isSfItem = types.includes?.("application/x-pps-sfitem");
                   const isDraggable =
-                    types.includes?.("application/x-pps-sfitem") ||
+                    isSfItem ||
                     types.includes?.("application/x-pps-icon") ||
                     types.includes?.("application/x-pps-iconswap") ||
-                    types.length > 0; // fall back — any drag-over counts
+                    types.length > 0;
                   if (!isDraggable) return;
-                  e.preventDefault();
-                  armSpring(sf.id);
+                  // v1.4.5 — Allow tag DROP on the ROW itself (even
+                  // collapsed), not just the expanded pane. Kurt can
+                  // only have one folder open at a time, so requiring
+                  // both source AND target to be expanded made
+                  // cross-folder moves impossible.
+                  if (isSfItem) {
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                    setDropOverSfId(sf.id);
+                  }
+                  // v1.2.9 — spring-load collapsed rows for any drag.
+                  if (!expanded) armSpring(sf.id);
                 }}
                 onDragLeave={(e) => {
-                  // Only cancel if the drag actually left this row (not just
-                  // moved to a nested child element).
                   if (!e.currentTarget.contains(e.relatedTarget)) {
                     if (springTargetRef.current === sf.id) cancelSpring();
+                    if (dropOverSfId === sf.id) setDropOverSfId(null);
                   }
                 }}
-                onDrop={() => cancelSpring()}
+                onDrop={(e) => {
+                  cancelSpring();
+                  // v1.4.5 — Accept a filename-tag drop on the row header.
+                  // This is what makes cross-folder moves work when Kurt
+                  // has only one folder expanded at a time.
+                  const raw = e.dataTransfer.getData("application/x-pps-sfitem");
+                  if (!raw) return;
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDropOverSfId(null);
+                  try {
+                    const { fromSfId, itemId } = JSON.parse(raw);
+                    if (!fromSfId || !itemId || fromSfId === sf.id) return;
+                    const mode = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                    onMoveSubfolderItem?.(fromSfId, sf.id, itemId, mode);
+                    toast.success(
+                      mode === "copy"
+                        ? `Copied filename tag to "${sf.name}"`
+                        : `Moved filename tag to "${sf.name}"`
+                    );
+                  } catch { /* ignore malformed drops */ }
+                }}
+                data-drop-active={dropOverSfId === sf.id ? "true" : "false"}
               >
                 <div className="flex items-center gap-1 px-2 py-1.5">
                   <button
@@ -2441,8 +2471,12 @@ function SubfolderFilenameEditor({
   onConvertToNested,     // v1.4.5 — fn(itemId) — per-tag → nested sub-folder
 }) {
   const [draft, setDraft] = useState("");
-  const [dragIdx, setDragIdx] = useState(null);   // v1.4.5 — currently dragged index
+  const [dragIdx, setDragIdx] = useState(null);   // v1.4.5 — currently dragged index (reorder)
   const [dropIdx, setDropIdx] = useState(null);   // v1.4.5 — hover target index
+  // v1.4.5 — Click-to-highlight (Kurt asked). Single-select; clicking a
+  // chip again toggles it off. Selected state is purely local visual —
+  // no other behavior changes yet (Move/Convert-selected is v1.4.6).
+  const [selectedItemId, setSelectedItemId] = useState(null);
   const items = sub?.filenameItems || [];
 
   const add = () => {
@@ -2508,23 +2542,44 @@ function SubfolderFilenameEditor({
         <>
           <div className="text-[10px] text-dim px-1 flex items-center gap-2">
             <GripVertical size={10} className="text-primary-earth/60" />
-            <span>Drag any tag to reorder, or use the ▲ ▼ buttons. Click <span className="text-primary-earth">→ Nest</span> to promote a single tag into its own nested sub-folder.</span>
+            <span>Click a tag to highlight it. Drag to reorder here, or drag onto any other sub-folder row above to <span className="text-primary-earth">move</span> it (Ctrl-drag to copy). Click <span className="text-primary-earth">→ Nest</span> to promote a tag into its own nested sub-folder.</span>
           </div>
-          <div className="grid grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
             {items.map((it, idx) => {
               const isDragging = dragIdx === idx;
               const isDropTarget = dropIdx === idx && dragIdx !== null && dragIdx !== idx;
+              const isSelected = selectedItemId === it.id;
               return (
                 <div
                   key={it.id}
                   draggable={!!onReorderItems}
+                  onClick={(e) => {
+                    // v1.4.5 — Click a chip to highlight it (single-select).
+                    // Clicking the same chip again unselects. Doesn't move
+                    // or edit — just visual feedback so Kurt knows which
+                    // tag his next action will act on.
+                    e.stopPropagation();
+                    setSelectedItemId((cur) => (cur === it.id ? null : it.id));
+                  }}
                   onDragStart={(e) => {
                     if (!onReorderItems) return;
                     setDragIdx(idx);
-                    // Non-conflicting MIME so this doesn't get picked up
-                    // by the icon-swap / cross-pack drop targets nearby.
+                    // v1.4.5 — Two payloads on the same drag:
+                    //   1) x-pps-filename-reorder → in-list reorder (same folder)
+                    //   2) x-pps-sfitem            → cross-folder move/copy
+                    // Whichever drop target is hit wins. This lets Kurt
+                    // drag a chip from the bottom Filename Tags pane
+                    // onto a DIFFERENT sub-folder row in the top list
+                    // (collapsed or expanded) and have it move there,
+                    // while still allowing reorder within this list.
                     e.dataTransfer.setData("application/x-pps-filename-reorder", String(idx));
-                    e.dataTransfer.effectAllowed = "move";
+                    if (sub?.id) {
+                      e.dataTransfer.setData(
+                        "application/x-pps-sfitem",
+                        JSON.stringify({ fromSfId: sub.id, itemId: it.id })
+                      );
+                    }
+                    e.dataTransfer.effectAllowed = "copyMove";
                   }}
                   onDragOver={(e) => {
                     if (!onReorderItems) return;
@@ -2543,15 +2598,19 @@ function SubfolderFilenameEditor({
                     if (Number.isFinite(from) && from !== idx) onReorderItems(from, idx);
                   }}
                   onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded border group transition-colors ${
+                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded border group transition-colors cursor-pointer ${
                     isDragging
                       ? "border-primary-earth bg-primary-earth/20 opacity-50"
                       : isDropTarget
                       ? "border-primary-earth border-dashed bg-primary-earth/10"
-                      : "border-app bg-app/40"
+                      : isSelected
+                      ? "border-primary-earth bg-primary-earth/15 ring-1 ring-primary-earth"
+                      : "border-app bg-app/40 hover:border-primary-earth/40"
                   }`}
                   data-testid={`subfolder-filename-item-${it.id}`}
                   data-idx={idx}
+                  data-selected={isSelected ? "true" : "false"}
+                  title="Click to select · Drag to reorder within this list, or drag onto another sub-folder row to MOVE it there (Ctrl-drag to copy)"
                 >
                   {/* v1.4.5 — Drag handle. Makes the whole row draggable
                       but also gives Kurt a visible grab point. */}
@@ -2571,7 +2630,7 @@ function SubfolderFilenameEditor({
                       <button
                         onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, -1); }}
                         disabled={idx === 0}
-                        className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed hidden group-hover:flex"
                         data-testid={`subfolder-filename-up-${it.id}`}
                         title="Move up"
                       >
@@ -2580,7 +2639,7 @@ function SubfolderFilenameEditor({
                       <button
                         onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, +1); }}
                         disabled={idx === items.length - 1}
-                        className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed hidden group-hover:flex"
                         data-testid={`subfolder-filename-down-${it.id}`}
                         title="Move down"
                       >
@@ -2592,7 +2651,7 @@ function SubfolderFilenameEditor({
                   {onConvertToNested && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onConvertToNested(it.id); }}
-                      className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-primary-earth opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth hidden group-hover:flex"
                       data-testid={`subfolder-filename-convert-${it.id}`}
                       title={`Convert "${it.label}" → nested sub-folder under "${sub.name}"`}
                     >
@@ -2600,8 +2659,8 @@ function SubfolderFilenameEditor({
                     </button>
                   )}
                   <button
-                    onClick={() => onRemoveItem(it.id)}
-                    className="w-5 h-5 rounded flex items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={(e) => { e.stopPropagation(); onRemoveItem(it.id); }}
+                    className="w-5 h-5 rounded items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] hidden group-hover:flex"
                     data-testid={`subfolder-filename-remove-${it.id}`}
                     title="Remove this filename tag"
                   >

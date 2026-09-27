@@ -550,7 +550,11 @@ export default function App() {
   };
 
   // Auto-scroll active thumbnail into view.
+  // v1.4.5 — Skip in compare mode (2×/3× panes) so clicking a pane
+  // doesn't jerk the filmstrip. Kurt is inspecting side-by-side; the
+  // filmstrip sliding out from under him breaks the mental model.
   useEffect(() => {
+    if (compareMode > 1) return;
     const el = filmstripRef.current;
     if (!el || !currentImage) return;
     const target = el.querySelector(`[data-testid="thumb-${CSS.escape(currentImage.name)}"]`);
@@ -560,7 +564,7 @@ export default function App() {
     if (tRect.left < eRect.left + 20 || tRect.right > eRect.right - 20) {
       target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
-  }, [selectedIdx, currentImage]);
+  }, [selectedIdx, currentImage, compareMode]);
 
   // Poll total-free-space every 60s while the app is open (Electron only).
   // Also refreshes when the user opens the Drives panel or picks a new folder.

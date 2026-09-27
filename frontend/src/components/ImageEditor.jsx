@@ -1260,10 +1260,18 @@ export default function ImageEditor({
                 <Check size={12} /> Apply crop
               </button>
               <button
-                onClick={() => { setCrop(null); }}
+                onClick={() => {
+                  // v1.4.5 fix — Cancel should exit crop mode too (same
+                  // as Apply crop). Previously the crop rectangle was
+                  // discarded but the toggle stayed lit as "Cropping —
+                  // drag to draw or move", forcing Kurt to click the
+                  // toggle again to escape.
+                  setCrop(null);
+                  setCropMode(false);
+                }}
                 className="px-2 py-1 rounded-full bg-app hover:bg-surface-hover border border-app text-xs flex items-center gap-1"
                 data-testid="crop-cancel-btn"
-                title="Discard the current crop rectangle without applying"
+                title="Discard the current crop rectangle and exit crop mode"
               >
                 <X size={12} /> Cancel
               </button>
