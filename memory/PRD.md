@@ -1625,7 +1625,9 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
   GitHub IPs + `www` CNAME → `pirateak.github.io`. Runbook in
   `MARKETING_KIT.md` §6. CNAME file intentionally NOT committed — GitHub adds
   it when Kurt enters the custom domain in Settings → Pages.
-- ⏳ Kurt to do: enable Pages, set GoDaddy DNS, add custom domain.
+- ✅ Kurt DONE (2026-06): Pages enabled, GoDaddy forwarder to CafePress killed,
+  4 GitHub A records + www CNAME live, custom domain saved. https://muskegman.com
+  serving the landing page. Enforce HTTPS: tick once cert issued.
 - Pending decisions: confirm $29 price matches Gumroad; confirm contact email;
   replace hero screenshot with a real sorting-session screenshot.
 - Next marketing items: Playwright demo GIFs, Gumroad listing polish,
