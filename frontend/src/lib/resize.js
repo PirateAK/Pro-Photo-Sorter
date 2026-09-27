@@ -22,10 +22,16 @@ export function getPrintSize(key) {
 
 // Compute target width/height in pixels for the given print size, matching
 // the photo's orientation (landscape / portrait).
-export function targetDimsFor({ printKey, sourceW, sourceH }) {
+// v1.4.5h — `orientation` override lets the caller FORCE the crop to be
+// portrait or landscape regardless of the source aspect. "auto" (or
+// omitted) preserves the historical behavior of matching source shape.
+export function targetDimsFor({ printKey, sourceW, sourceH, orientation = "auto" }) {
   const p = getPrintSize(printKey);
   if (!p) return null;
-  const landscape = sourceW >= sourceH;
+  let landscape;
+  if (orientation === "landscape") landscape = true;
+  else if (orientation === "portrait") landscape = false;
+  else landscape = sourceW >= sourceH;
   const w = landscape ? p.long : p.short;
   const h = landscape ? p.short : p.long;
   return { w, h, aspectW: landscape ? p.aspectLong : p.aspectShort, aspectH: landscape ? p.aspectShort : p.aspectLong };
@@ -66,11 +72,14 @@ export async function loadImageFromHandle(sourceHandle) {
 // Do the crop + resize + optional watermark. Returns a Blob.
 // centerX / centerY are 0..1 percentages of where the crop box's CENTER
 // should sit inside the source image (0.5 = middle).
+// v1.4.5h — orientation forwarded to targetDimsFor so the exported blob
+// matches whatever preview the user confirmed.
 export async function cropAndResize({
   sourceHandle,
   printKey,
   centerX = 0.5,
   centerY = 0.5,
+  orientation = "auto",
   watermarkOpts = null, // { text, fontSize, opacity, xPct, yPct, color, fontFamily }
   mime = "image/jpeg",
   quality = 0.92,
@@ -79,7 +88,7 @@ export async function cropAndResize({
   try {
     const sourceW = img.naturalWidth;
     const sourceH = img.naturalHeight;
-    const dims = targetDimsFor({ printKey, sourceW, sourceH });
+    const dims = targetDimsFor({ printKey, sourceW, sourceH, orientation });
     if (!dims) throw new Error(`Unknown print size: ${printKey}`);
     const { cw, ch } = cropBoxFor({ sourceW, sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
 
