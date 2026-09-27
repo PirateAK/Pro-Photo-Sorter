@@ -58,10 +58,17 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
   return (
     <div
       onClick={onClick}
+      // v1.4.5g — Belt-and-suspenders: pointerDown also triggers activate.
+      // On some Electron/Windows builds the inner ZoomablePreview swallowed
+      // the outer onClick when the mouse landed on the image itself, which
+      // left the ACTIVE ring stuck on pane 0. Firing on pointerDown too
+      // makes clicking any pane feel instant AND keeps the accessibility
+      // click-handler intact for keyboard users.
+      onPointerDown={(e) => { if (e.button === 0 && !active) onClick?.(e); }}
       className={`relative flex-1 min-w-0 h-full flex items-center justify-center overflow-hidden cursor-pointer transition-all rounded ${
         active
-          ? "ring-4 ring-primary-earth ring-offset-1 ring-offset-transparent shadow-[0_0_0_1px_var(--surface)_inset]"
-          : "ring-2 ring-transparent hover:ring-app border border-transparent"
+          ? "ring-4 ring-primary-earth ring-offset-2 ring-offset-[color:var(--app-bg,#1a1a1a)] shadow-[0_0_24px_-4px_var(--primary-earth,#a3835a)]"
+          : "ring-2 ring-transparent hover:ring-primary-earth/40 border border-transparent"
       }`}
       data-testid={`compare-pane-${img?.name || "empty"}`}
       data-active={active ? "true" : "false"}
@@ -92,14 +99,17 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
       )}
       {img && (
         <div
-          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none px-2 py-0.5 rounded-full backdrop-blur border text-[10px] font-mono flex items-center gap-1.5 shadow-sm"
+          className="absolute bottom-2 left-1/2 -translate-x-1/2 z-20 pointer-events-none px-2.5 py-1 rounded-full backdrop-blur-md text-[10px] font-mono flex items-center gap-1.5 shadow-md border"
           style={{
-            // v1.4.5 — was `bg-black/60` which read as dark-on-dark in
-            // light mode. Now mirrors the zoom badge's approach: mostly
-            // opaque surface + regular text so both themes stay legible.
-            background: "color-mix(in srgb, var(--surface) 88%, transparent)",
-            color: "var(--text)",
-            borderColor: "color-mix(in srgb, var(--text) 20%, transparent)",
+            // v1.4.5g — Kurt reported the filename pill was dark/unreadable
+            // in ×2 / ×3. Root cause: color-mix(surface 88%) resolved to a
+            // dark olive against his light theme when compared to the ×1
+            // pill (which uses a solid app-bg white). Switch to solid
+            // --surface with a strong dark ring so it reads on any image
+            // color, matching the treatment the ×1 pill gets.
+            background: "var(--surface, #f8f4ec)",
+            color: "var(--text, #1a1a1a)",
+            borderColor: "var(--primary-earth, #a3835a)",
           }}
           data-testid="compare-pane-filename"
         >
@@ -115,10 +125,10 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
       )}
       {active && (
         <div
-          className="absolute top-2 left-2 px-2 py-0.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-[10px] font-mono font-bold pointer-events-none z-20"
+          className="absolute top-2 left-2 px-2.5 py-1 rounded-full bg-primary-earth text-[color:var(--text-inverse)] text-[10px] font-mono font-bold pointer-events-none z-20 shadow-md border-2 border-[color:var(--surface,#f8f4ec)] uppercase tracking-widest"
           data-testid="compare-active-pill"
         >
-          ACTIVE
+          Active
         </div>
       )}
     </div>

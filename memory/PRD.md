@@ -1358,6 +1358,71 @@ Kurt smoke-tested v1.4.5d and reported (a) he was clicking tags in the chevron-e
 - Live Playwright smoke: middle column no longer shows bottom pane (`filename-editor-pane` count = 0); single-click on a chevron chip flips `data-highlighted="true"`; [Select] on Mammals reveals 4 checkboxes; ticking 3 → bulk bar reads "3 tags selected"; Delete → Trash counter jumps to 3.
 
 
+### Iteration 37 — v1.4.5f · Docs refresh + Compare-view nav buttons (2026-09-26)
+
+**Compare-view nav buttons fix:** Left/Right filmstrip arrows were only rendered in the single-view branch of the App.js viewer ternary. Added a matching pair (`nav-prev-compare` / `nav-next-compare`) inside the `compareMode > 1` branch — they call the same `goPrev` / `goNext` handlers, respect the disabled states at either end, and sit at the same 3-o'clock / 9-o'clock overlay position.
+
+**Docs refresh — retail thumb-drive ready:**
+- `/app/ReadMe.txt` fully rewritten for v1.4.5 with "What's New in 1.4" covering 10 flagship features, Quick Install, First Launch, Tag Manager cheat-sheet, Keyboard Shortcuts, Trial vs Full, Troubleshooting.
+- `/app/QUICK_START.md` fully rewritten. Single-page: Install, First Launch, Top 8 gestures table, Multi-select workflow, Compare view, License.
+- `/app/USER_GUIDE.md` appended a comprehensive "New in v1.4" chapter covering every v1.4.x feature.
+- `/app/dist-docs/Quick Start.pdf` (77 KB) and `/app/dist-docs/User Guide.pdf` (322 KB) regenerated via `scripts/build-docs-pdf.js`.
+
+
+### Iteration 38 — v1.4.5g/h · Compare-view polish + Resize orientation toggle (2026-09-26)
+
+**v1.4.5g — Compare-view visual + click reliability fixes** (post-user smoke-test of v1.4.5f):
+- **Dark filename pill fix**: Kurt reported the pill at the bottom of each pane in ×2/×3 was hard to read. Root cause was `color-mix(surface 88%, transparent)` resolving to a muddy dark tone on his light theme. Switched to solid `var(--surface)` background with a primary-earth border — matches the ×1 pill treatment, always legible.
+- **Click-to-activate reliability**: added `onPointerDown` fallback next to `onClick` on the Pane wrapper. Some Electron builds were swallowing the outer `onClick` when the pointer landed directly on the inner ZoomablePreview image; belt-and-suspenders now fires on either event.
+- **ACTIVE ring beefed up**: 4px earth-brown ring + 2px offset + soft glow shadow so the "which pane am I about to act on" indicator pops on any image color.
+- **ACTIVE pill upgraded**: rounded-full pill with a surface-colored border and uppercase tracking for clearer visual weight against the pane image.
+- **Compare-mode hint reworked**: bottom-center pill now reads "Click any image → makes it ACTIVE · Tags & S store apply to the active pane" so the batch/store affordance is discoverable without a doc.
+
+**v1.4.5h — Resize preview orientation toggle** (Kurt's rediscovered wishlist item):
+- `PRINT_SIZES` and `targetDimsFor()` already carried orientation as a runtime concept; extended the API with an explicit `orientation` param that overrides source-aspect auto-detection.
+- `ResizeCropModal.jsx` now shows a three-way toggle in the header: **[Auto] [Tall] [Wide]** (with lucide `Wand2`, `RectangleVertical`, `RectangleHorizontal` icons). Auto continues to match source shape; Tall forces portrait; Wide forces landscape.
+- Preview canvas re-runs the crop overlay against the chosen orientation so Kurt sees exactly the crop rectangle that will be exported.
+- Confirm passes `orientation` through to `cropAndResize`; on disk the filename gets `_wide` or `_tall` suffix (Auto stays uns-suffixed for backwards compat), so exporting a photo as both portrait 4×6 AND landscape 4×6 doesn't collide.
+- Store button label updates dynamically: "Store 4×6 wide" / "Store 4×6 tall" so it's obvious what's about to happen.
+- Confirmed dimensions readout in the modal now includes the orientation label — e.g. `→ 1800 × 1200 px (300 DPI · landscape)`.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5h** (build date 2026-09-26).
+
+**Files touched**
+- Updated: `frontend/src/components/ComparisonView.jsx` (pointerDown fallback, ring/shadow, pill styling, filename pill solid bg), `frontend/src/App.js` (compare-mode hint rewrite, confirmResizeStore accepts orientation, filename suffix carries orientation tag), `frontend/src/components/ResizeCropModal.jsx` (orientation state, three-way toggle UI, dependency update on the draw effect), `frontend/src/lib/resize.js` (`orientation` param on targetDimsFor + cropAndResize), `frontend/src/buildInfo.json`.
+
+**Test posture**
+- Live preview build clean (webpack: 1 warning, existing).
+- Kurt to verify on ship: (a) ×2/×3 pill legibility, (b) click a pane → ACTIVE moves instantly + no filmstrip shift, (c) nav arrows in compare mode, (d) resize-crop modal Auto/Tall/Wide toggle updates the overlay in real time and stamps `_wide` / `_tall` into the exported filename.
+
+**Confirmed not-doing:**
+- "Store all in view" batch button — Kurt picked **(a) skip** after the plain-English comparison to the existing Batch feature. Existing Batch covers same-destination bulk; solo `S` per pane covers per-destination without a new button.
+
+
+**Compare-view nav buttons fix (Kurt reported after v1.4.5e):**
+- The Left/Right filmstrip navigation buttons were only rendered inside the single-view (`compareMode === 1`) branch of the App.js viewer ternary and therefore disappeared in ×2 / ×3.
+- Added a matching pair (`nav-prev-compare` / `nav-next-compare`) inside the compareMode > 1 branch. They call the same `goPrev` / `goNext` handlers (advancing the active pane's `selectedIdx`), respect the disabled states at either end of the filmstrip, and sit at the same 3-o'clock / 9-o'clock overlay position.
+
+**Docs refresh — the retail thumb-drive gate:**
+- `/app/ReadMe.txt` fully rewritten for v1.4.5. Sections: What's New in 1.4 (10 flagship features), Quick Install, First Launch, Tag Manager controls cheat-sheet, Keyboard Shortcuts, Trial vs Full License, Troubleshooting, Support.
+- `/app/QUICK_START.md` fully rewritten. Single-page cheat-sheet: Install → First Launch → Top 8 gestures table → Multi-select workflow → Compare view → License. Optimized for print + folded thumb-drive insert.
+- `/app/USER_GUIDE.md` appended a comprehensive "New in v1.4 (September 2026)" chapter covering: Splash Screen, First-Run Samples, Multi-Source Roots, Unlimited Nested Sub-Folders, Custom Filename Templates, Smart Paste, Cross-Folder Tag Drag, Multi-Select + Bulk Actions, Chip Trash, Compare View per-pane zoom, Editor Auto-Enhance/Crop-in-Place/Reset-to-Last, Thumbnail Loading + Cache Stats, complete Keyboard Shortcut table.
+- Regenerated `/app/dist-docs/Quick Start.pdf` (77 KB) and `/app/dist-docs/User Guide.pdf` (322 KB) via the existing `/app/scripts/build-docs-pdf.js` pipeline (puppeteer-core + Chromium). Both bundle-ready for the next thumb-drive shipment.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5f** (build date 2026-09-26).
+
+**Files touched**
+- Updated: `frontend/src/App.js` (compare-mode nav buttons), `frontend/src/buildInfo.json`, `ReadMe.txt`, `QUICK_START.md`, `USER_GUIDE.md`.
+- Regenerated: `dist-docs/Quick Start.pdf`, `dist-docs/User Guide.pdf`.
+
+**Deferred to v1.4.6:**
+- Editor Round-Trip (preserve tags through crop/rotate).
+- XMP Sidecars (write stars + tags for Lightroom sync).
+- Native RAW Previews (Kurt confirmed dcraw.exe bundle approach — path 4b).
+
+
 ### Backlog — Documentation Refresh (queued for next session, top priority)
 
 Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to reflect v1.4.0 → v1.4.2 changes before the next release.

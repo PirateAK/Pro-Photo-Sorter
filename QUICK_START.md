@@ -1,96 +1,65 @@
 # Pro Photo Sorter — Quick Start
 
-From zero to sorting in ten minutes. *(The version you're running is shown in the Help window title bar.)*
+**Version 1.4.5e · Fully offline · Windows desktop**
 
 ---
 
-## 1. Prerequisites
+## Install (60 seconds)
 
-- Windows 10 or 11 (64-bit)
-- **Node.js 18 or newer** — get it from <https://nodejs.org> (LTS)
-- **Git** — get it from <https://git-scm.com/download/win>
-- ~2 GB free disk for the app + node_modules
+1. Double-click **Pro Photo Sorter Setup 1.4.5.exe**
+2. If Windows shows a blue "SmartScreen" warning: **More info → Run anyway** (indie app, not Microsoft-signed)
+3. Wait for the installer to finish. The app opens automatically.
 
-## 2. First install (do this once)
+Installed to: `C:\Users\<You>\AppData\Local\Programs\Pro Photo Sorter\`
 
-Open **Command Prompt** and paste this whole block:
+---
 
-```cmd
-cd /d C:\
-git clone https://github.com/YOUR_USERNAME/Pro-Photo-Sorter.git
-cd Pro-Photo-Sorter
-run-app.bat
-```
+## First launch (2 minutes to a sorted photo)
 
-(Replace `YOUR_USERNAME` with your GitHub account, or the shared repo URL.)
+1. **Splash Screen** welcomes you — click "Get Started". Won't nag again until the next version.
+2. **Sample photos** are pre-loaded so you can practice sorting before touching your own.
+3. Click **Load Source** (top-left) → pick a folder of photos. They appear in the filmstrip.
+4. Click any photo → arrow keys / arrow buttons move through. Press **1–5** to rate.
+5. Open **Tag Manager** (toolbar) → pick a Category → drill into its sub-folder tree → click chips to build a destination path like `Wildlife / Bears / Grizzly / Alaska_Trip`.
+6. Store the photo with **Ctrl+S** (or the Store button). Originals never overwritten — a fresh JPG is written to your destination.
 
-The first run will install every dependency, build the React bundle, and
-launch the Electron app. On a normal connection it takes 3–5 minutes; on a
-satellite link, 15–30 minutes is normal. **Just leave it running.**
+---
 
-## 3. Daily use
+## Top 8 gestures
 
-Double-click **`run-app.bat`** in `C:\Pro-Photo-Sorter`. It pulls the latest
-code, rebuilds if anything changed, and launches the app.
+| Gesture | What it does |
+| --- | --- |
+| **Click chip** | Highlights it (visual feedback) |
+| **[Select] button** in a sub-folder row | Reveals checkboxes for multi-select |
+| **Drag chip** | Move to another sub-folder (Ctrl-drag = copy) |
+| **Paste list** button | Bulk-add many chips from a comma/newline/semicolon list |
+| **Right-click chip** | Move-to / Copy-to menu across every sub-folder |
+| **Trash button** (Tag Manager header) | See & restore recently deleted chips |
+| **`\`** or **`` ` ``** | Peek the original inside the Editor |
+| **1–5** | Star-rate the current photo (0 clears) |
 
-## 4. Making a shippable installer
+---
 
-When you're ready to hand the app to another photographer, double-click
-**`pack-app.bat`**. When it finishes you'll find:
+## Multi-select workflow
 
-```
-C:\Pro-Photo-Sorter\electron-shell\dist\Pro Photo Sorter Setup <version>.exe
-```
+1. Expand a sub-folder chevron in the Tag Manager
+2. Click **[Select]** on the right side of its "Filename tags for…" header
+3. Click chips to tick them — a floating bar appears: `3 tags selected · Select all · Clear · Convert · Delete`
+4. **Delete** sends every ticked chip to Chip Trash (undoable)
+5. **Convert** promotes every ticked chip to its own nested sub-folder
+6. Or drag any ticked chip → all selected chips move together
 
-That's a normal Windows installer. Anyone can double-click it and run the
-app — they don't need Node or Git installed.
+---
 
-## 5. First-run walkthrough
+## Compare view
 
-1. Click **Open** in the left panel and pick your unsorted-photos folder.
-2. Click **Open** in the right panel and pick where you want them sorted to.
-3. Click **Tags** in the toolbar → **Import Pack** → pick a starter pack
-   from `C:\Pro-Photo-Sorter\starter-packs\`. (Wedding, wildlife, landscape,
-   etc.)
-4. Drag tags into the **Folders** bar to build a destination path.
-5. Drag tags into the **Tags** bar to add to the filename.
-6. Click **Store** — the current photo is copied to the destination.
+- Toolbar shows **×1 / ×2 / ×3** — switches how many images sit side-by-side
+- Each pane is independently zoomable (mouse wheel over the pane)
+- Left/right arrow buttons still work — they advance the active pane
+- Press **×1** to return to single view and resume tagging
 
-## 6. If something breaks
+---
 
-**`git pull` complains about `buildInfo.json`:**
+## License / Trial
 
-```cmd
-cd /d C:\Pro-Photo-Sorter
-git checkout -- frontend/src/buildInfo.json
-git pull
-```
-
-**Electron won't launch / white window:**
-
-Delete the build folder and re-run:
-
-```cmd
-cd /d C:\Pro-Photo-Sorter
-rmdir /s /q frontend\build
-rmdir /s /q electron-shell\build
-run-app.bat
-```
-
-**Spell-check right-click menu missing:**
-
-See `ELECTRON-SETUP.md` — a one-time paste into `electron-shell\main.js`.
-
-## 7. Where things live
-
-| Path                                     | What                                    |
-| ---------------------------------------- | --------------------------------------- |
-| `C:\Pro-Photo-Sorter\frontend\`          | React source code                       |
-| `C:\Pro-Photo-Sorter\electron-shell\`    | Electron wrapper (main.js, preload.js)  |
-| `C:\Pro-Photo-Sorter\starter-packs\`     | Ready-to-import tag packs               |
-| `C:\Pro-Photo-Sorter\run-app.bat`        | Daily launch script                     |
-| `C:\Pro-Photo-Sorter\pack-app.bat`       | Build the redistributable installer     |
-| `C:\Pro-Photo-Sorter\USER_GUIDE.md`      | Full feature manual                     |
-| `C:\Pro-Photo-Sorter\CHANGELOG.md`       | What's new in each version              |
-
-That's it. Happy sorting.
+Every stored file gets `_TRIAL` appended until you paste a license key from Gumroad into Settings. The suffix disappears instantly and you can batch-rename older `_TRIAL` files from the same panel.

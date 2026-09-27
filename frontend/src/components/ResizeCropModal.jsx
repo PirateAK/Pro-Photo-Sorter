@@ -1,15 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
-import { X, Save } from "lucide-react";
+import { X, Save, RectangleHorizontal, RectangleVertical, Wand2 } from "lucide-react";
 import { cropBoxFor, targetDimsFor, getPrintSize, loadImageFromHandle } from "../lib/resize";
 
 // Crop preview modal — shows the source photo with a draggable crop-box overlay
 // constrained to the requested aspect ratio. Auto-centered by default; drag to
-// reposition. Confirm calls onConfirm({ centerX, centerY }) with 0..1 percentages.
+// reposition. Confirm calls onConfirm({ centerX, centerY, orientation }) with
+// the chosen orientation so the exported blob matches what Kurt saw in the
+// preview (v1.4.5h — orientation toggle added).
 export default function ResizeCropModal({ open, imageHandle, printKey, imageName, onCancel, onConfirm }) {
   const canvasRef = useRef(null);
   const [state, setState] = useState({ img: null, url: null, sourceW: 0, sourceH: 0 });
   const [centerX, setCenterX] = useState(0.5);
   const [centerY, setCenterY] = useState(0.5);
+  // v1.4.5h — orientation: "auto" (match source shape) | "portrait" | "landscape"
+  const [orientation, setOrientation] = useState("auto");
   const dragging = useRef(false);
 
   useEffect(() => {
@@ -18,6 +22,7 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     setState({ img: null, url: null, sourceW: 0, sourceH: 0 });
     setCenterX(0.5);
     setCenterY(0.5);
+    setOrientation("auto");
     (async () => {
       try {
         const { img, url } = await loadImageFromHandle(imageHandle);
@@ -58,7 +63,7 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     ctx.drawImage(state.img, dx, dy, dw, dh);
 
     // Compute crop box in source pixels
-    const dims = targetDimsFor({ printKey, sourceW: state.sourceW, sourceH: state.sourceH });
+    const dims = targetDimsFor({ printKey, sourceW: state.sourceW, sourceH: state.sourceH, orientation });
     if (!dims) return;
     const { cw, ch } = cropBoxFor({ sourceW: state.sourceW, sourceH: state.sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
 
@@ -99,7 +104,7 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
       ctx.lineTo(boxX + boxW, boxY + (boxH * i) / 3);
       ctx.stroke();
     }
-  }, [state, centerX, centerY, printKey]);
+  }, [state, centerX, centerY, printKey, orientation]);
 
   const setFromEvent = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
@@ -136,7 +141,9 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
 
   if (!open) return null;
   const size = getPrintSize(printKey);
-  const dims = state.img ? targetDimsFor({ printKey, sourceW: state.sourceW, sourceH: state.sourceH }) : null;
+  const dims = state.img ? targetDimsFor({ printKey, sourceW: state.sourceW, sourceH: state.sourceH, orientation }) : null;
+  const isLandscape = dims ? dims.w >= dims.h : false;
+  const autoDetectedOrientation = state.img ? (state.sourceW >= state.sourceH ? "landscape" : "portrait") : null;
 
   return (
     <div
@@ -149,8 +156,8 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
         onClick={(e) => e.stopPropagation()}
         data-testid="resize-crop-modal"
       >
-        <div className="px-4 py-3 border-b border-app flex items-center justify-between">
-          <div>
+        <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-3">
+          <div className="min-w-0">
             <h3 className="font-heading font-semibold text-sm">
               Resize for {size ? size.key.replace("x", " × ") : printKey} print
             </h3>
@@ -158,18 +165,51 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
               {imageName || "Current photo"}
               {dims && (
                 <span className="text-primary-earth ml-2 font-mono">
-                  → {dims.w} × {dims.h} px (300 DPI)
+                  → {dims.w} × {dims.h} px (300 DPI · {isLandscape ? "landscape" : "portrait"})
                 </span>
               )}
             </p>
           </div>
-          <button
-            onClick={onCancel}
-            className="w-7 h-7 rounded hover:bg-surface-hover flex items-center justify-center"
-            data-testid="resize-crop-close"
-          >
-            <X size={14} />
-          </button>
+          <div className="flex items-center gap-1 shrink-0">
+            {/* v1.4.5h — Orientation toggle. Auto = match source photo
+                shape (historical behavior). Portrait / Landscape force
+                the crop into that orientation regardless of source. */}
+            <div className="flex items-center rounded border border-app overflow-hidden" data-testid="resize-orientation-toggle">
+              <button
+                onClick={() => setOrientation("auto")}
+                className={`px-2 py-1 text-[11px] flex items-center gap-1 ${orientation === "auto" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover"}`}
+                data-testid="resize-orientation-auto"
+                title={autoDetectedOrientation
+                  ? `Auto (matches this photo — ${autoDetectedOrientation})`
+                  : "Auto (matches the source photo's shape)"}
+              >
+                <Wand2 size={10} /> Auto
+              </button>
+              <button
+                onClick={() => setOrientation("portrait")}
+                className={`px-2 py-1 text-[11px] flex items-center gap-1 border-l border-app ${orientation === "portrait" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover"}`}
+                data-testid="resize-orientation-portrait"
+                title="Force portrait (tall) crop, regardless of source"
+              >
+                <RectangleVertical size={10} /> Tall
+              </button>
+              <button
+                onClick={() => setOrientation("landscape")}
+                className={`px-2 py-1 text-[11px] flex items-center gap-1 border-l border-app ${orientation === "landscape" ? "bg-primary-earth text-[color:var(--text-inverse)]" : "bg-app hover:bg-surface-hover"}`}
+                data-testid="resize-orientation-landscape"
+                title="Force landscape (wide) crop, regardless of source"
+              >
+                <RectangleHorizontal size={10} /> Wide
+              </button>
+            </div>
+            <button
+              onClick={onCancel}
+              className="w-7 h-7 rounded hover:bg-surface-hover flex items-center justify-center ml-1"
+              data-testid="resize-crop-close"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
         <div className="p-4 bg-app">
           <canvas
@@ -202,12 +242,12 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
             Cancel
           </button>
           <button
-            onClick={() => onConfirm({ centerX, centerY })}
+            onClick={() => onConfirm({ centerX, centerY, orientation })}
             disabled={!state.img}
             className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-semibold flex items-center gap-1 disabled:opacity-40"
             data-testid="resize-crop-confirm"
           >
-            <Save size={12} /> Store {size?.key.replace("x", "×")}
+            <Save size={12} /> Store {size?.key.replace("x", "×")} {orientation === "landscape" ? "wide" : orientation === "portrait" ? "tall" : ""}
           </button>
         </div>
       </div>

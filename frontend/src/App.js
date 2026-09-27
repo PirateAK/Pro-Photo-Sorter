@@ -1439,7 +1439,7 @@ export default function App() {
 
   const closeResizeModal = () => setResizeModal({ open: false, printKey: null });
 
-  const confirmResizeStore = async ({ centerX, centerY }) => {
+  const confirmResizeStore = async ({ centerX, centerY, orientation = "auto" }) => {
     const { printKey } = resizeModal;
     closeResizeModal();
     if (!currentImage || !destRoot || !printKey) return;
@@ -1465,10 +1465,15 @@ export default function App() {
       // and append the print-size suffix so multiple prints of the same
       // photo don't collide.
       const base = templatedName.replace(/\.[^.]+$/, "");
+      // v1.4.5h — Append orientation to the print suffix ONLY when the
+      // user forced it away from Auto. Prevents portrait/landscape
+      // exports of the same photo at the same size from overwriting
+      // each other on disk.
+      const orientTag = orientation === "landscape" ? "_wide" : orientation === "portrait" ? "_tall" : "";
       const trial = isTrialMode();
       const fileName = trial
-        ? applyTrialSuffix(`${base}_${printKey}.jpg`)
-        : `${base}_${printKey}.jpg`;
+        ? applyTrialSuffix(`${base}_${printKey}${orientTag}.jpg`)
+        : `${base}_${printKey}${orientTag}.jpg`;
 
       const anchor = destSelected?.handle || destRoot;
       const anchorPath = destSelected?.path || destRootName;
@@ -1487,6 +1492,7 @@ export default function App() {
         printKey,
         centerX,
         centerY,
+        orientation,
         watermarkOpts: wmEnabled && wmText ? {
           text: wmText,
           fontSize: settings.watermarkFontSize || "medium",
@@ -2767,9 +2773,43 @@ export default function App() {
                   <span className="text-[10px] uppercase tracking-widest text-dim font-heading">Rate</span>
                   <StarRating value={currentStars} onChange={setCurrentStars} size={16} />
                 </div>
-                {/* Hint that tagging is disabled in compare */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full bg-black/60 backdrop-blur border border-app text-[11px] text-dim">
-                  Comparison mode · press <span className="kbd">×1</span> to tag & drag icons
+                {/* v1.4.5e — Nav buttons in compare mode. Kurt reported
+                    that left/right went missing in 2×/3× view. Advancing
+                    from the leftmost pane shifts the visible window one
+                    step and updates the active pane; keyboard arrows
+                    work identically. */}
+                <button
+                  onClick={goPrev}
+                  disabled={selectedIdx === 0}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed transition-colors z-30"
+                  data-testid="nav-prev-compare"
+                  title="Previous photo (←) — advances the active pane"
+                >
+                  <ChevronLeft size={20} strokeWidth={2.5} />
+                </button>
+                <button
+                  onClick={goNext}
+                  disabled={selectedIdx >= images.length - 1}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed transition-colors z-30"
+                  data-testid="nav-next-compare"
+                  title="Next photo (→) — advances the active pane"
+                >
+                  <ChevronRight size={20} strokeWidth={2.5} />
+                </button>
+                {/* v1.4.5g — Compare-mode hint. Kurt asked about batch
+                    tagging across panes; the ACTIVE pane is the one
+                    that receives tag drops + Store. Click any pane to
+                    move ACTIVE there, then tag/rate/store as normal. */}
+                <div
+                  className="absolute bottom-3 left-1/2 -translate-x-1/2 px-3 py-1 rounded-full text-[11px] pointer-events-none shadow-md border"
+                  style={{
+                    background: "var(--surface, #f8f4ec)",
+                    color: "var(--text, #1a1a1a)",
+                    borderColor: "var(--primary-earth, #a3835a)",
+                  }}
+                  data-testid="compare-hint"
+                >
+                  Click any image → makes it <span className="text-primary-earth font-semibold">ACTIVE</span> · Tags & <span className="kbd">S</span>tore apply to the active pane
                 </div>
               </>
             ) : (
