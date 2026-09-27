@@ -33,6 +33,7 @@ import { Plus, Trash2, Pencil, ChevronDown, ChevronRight, FolderPlus, CornerDown
 import { toast } from "sonner";
 import { uid } from "../lib/storage";
 import PasteRosterButton, { parseRoster, guardLargePaste } from "./PasteRosterButton";
+import { pushToTrash, pushManyToTrash } from "../lib/chipTrash";
 
 function makeNested(name, seed = {}) {
   return {
@@ -72,12 +73,18 @@ export default function NestedSubfolderEditor({
   depth = 1,
   maxDepthHint = 8,
   ancestorPath = [],   // v1.4.1 — [{name}] from root category down to but excluding node
+  trashContext = null, // v1.4.5d — { categoryId, sfIdPath[], sfNamePath[] } — grows on recursion
 }) {
   const [draft, setDraft] = useState("");
   const [expandedId, setExpandedId] = useState(null);
   const [renamingId, setRenamingId] = useState(null);
   const [renameDraft, setRenameDraft] = useState("");
   const [tagDrafts, setTagDrafts] = useState({});
+  // v1.4.5c — Cross-child drag: when a filename tag chip inside one
+  // nested child is dragged onto another child's row, move (or copy on
+  // Ctrl-drag) the tag between siblings. State tracks which target row
+  // the dragged chip is currently hovering so we can show a drop ring.
+  const [dropOverChildId, setDropOverChildId] = useState(null);
 
   const children = Array.isArray(node.subfolders) ? node.subfolders : [];
   const parentTags = Array.isArray(node.filenameItems) ? node.filenameItems : [];
@@ -202,6 +209,20 @@ export default function NestedSubfolderEditor({
     setTagDrafts({ ...tagDrafts, [childId]: "" });
   };
   const removeTagFromChild = (childId, tagId) => {
+    // v1.4.5d — Snapshot chip to Trash before removing so Kurt can undo.
+    if (trashContext) {
+      const child = children.find((c) => c.id === childId);
+      const chip = child?.filenameItems?.find((t) => t.id === tagId);
+      if (chip) {
+        pushToTrash({
+          chip,
+          categoryId: trashContext.categoryId,
+          sfPath: [...(trashContext.sfIdPath || []), childId],
+          pathNames: [...(trashContext.sfNamePath || []), child?.name].filter(Boolean),
+          deletedFromLabel: child?.name || "",
+        });
+      }
+    }
     onChange({
       ...node,
       subfolders: children.map((c) => (c.id === childId
@@ -209,8 +230,76 @@ export default function NestedSubfolderEditor({
         : c)),
     });
   };
+  // v1.4.5d — Bulk remove tags from one nested child. Snapshots each to
+  // Trash first so multi-delete stays undoable.
+  const removeTagsFromChildBulk = (childId, tagIds) => {
+    if (!Array.isArray(tagIds) || tagIds.length === 0) return 0;
+    const child = children.find((c) => c.id === childId);
+    if (!child) return 0;
+    const set = new Set(tagIds);
+    const goners = (child.filenameItems || []).filter((t) => set.has(t.id));
+    if (goners.length === 0) return 0;
+    if (trashContext) {
+      pushManyToTrash(
+        goners.map((chip) => ({
+          chip,
+          categoryId: trashContext.categoryId,
+          sfPath: [...(trashContext.sfIdPath || []), childId],
+          pathNames: [...(trashContext.sfNamePath || []), child.name].filter(Boolean),
+          deletedFromLabel: child.name || "",
+        }))
+      );
+    }
+    onChange({
+      ...node,
+      subfolders: children.map((c) => (c.id === childId
+        ? { ...c, filenameItems: (c.filenameItems || []).filter((t) => !set.has(t.id)) }
+        : c)),
+    });
+    return goners.length;
+  };
   const patchChildNode = (childId, patchedChild) => {
     onChange({ ...node, subfolders: children.map((c) => (c.id === childId ? patchedChild : c)) });
+  };
+  // v1.4.5c — Move (or copy) a filename tag from one nested child to
+  // another SIBLING child. Both ends are under this `node`, so the
+  // whole operation is a single onChange patch on this node's
+  // `subfolders` array — no cross-component plumbing required.
+  const moveTagBetweenChildren = (fromChildId, toChildId, tagId, mode = "move") => {
+    if (!fromChildId || !toChildId || !tagId || fromChildId === toChildId) return;
+    const fromChild = children.find((c) => c.id === fromChildId);
+    if (!fromChild) return;
+    const tag = (fromChild.filenameItems || []).find((t) => t.id === tagId);
+    if (!tag) return;
+    const isCopy = mode === "copy";
+    const toChild = children.find((c) => c.id === toChildId);
+    if (!toChild) return;
+    const existing = new Set((toChild.filenameItems || []).map((t) => (t.label || "").toLowerCase()));
+    if (existing.has((tag.label || "").toLowerCase())) {
+      toast(
+        `"${tag.label}" already exists in "${toChild.name}"`,
+        { icon: "🟰", description: isCopy ? "Copy skipped." : "Move skipped so the duplicate wasn't lost." },
+      );
+      return;
+    }
+    const newTag = { ...tag, id: uid("it") };
+    onChange({
+      ...node,
+      subfolders: children.map((c) => {
+        if (c.id === fromChildId && !isCopy) {
+          return { ...c, filenameItems: (c.filenameItems || []).filter((t) => t.id !== tagId) };
+        }
+        if (c.id === toChildId) {
+          return { ...c, filenameItems: [...(c.filenameItems || []), newTag] };
+        }
+        return c;
+      }),
+    });
+    toast.success(
+      isCopy
+        ? `Copied "${tag.label}" to "${toChild.name}"`
+        : `Moved "${tag.label}" to "${toChild.name}"`
+    );
   };
 
   // ── v1.4.1 tag→nest conversions ─────────────────────────────────────────
@@ -362,12 +451,44 @@ export default function NestedSubfolderEditor({
 
                 <div
                   className={`flex-1 rounded border min-w-0 transition-colors ${
-                    expanded
+                    dropOverChildId === c.id
+                      ? "border-primary-earth bg-primary-earth/20 ring-2 ring-primary-earth shadow-md"
+                      : expanded
                       ? "border-primary-earth bg-primary-earth/10 shadow-[0_0_0_1px_var(--primary-earth,#a3835a)]/20"
                       : "border-app bg-app/40"
                   }`}
                   data-testid={`nested-row-body-${c.id}`}
                   data-expanded={expanded ? "true" : "false"}
+                  data-drop-active={dropOverChildId === c.id ? "true" : "false"}
+                  onDragOver={(e) => {
+                    // v1.4.5c — Accept a nested filename-tag drop on the
+                    // child row (collapsed or expanded). Enables Kurt's
+                    // Orioles → Red Sox flow without needing both teams
+                    // open at once.
+                    const types = e.dataTransfer?.types || [];
+                    if (!types.includes?.("application/x-pps-nested-tag")) return;
+                    e.preventDefault();
+                    e.dataTransfer.dropEffect = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                    if (dropOverChildId !== c.id) setDropOverChildId(c.id);
+                  }}
+                  onDragLeave={(e) => {
+                    if (!e.currentTarget.contains(e.relatedTarget)) {
+                      if (dropOverChildId === c.id) setDropOverChildId(null);
+                    }
+                  }}
+                  onDrop={(e) => {
+                    const raw = e.dataTransfer.getData("application/x-pps-nested-tag");
+                    if (!raw) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDropOverChildId(null);
+                    try {
+                      const { fromChildId, tagId } = JSON.parse(raw);
+                      if (!fromChildId || !tagId) return;
+                      const mode = (e.ctrlKey || e.metaKey) ? "copy" : "move";
+                      moveTagBetweenChildren(fromChildId, c.id, tagId, mode);
+                    } catch { /* ignore malformed drops */ }
+                  }}
                 >
                   <div className="flex items-center gap-1 px-2 py-1">
                     <button
@@ -425,8 +546,13 @@ export default function NestedSubfolderEditor({
 
                   {expanded && (
                     <div className="px-3 pb-2 pt-1 border-t border-app/30">
-                      <div className="text-[9px] uppercase tracking-widest text-dim font-heading mb-1">
-                        Filename tags for "{c.name}"
+                      <div className="text-[9px] uppercase tracking-widest text-dim font-heading mb-1 flex items-center justify-between gap-2">
+                        <span>Filename tags for "{c.name}"</span>
+                        {tags.length > 0 && (
+                          <span className="normal-case tracking-normal italic text-[10px]">
+                            Drag chip → another team above to <span className="text-primary-earth">move</span> (Ctrl-drag = copy)
+                          </span>
+                        )}
                       </div>
                       <div className="flex flex-wrap gap-1 mb-1.5">
                         {tags.length === 0 ? (
@@ -436,8 +562,22 @@ export default function NestedSubfolderEditor({
                         ) : tags.map((t) => (
                           <span
                             key={t.id}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-app border border-app text-[11px]"
+                            draggable
+                            onDragStart={(e) => {
+                              // v1.4.5c — Drag nested filename tags to
+                              // OTHER siblings. Payload carries the
+                              // owning-child id + tag id so the local
+                              // moveTagBetweenChildren handler can wire
+                              // it up without any global plumbing.
+                              e.dataTransfer.setData(
+                                "application/x-pps-nested-tag",
+                                JSON.stringify({ fromChildId: c.id, tagId: t.id })
+                              );
+                              e.dataTransfer.effectAllowed = "copyMove";
+                            }}
+                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-app border border-app text-[11px] cursor-grab active:cursor-grabbing hover:border-primary-earth/50"
                             data-testid={`nested-tag-${t.id}`}
+                            title={`Drag "${t.label}" to another team/sub-folder above to MOVE it there (Ctrl-drag to copy). → to nest, trash to remove.`}
                           >
                             <span className="font-mono">{t.label}</span>
                             <button
@@ -524,6 +664,14 @@ export default function NestedSubfolderEditor({
                           depth: depth + 1,
                           onChange: (patched) => patchChildNode(c.id, patched),
                           ancestorPath: [...ancestorPath, { name: node?.name }],
+                          // v1.4.5d — Propagate trash context deeper so
+                          // chips deleted at any depth remember their full
+                          // path back for restore.
+                          trashContext: trashContext ? {
+                            categoryId: trashContext.categoryId,
+                            sfIdPath: [...(trashContext.sfIdPath || []), c.id],
+                            sfNamePath: [...(trashContext.sfNamePath || []), c.name].filter(Boolean),
+                          } : null,
                         })
                       ) : (
                         <div className="mt-2 text-[10px] text-dim italic">
