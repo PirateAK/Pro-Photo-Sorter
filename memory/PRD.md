@@ -1618,7 +1618,7 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
   Manrope/IBM Plex/JetBrains Mono, hero + problem strip + 6 features + 4-step
   loop + Lightroom XMP callout + Kurt's Alaska story + $29 pricing vs free
   trial + FAQ + CTA). Buy links → `https://muskegman.gumroad.com/l/gvmaas`;
-  trial links → GitHub Releases latest. Contact: kurt@muskegman.com (placeholder — confirm).
+  trial links → GitHub Releases latest. Contact: leaderteamk@gmail.com (placeholder — confirm).
 - ✅ `docs/assets/app-hero.png` (real app splash capture via
   `scripts/capture-hero.js`), `docs/assets/icon.png`, `docs/.nojekyll`.
 - ✅ Hosting plan: GitHub Pages from `/docs` on `main`; GoDaddy A records →
