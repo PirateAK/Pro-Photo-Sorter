@@ -1632,3 +1632,8 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
   replace hero screenshot with a real sorting-session screenshot.
 - Next marketing items: Playwright demo GIFs, Gumroad listing polish,
   Product Hunt assets.
+- ✅ Hero swapped to Kurt's real ×3-compare screenshot (flowers, light theme,
+  1922×1017, taskbar cropped). Hero grid now .9fr/1.1fr with shot bleeding 118%.
+- ✅ Price confirmed $29 (raise to $39 after first reviews). Contact =
+  leaderteamk@gmail.com. Gumroad: v1.4.7 exe + PDFs uploaded, description rewritten (§8).
+- ✅ GitHub Release v1.4.7 published with exe/blockmap/latest.yml/PDFs/ReadMe.txt.

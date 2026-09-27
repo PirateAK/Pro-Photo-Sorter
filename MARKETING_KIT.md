@@ -187,3 +187,11 @@ Whatever you pick, tell me which and I'll ship it in the next round.
 ---
 
 *Sales-and-marketing help isn't "spend money to make money". Half the wins come from telling your Alaska-boat story in front of the right community. You have a genuinely differentiated product and a killer origin story — use both.*
+
+## 8 · Gumroad product description (v1.4.7, pasted Jun 2026)
+
+Structure: hook → problem → what it does (8 bullets) → privacy → what you get →
+"New in v1.4.7" → Kurt promise (30-day refund matches site FAQ) → sign-off.
+Old changelog-style text moved to Gumroad "Post an update" for existing owners.
+Price confirmed $29. Plan: raise to $39 after first handful of reviews.
+Tags added: "Photo Mechanic alternative", "photo culling", "XMP sidecar".
