@@ -1499,3 +1499,36 @@ Kurt smoke-tested v1.4.5 and reported three regressions/gaps. All fixed in v1.4.
 **Test posture**
 - All 16 parseRoster regressions green (14 files total unchanged).
 - Live smoke test via Playwright: cross-folder move Mammals → Birds via row-header drop fires the `Moved filename tag to "Birds"` toast; chip labels visible ("action", "feeding", "closeup"); click at label area toggles `data-selected="true"` and shows the ring.
+
+
+### Iteration 35 — v1.4.5i · Compare Mode: "Active follows click, images stay put" (2026-02-13)
+
+Kurt reported that in ×2 / ×3 compare view, clicking a non-active pane still slid the strip and loaded a new image from the filmstrip on the right. He wants clicks to only move the ACTIVE pill + blue frame — images should slide only under four specific triggers.
+
+**Behavioral spec (Kurt's exact request):**
+- Click a visible pane → ACTIVE pill + blue ring move to that pane. Zero image reshuffle.
+- Images slide (window shifts) only when:
+  1. Store the active image → image leaves, next photo shifts into ACTIVE position, fresh photo loads at rightmost pane.
+  2. Delete the active image → same behavior as Store.
+  3. Left/Right nav arrows → whole strip shifts one, ACTIVE pane stays fixed in its position.
+  4. Filmstrip thumbnail click → the clicked image loads into the currently ACTIVE pane (window auto-shifts to land the click under the pill).
+
+**Implementation**
+- `ComparisonView.jsx` made fully controlled — removed internal `start` state and auto-slide `useEffect`s. Component now receives `windowStart` prop from parent and never slides on its own. Pane click still calls `onSelect(idx)` which only updates `selectedIdx` (no window change).
+- `App.js` added `compareWindowStart` state (top-level, owned by App). Clamp effect on `[compareMode, images.length, currentSourcePath]` keeps it legal and re-seats when entering compare mode.
+- `goPrev` / `goNext` in compare mode shift BOTH `compareWindowStart` AND `selectedIdx` by ±1 in lock-step so the ACTIVE ring stays pinned at the same pane position. Nav buttons now disable at `compareWindowStart === 0` / `>= images.length - compareMode` respectively.
+- Filmstrip thumbnail `onClick` in compare mode computes `activePos = selectedIdx - compareWindowStart`, then sets `newStart = clamp(clickedIdx - activePos)` and `selectedIdx = clickedIdx` — the clicked photo lands exactly under the ACTIVE pill.
+- Store auto-advance branch (`setSelectedIdx(i+1)`) now skipped in compare mode; instead selectedIdx is clamped to the shrunk array so ACTIVE stays in place and next photo naturally shifts into its position. Clamp effect on `images.length` slides `compareWindowStart` back if the array became too short to fill the panes.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5i** (build date 2026-02-13).
+
+**Files touched**
+- `frontend/src/components/ComparisonView.jsx` (fully controlled window, removed internal slide effects).
+- `frontend/src/App.js` (compareWindowStart state, clamp effect, goPrev/goNext lock-step shift, filmstrip-to-active load, skip auto-advance in compare mode, nav disable bounds).
+- `frontend/src/buildInfo.json` (1.4.5h → 1.4.5i).
+
+**Test posture**
+- All 14 `.mjs` regression suites green.
+- Smoke test: splash shows `v1.4.5i · offline · built for photographers who shoot more than they type`. Compile clean (only pre-existing eslint warnings on unrelated `currentOverlay`).
+- Windows verification pending — Kurt to run the packaged `.bat` and test the four slide-only triggers.
