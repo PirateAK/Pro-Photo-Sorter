@@ -3,28 +3,28 @@ import { Star } from "lucide-react";
 import ZoomablePreview from "./ZoomablePreview";
 
 /**
- * ComparisonView (v1.4.5)
+ * ComparisonView (v1.4.5i)
  * ---------------------------------------------------------------------------
- * Renders N adjacent images side-by-side for direct comparison. Clicking a
- * non-active pane re-designates it as the active image but leaves the
- * visible set untouched — Kurt no longer sees the strip slide when he
- * wants to compare a fixed set of similar shots.
+ * Renders N adjacent images side-by-side for direct comparison. The visible
+ * window is FULLY controlled by the parent via the `windowStart` prop —
+ * this component never slides the strip on its own.
  *
- * v1.4.5 additions:
- *   • Sticky window: internal `start` state caches the leftmost visible
- *     index. It only recomputes when the parent externally jumps the
- *     selection outside the current window (e.g. clicking a filmstrip
- *     thumb far away, arrow-key navigation past the edge, or the image
- *     list itself changes because Kurt swapped sources).
+ * v1.4.5i change (Kurt's request):
+ *   • Clicking a non-active pane ONLY moves the ACTIVE pill + blue ring
+ *     to that pane. Images never slide left. The strip slides only when
+ *     the parent explicitly changes `windowStart` (arrow navigation,
+ *     Store/Delete auto-shift, or a filmstrip-to-active load).
+ *
+ * Earlier v1.4.5 additions still in place:
  *   • Active pane is a full ZoomablePreview — mouse-wheel + keyboard
- *     +/- zoom now work in comparison mode, targeted on the active pane
- *     only. Inactive panes stay as lightweight <img> tags so the layout
- *     doesn't jitter when zooming.
+ *     +/- zoom work in comparison mode, targeted on the active pane
+ *     only. Inactive panes render ZoomablePreview too so Kurt can zoom
+ *     into any pane independently.
  *   • Imperative handle forwarded so App.js can drive `+/-` shortcuts
  *     through the same `zoomRef` it uses in single-view.
- *   • Active pane border upgraded to a two-tone ring (outer earth + inner
- *     translucent) so the "which one is active" answer is obvious at any
- *     screen size, and the ACTIVE pill floats above that ring.
+ *   • Active pane border is a two-tone ring (outer earth + inner
+ *     translucent) so the "which one is active" answer is obvious at
+ *     any screen size, and the ACTIVE pill floats above that ring.
  */
 
 const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKey }, ref) {
@@ -136,34 +136,16 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
 });
 
 const ComparisonView = forwardRef(function ComparisonView(
-  { images, selectedIdx, panes, onSelect, ratings, sourcePath },
+  { images, selectedIdx, panes, windowStart, onSelect, ratings, sourcePath },
   ref
 ) {
-  // ── Sticky visible window ────────────────────────────────────────────
-  // The window follows `selectedIdx` only when the selection would fall
-  // OUTSIDE the current visible slice — otherwise clicking a pane just
-  // re-tags active without triggering the slide-and-load animation.
-  const [start, setStart] = useState(() =>
-    Math.max(0, Math.min(selectedIdx, Math.max(0, images.length - panes)))
-  );
-
-  // Keep the window in a legal range whenever pane count changes or the
-  // source images array is swapped.
-  useEffect(() => {
-    setStart((s) => Math.max(0, Math.min(s, Math.max(0, images.length - panes))));
-  }, [images, panes]);
-
-  // If parent jumps selection outside the current window (filmstrip
-  // click / arrow navigation past the edge), slide the window so the
-  // selection is visible. If it's already inside, leave the window put.
-  useEffect(() => {
-    if (selectedIdx < start) {
-      setStart(Math.max(0, selectedIdx));
-    } else if (selectedIdx >= start + panes) {
-      setStart(Math.max(0, Math.min(selectedIdx - panes + 1, images.length - panes)));
-    }
-  }, [selectedIdx, panes, start, images.length]);
-
+  // ── Fully controlled visible window ─────────────────────────────────
+  // v1.4.5i — The parent (App.js) owns `compareWindowStart`. This
+  // component NEVER slides on its own. Clicking a pane only re-tags
+  // ACTIVE; arrow navigation, Store/Delete, and filmstrip-to-active
+  // loads are the only things that can move the window, and they do
+  // it by changing the `windowStart` prop from the parent.
+  const start = Math.max(0, Math.min(windowStart ?? 0, Math.max(0, images.length - panes)));
   const visible = images.slice(start, start + panes);
 
   // Track the active pane's ref so we can forward the zoom imperative

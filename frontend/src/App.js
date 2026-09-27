@@ -325,6 +325,16 @@ export default function App() {
   const [totalFree, setTotalFree] = useState(null);
   const [searchMode, setSearchMode] = useState(false); // true when filmstrip holds search results
   const [compareMode, setCompareMode] = useState(1); // 1 = single, 2/3 = split panes
+  // v1.4.5i — Kurt's fix: the compare view's visible window is owned by
+  // the App (not by ComparisonView) so pane clicks only move the ACTIVE
+  // pill without sliding the strip. `compareWindowStart` is the leftmost
+  // image index visible in the ×2 / ×3 view. It shifts only when:
+  //   • Left/Right arrows are pressed (both start + selectedIdx shift ±1)
+  //   • Store / Delete removes the active image (array shrinks, clamp)
+  //   • A filmstrip thumbnail is clicked (loads into ACTIVE pane)
+  // Clicking one of the currently visible panes changes selectedIdx but
+  // leaves compareWindowStart alone — no slide.
+  const [compareWindowStart, setCompareWindowStart] = useState(0);
   const [autoRating, setAutoRating] = useState(false); // in-progress flag
 
   // Current image star rating
@@ -565,6 +575,30 @@ export default function App() {
       target.scrollIntoView({ behavior: "smooth", block: "nearest", inline: "center" });
     }
   }, [selectedIdx, currentImage, compareMode]);
+
+  // v1.4.5i — Keep the compare view's visible-window index legal.
+  // Whenever the source folder changes, the images array shrinks
+  // (Store / Delete), or Kurt bumps the pane count between ×2 and ×3,
+  // clamp `compareWindowStart` so the strip never renders past the end.
+  // Also, when Kurt FIRST enters compare mode (×1 → ×2 / ×3), seat
+  // the window so `selectedIdx` is visible: put active at the leftmost
+  // pane if it's near the start, otherwise keep the window trailing.
+  useEffect(() => {
+    if (compareMode <= 1) return;
+    setCompareWindowStart((s) => {
+      const maxStart = Math.max(0, images.length - compareMode);
+      // If active is outside the current window, re-seat so it's visible
+      // (parked at the leftmost slot for a natural reading order).
+      if (selectedIdx < s || selectedIdx >= s + compareMode) {
+        return Math.max(0, Math.min(selectedIdx, maxStart));
+      }
+      // Otherwise just clamp the existing start.
+      return Math.max(0, Math.min(s, maxStart));
+    });
+    // Intentionally omit selectedIdx — clicking a visible pane must NOT
+    // re-seat the window; that would defeat the whole point of the fix.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [compareMode, images.length, currentSourcePath]);
 
   // Poll total-free-space every 60s while the app is open (Electron only).
   // Also refreshes when the user opens the Drives panel or picks a new folder.
@@ -1398,9 +1432,23 @@ export default function App() {
         // tags" button greys out until the user advances to a different one.
         setLastStoredPhotoName(snapshotSrc.name);
       }
-      // Auto-advance on single-photo store (Iter 14): move to next photo in filmstrip
+      // Auto-advance on single-photo store (Iter 14): move to next photo in filmstrip.
+      // v1.4.5i — In compare mode we intentionally DO NOT bump selectedIdx.
+      // Because the images array just lost one entry (the stored one),
+      // the image previously at idx+1 slides into idx automatically —
+      // so the ACTIVE pane stays in place and shows the next photo,
+      // with a fresh image appearing in the rightmost pane. Bumping
+      // selectedIdx here would jump the ACTIVE ring to the pane to the
+      // right, which is exactly what Kurt is trying to avoid. We do,
+      // however, clamp selectedIdx to the new (shrunk) array length so
+      // storing the very last image doesn't leave `currentImage` pointing
+      // past the end.
       if (!isBatch && settings.autoAdvanceOnStore !== false && removedFromFilmstrip.length === 0) {
-        setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
+        if (compareMode === 1) {
+          setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
+        } else {
+          setSelectedIdx((i) => Math.max(0, Math.min(i, images.length - 2)));
+        }
       }
       if (removedFromFilmstrip.length > 0) {
         const removedSet = new Set(removedFromFilmstrip);
@@ -1541,8 +1589,35 @@ export default function App() {
   };
 
   // Navigation
-  const goPrev = () => setSelectedIdx((i) => Math.max(0, i - 1));
-  const goNext = () => setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
+  // v1.4.5i — In compare mode, arrows SHIFT the visible strip by one
+  // and move `selectedIdx` in lock-step so the ACTIVE pill stays
+  // pinned at the same pane position (Kurt's requested behavior:
+  // "images move leaving the active box in place").
+  // In single-view (×1) mode, arrows just walk `selectedIdx` like
+  // before.
+  const goPrev = () => {
+    if (compareMode > 1) {
+      setCompareWindowStart((s) => {
+        if (s <= 0) return 0;
+        setSelectedIdx((i) => Math.max(0, i - 1));
+        return s - 1;
+      });
+    } else {
+      setSelectedIdx((i) => Math.max(0, i - 1));
+    }
+  };
+  const goNext = () => {
+    if (compareMode > 1) {
+      setCompareWindowStart((s) => {
+        const maxStart = Math.max(0, images.length - compareMode);
+        if (s >= maxStart) return s;
+        setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
+        return s + 1;
+      });
+    } else {
+      setSelectedIdx((i) => Math.min(images.length - 1, i + 1));
+    }
+  };
 
   const toggleBatch = () => {
     setBatchMode((cur) => {
@@ -2764,6 +2839,7 @@ export default function App() {
                   images={images}
                   selectedIdx={selectedIdx}
                   panes={compareMode}
+                  windowStart={compareWindowStart}
                   onSelect={setSelectedIdx}
                   ratings={ratings}
                   sourcePath={currentSourcePath}
@@ -2780,19 +2856,19 @@ export default function App() {
                     work identically. */}
                 <button
                   onClick={goPrev}
-                  disabled={selectedIdx === 0}
+                  disabled={compareWindowStart === 0}
                   className="absolute left-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed transition-colors z-30"
                   data-testid="nav-prev-compare"
-                  title="Previous photo (←) — advances the active pane"
+                  title="Shift strip left (←) — images slide, ACTIVE pane stays in place"
                 >
                   <ChevronLeft size={20} strokeWidth={2.5} />
                 </button>
                 <button
                   onClick={goNext}
-                  disabled={selectedIdx >= images.length - 1}
+                  disabled={compareWindowStart >= Math.max(0, images.length - compareMode)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full icon-overlay flex items-center justify-center text-app hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed transition-colors z-30"
                   data-testid="nav-next-compare"
-                  title="Next photo (→) — advances the active pane"
+                  title="Shift strip right (→) — images slide, ACTIVE pane stays in place"
                 >
                   <ChevronRight size={20} strokeWidth={2.5} />
                 </button>
@@ -3115,7 +3191,20 @@ export default function App() {
                     size={settings.thumbSize || 128}
                     onClick={() => {
                       if (batchMode) toggleBatchSel(img.name);
-                      else setSelectedIdx(i);
+                      else if (compareMode > 1) {
+                        // v1.4.5i — In compare mode, clicking a filmstrip
+                        // thumb LOADS that photo into the currently ACTIVE
+                        // pane (keeps the pane position steady, slides the
+                        // window so the clicked image lands under the
+                        // ACTIVE pill).
+                        const activePos = selectedIdx - compareWindowStart;
+                        const maxStart = Math.max(0, images.length - compareMode);
+                        const newStart = Math.max(0, Math.min(i - activePos, maxStart));
+                        setCompareWindowStart(newStart);
+                        setSelectedIdx(i);
+                      } else {
+                        setSelectedIdx(i);
+                      }
                     }}
                     onDoubleClick={() => {
                       setSelectedIdx(i);
