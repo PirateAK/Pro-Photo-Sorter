@@ -1487,7 +1487,7 @@ export default function App() {
 
   const closeResizeModal = () => setResizeModal({ open: false, printKey: null });
 
-  const confirmResizeStore = async ({ centerX, centerY, orientation = "auto" }) => {
+  const confirmResizeStore = async ({ centerX, centerY, orientation = "auto", sizeFrac = 1 }) => {
     const { printKey } = resizeModal;
     closeResizeModal();
     if (!currentImage || !destRoot || !printKey) return;
@@ -1541,6 +1541,7 @@ export default function App() {
         centerX,
         centerY,
         orientation,
+        sizeFrac,
         watermarkOpts: wmEnabled && wmText ? {
           text: wmText,
           fontSize: settings.watermarkFontSize || "medium",

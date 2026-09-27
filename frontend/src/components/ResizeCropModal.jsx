@@ -2,11 +2,22 @@ import React, { useEffect, useRef, useState } from "react";
 import { X, Save, RectangleHorizontal, RectangleVertical, Wand2 } from "lucide-react";
 import { cropBoxFor, targetDimsFor, getPrintSize, loadImageFromHandle } from "../lib/resize";
 
-// Crop preview modal — shows the source photo with a draggable crop-box overlay
-// constrained to the requested aspect ratio. Auto-centered by default; drag to
-// reposition. Confirm calls onConfirm({ centerX, centerY, orientation }) with
-// the chosen orientation so the exported blob matches what Kurt saw in the
-// preview (v1.4.5h — orientation toggle added).
+// Crop preview modal — shows the source photo with a draggable + resizable
+// crop-box overlay constrained to the requested aspect ratio. Auto-centered
+// by default; drag inside to reposition; drag any corner handle to shrink
+// the crop while the aspect ratio is preserved. Confirm calls
+// onConfirm({ centerX, centerY, orientation, sizeFrac }).
+//
+// v1.4.5k — Kurt reported that flipping the orientation toggle to WIDE on
+// a portrait source made the crop look small: the canvas was fixed at
+// 720×480 (landscape shape) so the portrait source got letterboxed with
+// huge black bars, and the landscape crop drawn on top looked tiny even
+// though geometrically it was the max fit.
+// Fix: the canvas now sizes itself to match the SOURCE image's aspect
+// ratio (capped at 780 × 540 CSS px) — so the source photo always fills
+// the frame, and the crop rectangle sits as physically large as the
+// requested aspect ratio allows. Corner drag handles let Kurt shrink
+// the crop below the auto-max when he wants a tighter composition.
 export default function ResizeCropModal({ open, imageHandle, printKey, imageName, onCancel, onConfirm }) {
   const canvasRef = useRef(null);
   const [state, setState] = useState({ img: null, url: null, sourceW: 0, sourceH: 0 });
@@ -14,7 +25,11 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
   const [centerY, setCenterY] = useState(0.5);
   // v1.4.5h — orientation: "auto" (match source shape) | "portrait" | "landscape"
   const [orientation, setOrientation] = useState("auto");
-  const dragging = useRef(false);
+  // v1.4.5k — sizeFrac is 0..1, where 1.0 = max-fit crop (fills the source
+  // on the constrained axis). Drag any corner handle to shrink toward 0.2.
+  const [sizeFrac, setSizeFrac] = useState(1);
+  // dragging = { mode: 'move' | 'resize', corner?: 'nw'|'ne'|'sw'|'se' }
+  const dragging = useRef(null);
 
   useEffect(() => {
     if (!open || !imageHandle) return;
@@ -23,6 +38,7 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     setCenterX(0.5);
     setCenterY(0.5);
     setOrientation("auto");
+    setSizeFrac(1);
     (async () => {
       try {
         const { img, url } = await loadImageFromHandle(imageHandle);
@@ -37,12 +53,28 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, imageHandle]);
 
-  // Draw the source image + crop box overlay
+  // v1.4.5k — Canvas CSS size follows the SOURCE aspect ratio (capped).
+  // Computed here so both the draw effect and the pointer-math helpers
+  // agree on the exact display box the source photo lives in.
+  const MAX_CSS_W = 780;
+  const MAX_CSS_H = 540;
+  const canvasBox = (() => {
+    if (!state.sourceW || !state.sourceH) return { CSS_W: MAX_CSS_W, CSS_H: MAX_CSS_H };
+    const s = Math.min(MAX_CSS_W / state.sourceW, MAX_CSS_H / state.sourceH);
+    return { CSS_W: Math.round(state.sourceW * s), CSS_H: Math.round(state.sourceH * s) };
+  })();
+
+  // Reset sizeFrac when the print aspect / orientation / source changes so a
+  // shrunken crop from a previous print size doesn't carry over confusingly.
+  useEffect(() => {
+    setSizeFrac(1);
+  }, [printKey, orientation, state.sourceW, state.sourceH]);
+
+  // Draw the source image + crop box overlay + corner handles
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !state.img || !printKey) return;
-    const CSS_W = 720;
-    const CSS_H = 480;
+    const { CSS_W, CSS_H } = canvasBox;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = CSS_W * dpr;
     canvas.height = CSS_H * dpr;
@@ -54,7 +86,9 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     ctx.fillStyle = "#0a0806";
     ctx.fillRect(0, 0, CSS_W, CSS_H);
 
-    // Fit the source photo into the preview area (letterboxed)
+    // v1.4.5k — Because canvas aspect matches source aspect, the fit-scale
+    // in both axes is identical and the source draws edge-to-edge. dx/dy
+    // stay in the formula for clarity (they resolve to 0/0 by design).
     const scale = Math.min(CSS_W / state.sourceW, CSS_H / state.sourceH);
     const dw = state.sourceW * scale;
     const dh = state.sourceH * scale;
@@ -65,7 +99,10 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     // Compute crop box in source pixels
     const dims = targetDimsFor({ printKey, sourceW: state.sourceW, sourceH: state.sourceH, orientation });
     if (!dims) return;
-    const { cw, ch } = cropBoxFor({ sourceW: state.sourceW, sourceH: state.sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
+    const maxCrop = cropBoxFor({ sourceW: state.sourceW, sourceH: state.sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
+    // Apply the user's shrink factor (aspect preserved).
+    const cw = maxCrop.cw * sizeFrac;
+    const ch = maxCrop.ch * sizeFrac;
 
     // Clamp center so crop stays inside source
     const halfW = cw / 2;
@@ -104,9 +141,31 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
       ctx.lineTo(boxX + boxW, boxY + (boxH * i) / 3);
       ctx.stroke();
     }
-  }, [state, centerX, centerY, printKey, orientation]);
 
-  const setFromEvent = (e) => {
+    // v1.4.5k — Corner drag handles (10×10 CSS px squares) so Kurt can
+    // shrink the crop while the aspect ratio stays pinned.
+    const HANDLE = 10;
+    const cornerPts = [
+      { x: boxX, y: boxY },                           // nw
+      { x: boxX + boxW, y: boxY },                    // ne
+      { x: boxX, y: boxY + boxH },                    // sw
+      { x: boxX + boxW, y: boxY + boxH },             // se
+    ];
+    ctx.fillStyle = "rgba(198, 138, 83, 1)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.9)";
+    ctx.lineWidth = 1.5;
+    for (const p of cornerPts) {
+      ctx.fillRect(p.x - HANDLE / 2, p.y - HANDLE / 2, HANDLE, HANDLE);
+      ctx.strokeRect(p.x - HANDLE / 2, p.y - HANDLE / 2, HANDLE, HANDLE);
+    }
+  }, [state, centerX, centerY, printKey, orientation, sizeFrac, canvasBox]);
+
+  // v1.4.5k — Given a pointer event, return { mx, my, dx, dy, dw, dh,
+  // scale, boxX, boxY, boxW, boxH, cw, ch, maxCw, maxCh } in preview
+  // CSS coords. Encapsulates the geometry so both move + resize handlers
+  // work off the same numbers.
+  const geometryAtEvent = (e) => {
+    if (!state.img) return null;
     const rect = canvasRef.current.getBoundingClientRect();
     const CSS_W = rect.width;
     const CSS_H = rect.height;
@@ -115,27 +174,90 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
     const dh = state.sourceH * scale;
     const dx = (CSS_W - dw) / 2;
     const dy = (CSS_H - dh) / 2;
-    const mx = e.clientX - rect.left;
-    const my = e.clientY - rect.top;
-    // Convert preview mouse coords into source-image coords
-    const sx = (mx - dx) / scale;
-    const sy = (my - dy) / scale;
+    const dims = targetDimsFor({ printKey, sourceW: state.sourceW, sourceH: state.sourceH, orientation });
+    if (!dims) return null;
+    const maxCrop = cropBoxFor({ sourceW: state.sourceW, sourceH: state.sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
+    const cw = maxCrop.cw * sizeFrac;
+    const ch = maxCrop.ch * sizeFrac;
+    const halfW = cw / 2;
+    const halfH = ch / 2;
+    const cxSrc = Math.max(halfW, Math.min(state.sourceW - halfW, centerX * state.sourceW));
+    const cySrc = Math.max(halfH, Math.min(state.sourceH - halfH, centerY * state.sourceH));
+    const boxX = dx + (cxSrc - halfW) * scale;
+    const boxY = dy + (cySrc - halfH) * scale;
+    const boxW = cw * scale;
+    const boxH = ch * scale;
+    return {
+      mx: e.clientX - rect.left,
+      my: e.clientY - rect.top,
+      dx, dy, dw, dh, scale,
+      boxX, boxY, boxW, boxH,
+      cxSrc, cySrc,
+      maxCw: maxCrop.cw, maxCh: maxCrop.ch,
+    };
+  };
+
+  const hitCornerAt = (g) => {
+    if (!g) return null;
+    const HIT = 14; // slightly larger than drawn 10 px handle for easier grabbing
+    const corners = [
+      { name: "nw", x: g.boxX,           y: g.boxY },
+      { name: "ne", x: g.boxX + g.boxW,  y: g.boxY },
+      { name: "sw", x: g.boxX,           y: g.boxY + g.boxH },
+      { name: "se", x: g.boxX + g.boxW,  y: g.boxY + g.boxH },
+    ];
+    for (const c of corners) {
+      if (Math.abs(g.mx - c.x) <= HIT && Math.abs(g.my - c.y) <= HIT) return c.name;
+    }
+    return null;
+  };
+
+  const onPointerDown = (e) => {
+    const g = geometryAtEvent(e);
+    if (!g) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const corner = hitCornerAt(g);
+    if (corner) {
+      dragging.current = { mode: "resize", corner };
+      return;
+    }
+    // Otherwise: reposition. Center the crop under the click.
+    dragging.current = { mode: "move" };
+    const sx = (g.mx - g.dx) / g.scale;
+    const sy = (g.my - g.dy) / g.scale;
     setCenterX(Math.max(0, Math.min(1, sx / state.sourceW)));
     setCenterY(Math.max(0, Math.min(1, sy / state.sourceH)));
   };
 
-  const onPointerDown = (e) => {
-    if (!state.img) return;
-    dragging.current = true;
-    e.currentTarget.setPointerCapture(e.pointerId);
-    setFromEvent(e);
-  };
   const onPointerMove = (e) => {
     if (!dragging.current) return;
-    setFromEvent(e);
+    const g = geometryAtEvent(e);
+    if (!g) return;
+    if (dragging.current.mode === "move") {
+      const sx = (g.mx - g.dx) / g.scale;
+      const sy = (g.my - g.dy) / g.scale;
+      setCenterX(Math.max(0, Math.min(1, sx / state.sourceW)));
+      setCenterY(Math.max(0, Math.min(1, sy / state.sourceH)));
+      return;
+    }
+    // Resize: distance from crop center (in source px) to the pointer
+    // sets the new half-diagonal. Compute a new sizeFrac from that,
+    // clamped to [0.2, 1.0]. Aspect stays pinned because both cw and
+    // ch scale by the same fraction.
+    const sxSrc = (g.mx - g.dx) / g.scale;
+    const sySrc = (g.my - g.dy) / g.scale;
+    const dxFromCenter = Math.abs(sxSrc - g.cxSrc);
+    const dyFromCenter = Math.abs(sySrc - g.cySrc);
+    // Fraction that satisfies both axes; use max so the corner stays
+    // under the pointer as long as we haven't hit the aspect wall.
+    const fracW = (dxFromCenter * 2) / g.maxCw;
+    const fracH = (dyFromCenter * 2) / g.maxCh;
+    const frac = Math.max(fracW, fracH);
+    setSizeFrac(Math.max(0.2, Math.min(1, frac)));
   };
+
   const onPointerUp = (e) => {
-    dragging.current = false;
+    dragging.current = null;
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch {}
   };
 
@@ -152,7 +274,7 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
       data-testid="resize-crop-modal-backdrop"
     >
       <div
-        className="pane rounded-lg shadow-2xl border border-app w-full max-w-3xl flex flex-col"
+        className="pane rounded-lg shadow-2xl border border-app w-full max-w-4xl flex flex-col"
         onClick={(e) => e.stopPropagation()}
         data-testid="resize-crop-modal"
       >
@@ -211,28 +333,31 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
             </button>
           </div>
         </div>
-        <div className="p-4 bg-app">
+        <div className="p-4 bg-app flex flex-col items-center">
           <canvas
             ref={canvasRef}
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
             onPointerCancel={onPointerUp}
-            className="w-full rounded cursor-move select-none"
+            className="rounded select-none"
+            style={{ cursor: dragging.current?.mode === "resize" ? "nwse-resize" : "move", maxWidth: "100%" }}
             data-testid="resize-crop-canvas"
           />
-          <div className="text-[11px] text-dim mt-2 flex items-center justify-between">
-            <span>Drag to reposition · Rule-of-thirds guides shown</span>
-            <span className="font-mono">center: x {Math.round(centerX * 100)}% · y {Math.round(centerY * 100)}%</span>
+          <div className="text-[11px] text-dim mt-2 flex items-center justify-between w-full" style={{ maxWidth: canvasBox.CSS_W }}>
+            <span>Drag inside to reposition · Drag any corner to shrink (aspect-locked)</span>
+            <span className="font-mono">
+              size: {Math.round(sizeFrac * 100)}% · center: x {Math.round(centerX * 100)}% · y {Math.round(centerY * 100)}%
+            </span>
           </div>
         </div>
         <div className="px-4 py-3 border-t border-app flex items-center justify-end gap-2">
           <button
-            onClick={() => { setCenterX(0.5); setCenterY(0.5); }}
+            onClick={() => { setCenterX(0.5); setCenterY(0.5); setSizeFrac(1); }}
             className="px-3 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs"
             data-testid="resize-crop-recenter"
           >
-            Auto-center
+            Auto-center · Max size
           </button>
           <button
             onClick={onCancel}
@@ -242,7 +367,7 @@ export default function ResizeCropModal({ open, imageHandle, printKey, imageName
             Cancel
           </button>
           <button
-            onClick={() => onConfirm({ centerX, centerY, orientation })}
+            onClick={() => onConfirm({ centerX, centerY, orientation, sizeFrac })}
             disabled={!state.img}
             className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-semibold flex items-center gap-1 disabled:opacity-40"
             data-testid="resize-crop-confirm"

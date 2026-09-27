@@ -74,12 +74,16 @@ export async function loadImageFromHandle(sourceHandle) {
 // should sit inside the source image (0.5 = middle).
 // v1.4.5h — orientation forwarded to targetDimsFor so the exported blob
 // matches whatever preview the user confirmed.
+// v1.4.5k — sizeFrac (0.2..1.0) shrinks the max-fit crop while the aspect
+// ratio stays pinned, so Kurt's tighter compositions from the modal's
+// corner-drag handles export exactly what he saw.
 export async function cropAndResize({
   sourceHandle,
   printKey,
   centerX = 0.5,
   centerY = 0.5,
   orientation = "auto",
+  sizeFrac = 1,
   watermarkOpts = null, // { text, fontSize, opacity, xPct, yPct, color, fontFamily }
   mime = "image/jpeg",
   quality = 0.92,
@@ -90,7 +94,10 @@ export async function cropAndResize({
     const sourceH = img.naturalHeight;
     const dims = targetDimsFor({ printKey, sourceW, sourceH, orientation });
     if (!dims) throw new Error(`Unknown print size: ${printKey}`);
-    const { cw, ch } = cropBoxFor({ sourceW, sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
+    const maxCrop = cropBoxFor({ sourceW, sourceH, aspectW: dims.aspectW, aspectH: dims.aspectH });
+    const frac = Math.max(0.2, Math.min(1, sizeFrac));
+    const cw = maxCrop.cw * frac;
+    const ch = maxCrop.ch * frac;
 
     // Clamp centerX/centerY so the crop box never goes off the source image
     const halfW = cw / 2;
