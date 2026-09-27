@@ -1557,41 +1557,14 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                     onSwapItemIcon={swapSubfolderItemIcon}
                     onMoveSubfolderItem={moveSubfolderItem}
                     onReplaceSubfolderNode={replaceSubfolderNode}
+                    onRemoveItemsBulk={removeSubfolderItemsBulk}
+                    onConvertItemsBulk={convertSubfolderItemsToNestedBulk}
                   />
-
-                  {/* Dedicated Filename Tags editor for the currently
-                      selected sub-folder. Renders an inline hint when no
-                      sub-folder is selected so Kurt sees where to click. */}
-                  <div className="h-px bg-app/60 mx-4" />
-                  <div className="px-4 py-4" data-testid="filename-editor-pane">
-                    <div className="flex items-center gap-2 mb-2">
-                      <TagIcon size={14} className="text-primary-earth" />
-                      <h4 className="text-xs font-heading font-semibold uppercase tracking-wider">Filename Tags</h4>
-                      {selectedSub ? (
-                        <span className="text-xs text-dim">
-                          for <span className="text-primary-earth font-medium">{selectedSub.name}</span>
-                          {" · "}
-                          <span className="font-mono">{selectedSub.filenameItems?.length || 0}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs text-dim italic">Select a sub-folder above to edit its filename tags</span>
-                      )}
-                    </div>
-                    {selectedSub && (
-                      <SubfolderFilenameEditor
-                        sub={selectedSub}
-                        onAddItem={(label) => addSubfolderItem(selectedSub.id, label)}
-                        onAddItemsBulk={(labels) => addSubfolderItemsBulk(selectedSub.id, labels)}
-                        onRemoveItem={(itemId) => removeSubfolderItem(selectedSub.id, itemId)}
-                        onRemoveItemsBulk={(itemIds) => removeSubfolderItemsBulk(selectedSub.id, itemIds)}
-                        onSwapItemIcon={(itemId, patch) => swapSubfolderItemIcon(selectedSub.id, itemId, patch)}
-                        onMoveItem={(itemId, dir) => moveSubfolderItemWithin(selectedSub.id, itemId, dir)}
-                        onReorderItems={(fromIdx, toIdx) => reorderSubfolderItems(selectedSub.id, fromIdx, toIdx)}
-                        onConvertToNested={(itemId) => convertSubfolderItemToNested(selectedSub.id, itemId)}
-                        onConvertToNestedBulk={(itemIds) => convertSubfolderItemsToNestedBulk(selectedSub.id, itemIds)}
-                      />
-                    )}
-                  </div>
+                  {/* v1.4.5e — Bottom "FILENAME TAGS for X" pane removed.
+                      The chevron-expanded inline chip area inside each
+                      sub-folder row is now the single canonical place to
+                      work with filename tags, so there's no duplicated
+                      "which list am I editing?" confusion any more. */}
                 </div>
               </>
             ) : (
@@ -2113,6 +2086,8 @@ function SubfolderSection({
   onSelectSubfolder,       // v1.3 — (sfId) => void — click a row to load its filename tags into the editor below
   armedIcon,               // v1.3.1 — armed icon from Icon Holders (may be null)
   onConsumeArmed,          // v1.3.1 — fn({kind:"sub"|"item", sfId, itemId?}) → applies armed icon
+  onRemoveItemsBulk,       // v1.4.5e — fn(sfId, itemIds[]) → count (atomic + trash)
+  onConvertItemsBulk,      // v1.4.5e — fn(sfId, itemIds[]) → count (atomic multi-convert to nested)
 }) {
   const subs = Array.isArray(pack?.subfolders) ? pack.subfolders : [];
   const [draft, setDraft] = useState("");
@@ -2125,6 +2100,46 @@ function SubfolderSection({
   const [ctxMenu, setCtxMenu] = useState(null);
   // v1.2.1 — which subfolder is being drag-hovered over (for highlight)
   const [dropOverSfId, setDropOverSfId] = useState(null);
+  // v1.4.5e — Multi-select mode per sub-folder. `selectModeSet` tracks
+  // which sub-folder rows have flipped the [Select] toggle on;
+  // `selectionByFolder` holds the ticked itemIds for each. Also track
+  // `highlightedItemId` per sub-folder for single-click feedback even
+  // when select mode is OFF (Kurt asked: "clicking a tag should
+  // highlight it").
+  const [selectModeSet, setSelectModeSet] = useState(() => new Set());
+  const [selectionByFolder, setSelectionByFolder] = useState({}); // { [sfId]: Set<itemId> }
+  const [highlightBySf, setHighlightBySf] = useState({}); // { [sfId]: itemId | null }
+  const isSelectMode = (sfId) => selectModeSet.has(sfId);
+  const toggleSelectMode = (sfId) => {
+    setSelectModeSet((cur) => {
+      const next = new Set(cur);
+      if (next.has(sfId)) {
+        next.delete(sfId);
+        // Also clear that folder's selection when leaving select mode.
+        setSelectionByFolder((s) => ({ ...s, [sfId]: new Set() }));
+      } else {
+        next.add(sfId);
+      }
+      return next;
+    });
+  };
+  const getSelection = (sfId) => selectionByFolder[sfId] || new Set();
+  const toggleTick = (sfId, itemId) => {
+    setSelectionByFolder((cur) => {
+      const set = new Set(cur[sfId] || []);
+      set.has(itemId) ? set.delete(itemId) : set.add(itemId);
+      return { ...cur, [sfId]: set };
+    });
+  };
+  const selectAllInFolder = (sfId, allIds) => {
+    setSelectionByFolder((cur) => ({ ...cur, [sfId]: new Set(allIds) }));
+  };
+  const clearSelectionInFolder = (sfId) => {
+    setSelectionByFolder((cur) => ({ ...cur, [sfId]: new Set() }));
+  };
+  const toggleHighlight = (sfId, itemId) => {
+    setHighlightBySf((cur) => ({ ...cur, [sfId]: cur[sfId] === itemId ? null : itemId }));
+  };
 
   // v1.2.9 — Spring-loaded auto-expand. When a chip is dragged over a
   // collapsed subfolder header, start a 500ms timer; when it fires we
@@ -2488,28 +2503,130 @@ function SubfolderSection({
                         <span className="text-[9px] normal-case tracking-normal italic text-dim">
                           Drag chip = move · Ctrl+drag = copy · Right-click = menu
                         </span>
+                        {/* v1.4.5e — Select toggle. Per-sub-folder so
+                            Kurt can enter select mode on just the one
+                            he's working in. */}
+                        {items.length > 0 && onRemoveItemsBulk && (
+                          <button
+                            onClick={() => toggleSelectMode(sf.id)}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded border text-[10px] normal-case tracking-normal ${
+                              isSelectMode(sf.id)
+                                ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent"
+                                : "bg-app hover:bg-surface-hover border-app text-app"
+                            }`}
+                            data-testid={`subfolder-select-toggle-${sf.id}`}
+                            title={isSelectMode(sf.id)
+                              ? "Exit select mode — hides checkboxes and clears the current selection"
+                              : "Enter select mode — tick multiple chips to delete or convert several at once"}
+                          >
+                            {isSelectMode(sf.id) ? "Done" : "Select"}
+                          </button>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-wrap gap-1 mb-2">
                       {items.length === 0 ? (
                         <span className="text-xs text-dim italic">No filename tags yet. Add some below (e.g. team names for Baseball).</span>
-                      ) : items.map((it) => (
-                        <SubfolderItemChip
-                          key={it.id}
-                          it={it}
-                          sfId={sf.id}
-                          onRemove={() => onRemoveItem(sf.id, it.id)}
-                          onSwapIcon={(payload) => onSwapItemIcon?.(sf.id, it.id, payload)}
-                          armedIcon={armedIcon}
-                          onArmedClick={() => onConsumeArmed?.({ kind: "item", sfId: sf.id, itemId: it.id })}
-                          onContext={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            setCtxMenu({ x: e.clientX, y: e.clientY, sfId: sf.id, itemId: it.id, item: it });
-                          }}
-                        />
-                      ))}
+                      ) : items.map((it) => {
+                        const sel = getSelection(sf.id);
+                        const ticked = sel.has(it.id);
+                        const highlighted = highlightBySf[sf.id] === it.id && !isSelectMode(sf.id);
+                        return (
+                          <SubfolderItemChip
+                            key={it.id}
+                            it={it}
+                            sfId={sf.id}
+                            onRemove={() => onRemoveItem(sf.id, it.id)}
+                            onSwapIcon={(payload) => onSwapItemIcon?.(sf.id, it.id, payload)}
+                            armedIcon={armedIcon}
+                            onArmedClick={() => onConsumeArmed?.({ kind: "item", sfId: sf.id, itemId: it.id })}
+                            onContext={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setCtxMenu({ x: e.clientX, y: e.clientY, sfId: sf.id, itemId: it.id, item: it });
+                            }}
+                            selectMode={isSelectMode(sf.id)}
+                            isTicked={ticked}
+                            onToggleTick={(id) => toggleTick(sf.id, id)}
+                            isHighlighted={highlighted}
+                            onToggleHighlight={(id) => toggleHighlight(sf.id, id)}
+                            selectedIds={Array.from(sel)}
+                          />
+                        );
+                      })}
                     </div>
+                    {/* v1.4.5e — Floating bulk-action bar inside the
+                        expanded sub-folder. Only visible when select
+                        mode is ON for THIS sub-folder AND at least one
+                        chip is ticked. */}
+                    {isSelectMode(sf.id) && getSelection(sf.id).size > 0 && (
+                      <div
+                        className="mb-2 px-2 py-1.5 rounded border border-primary-earth bg-primary-earth/10 flex items-center gap-1.5 flex-wrap"
+                        data-testid={`subfolder-bulkbar-${sf.id}`}
+                      >
+                        <span className="text-[11px] font-medium text-primary-earth">
+                          {getSelection(sf.id).size} tag{getSelection(sf.id).size === 1 ? "" : "s"} selected
+                        </span>
+                        <div className="ml-auto flex items-center gap-1">
+                          <button
+                            onClick={() => selectAllInFolder(sf.id, items.map((i) => i.id))}
+                            disabled={getSelection(sf.id).size === items.length}
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-app disabled:opacity-40"
+                            data-testid={`bulkbar-select-all-${sf.id}`}
+                            title="Tick every chip in this list"
+                          >
+                            Select all
+                          </button>
+                          <button
+                            onClick={() => clearSelectionInFolder(sf.id)}
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-app"
+                            data-testid={`bulkbar-clear-${sf.id}`}
+                            title="Uncheck every chip but stay in select mode"
+                          >
+                            Clear
+                          </button>
+                          {onConvertItemsBulk && (
+                            <button
+                              onClick={() => {
+                                const ids = Array.from(getSelection(sf.id));
+                                if (!window.confirm(
+                                  `Convert ${ids.length} tag${ids.length === 1 ? "" : "s"} into nested sub-folders under "${sf.name}"?\n\nEach becomes its own sub-folder.`
+                                )) return;
+                                const made = onConvertItemsBulk(sf.id, ids) || 0;
+                                const skipped = ids.length - made;
+                                if (made > 0) toast.success(
+                                  `Converted ${made} tag${made === 1 ? "" : "s"} → nested sub-folders`,
+                                  skipped > 0 ? { description: `${skipped} were skipped (matching sub-folder already exists).` } : undefined,
+                                );
+                                else toast("Nothing converted — all names collide with existing sub-folders", { icon: "🟰" });
+                                clearSelectionInFolder(sf.id);
+                              }}
+                              className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-primary-earth/50 text-primary-earth flex items-center gap-1"
+                              data-testid={`bulkbar-convert-${sf.id}`}
+                              title={`Turn each selected tag into its own nested sub-folder under "${sf.name}"`}
+                            >
+                              <FolderPlus size={9} /> Convert
+                            </button>
+                          )}
+                          <button
+                            onClick={() => {
+                              const ids = Array.from(getSelection(sf.id));
+                              if (!window.confirm(
+                                `Delete ${ids.length} filename tag${ids.length === 1 ? "" : "s"} from "${sf.name}"?\n\nThey'll go to the Chip Trash so you can undo the delete from the header.`
+                              )) return;
+                              const removed = onRemoveItemsBulk ? (onRemoveItemsBulk(sf.id, ids) || 0) : 0;
+                              if (removed > 0) toast.success(`Deleted ${removed} tag${removed === 1 ? "" : "s"} — restore from Trash if that was a mistake.`);
+                              clearSelectionInFolder(sf.id);
+                            }}
+                            className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-app text-dim hover:text-[color:var(--danger,#c0392b)] flex items-center gap-1"
+                            data-testid={`bulkbar-delete-${sf.id}`}
+                            title="Send every selected chip to Chip Trash"
+                          >
+                            <Trash2 size={9} /> Delete
+                          </button>
+                        </div>
+                      </div>
+                    )}
                     <div className="flex items-center gap-1">
                       <input
                         type="text"
@@ -2663,22 +2780,59 @@ function SubfolderSection({
  * drop target for "application/x-pps-iconswap" to change its icon;
  * right-click opens a Move-to / Copy-to menu.
  */
-function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext, armedIcon, onArmedClick }) {
+function SubfolderItemChip({
+  it,
+  sfId,
+  onRemove,
+  onSwapIcon,
+  onContext,
+  armedIcon,
+  onArmedClick,
+  // v1.4.5e — Multi-select + click-highlight props. All optional; when
+  // omitted the chip behaves exactly like v1.4.5d.
+  selectMode = false,
+  isTicked = false,
+  onToggleTick,       // fn(itemId) — flips the checkbox
+  isHighlighted = false,
+  onToggleHighlight,  // fn(itemId) — single-click feedback ping when select mode is OFF
+  selectedIds = null, // Array<itemId> | null — for multi-drag payload
+}) {
   const [dropOver, setDropOver] = React.useState(false);
   return (
     <div
       draggable
       onClick={(e) => {
-        // v1.3.1 — armed-icon click-to-apply.
+        // v1.3.1 — armed-icon click-to-apply always wins.
         if (armedIcon && onArmedClick) {
           e.stopPropagation();
           onArmedClick();
+          return;
+        }
+        // v1.4.5e — In select mode, a click ticks/unticks the chip.
+        if (selectMode && onToggleTick) {
+          e.stopPropagation();
+          onToggleTick(it.id);
+          return;
+        }
+        // v1.4.5e — Out of select mode, a plain click gives visual
+        // feedback: highlight this chip (single-select ring). Click
+        // again to un-highlight. This is what Kurt asked for after the
+        // v1.4.5d smoke test — "I clicked a tag and nothing happened".
+        if (onToggleHighlight) {
+          e.stopPropagation();
+          onToggleHighlight(it.id);
         }
       }}
       onDragStart={(e) => {
+        // v1.4.5e — Carry the whole selection when Kurt drags a ticked
+        // chip while multi-select is on. Receivers can iterate itemIds
+        // to move them all together; single-drop code path unchanged.
+        const carry = selectMode && isTicked && Array.isArray(selectedIds) && selectedIds.length > 1
+          ? selectedIds
+          : [it.id];
         e.dataTransfer.setData(
           "application/x-pps-sfitem",
-          JSON.stringify({ fromSfId: sfId, itemId: it.id })
+          JSON.stringify({ fromSfId: sfId, itemId: it.id, itemIds: carry })
         );
         e.dataTransfer.effectAllowed = "copyMove";
       }}
@@ -2700,27 +2854,50 @@ function SubfolderItemChip({ it, sfId, onRemove, onSwapIcon, onContext, armedIco
       }}
       onContextMenu={onContext}
       className={`group flex items-center gap-1 px-2 py-0.5 rounded bg-app border text-xs max-w-[240px] transition-colors ${
-        armedIcon ? "cursor-crosshair ring-1 ring-primary-earth/40" : "cursor-grab active:cursor-grabbing"
+        armedIcon ? "cursor-crosshair ring-1 ring-primary-earth/40" : selectMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
       } ${
-        dropOver ? "ring-2 ring-primary-earth bg-primary-earth/15 border-primary-earth" : "border-app"
+        dropOver
+          ? "ring-2 ring-primary-earth bg-primary-earth/15 border-primary-earth"
+          : isTicked
+          ? "border-primary-earth bg-primary-earth/20 ring-1 ring-primary-earth"
+          : isHighlighted
+          ? "border-primary-earth bg-primary-earth/10 ring-1 ring-primary-earth/70"
+          : "border-app"
       }`}
       data-testid={`subfolder-item-${sfId}-${it.id}`}
+      data-ticked={isTicked ? "true" : "false"}
+      data-highlighted={isHighlighted ? "true" : "false"}
       title={armedIcon
         ? `${it.label}  ·  Click to apply the armed icon (or press Esc to disarm)`
-        : `${it.label}  ·  Drag to another sub-folder to move (Ctrl+drag to copy) or onto another CATEGORY in the left rail to send it to that pack's "_Unsorted filenames". Drop an icon here to swap. Right-click for menu.`}
+        : selectMode
+        ? `${it.label}  ·  Click to toggle selection. Drag any ticked chip and all ticked chips travel with it.`
+        : `${it.label}  ·  Click to highlight. Drag to another sub-folder to move (Ctrl+drag to copy). Drop an icon here to swap. Right-click for menu.`}
     >
+      {/* v1.4.5e — Checkbox visible only in select mode. */}
+      {selectMode && (
+        <input
+          type="checkbox"
+          checked={isTicked}
+          readOnly
+          className="accent-[color:var(--primary-earth,#a3835a)] shrink-0 pointer-events-none"
+          tabIndex={-1}
+          data-testid={`subfolder-item-check-${sfId}-${it.id}`}
+        />
+      )}
       <span className="text-primary-earth shrink-0 flex items-center">
         <IconPreview item={it} size={12} />
       </span>
       <span className="font-mono truncate">{it.label}</span>
-      <button
-        onClick={onRemove}
-        className="w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
-        data-testid={`subfolder-item-remove-${sfId}-${it.id}`}
-        title="Remove"
-      >
-        <X size={10} />
-      </button>
+      {!selectMode && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onRemove?.(); }}
+          className="w-4 h-4 rounded flex items-center justify-center text-dim hover:text-danger-earth opacity-0 group-hover:opacity-100"
+          data-testid={`subfolder-item-remove-${sfId}-${it.id}`}
+          title="Remove (goes to Chip Trash — restore from the header)"
+        >
+          <X size={10} />
+        </button>
+      )}
     </div>
   );
 }
@@ -2806,372 +2983,7 @@ function SubfolderItemContextMenu({ x, y, item, fromSfId, allSubs, onPick, onRem
 
 
 /**
- * SubfolderFilenameEditor (v1.3)
- * Dedicated editor pane that appears below the Sub-Folders list in the Tag
- * Manager. Populated with the filename tags of whichever sub-folder is
- * currently selected. Add / remove / icon-swap wire through the same
- * addSubfolderItem / removeSubfolderItem / swapSubfolderItemIcon handlers
- * the inline chevron-expand editor uses, so state stays perfectly in sync.
- */
-function SubfolderFilenameEditor({
-  sub,
-  onAddItem,
-  onAddItemsBulk,        // v1.4.5 — atomic bulk-add (fn(labels[]) → count)
-  onRemoveItem,
-  onRemoveItemsBulk,     // v1.4.5d — atomic bulk-remove (fn(itemIds[]) → count)
-  onSwapItemIcon,
-  onMoveItem,            // v1.4.5 — fn(itemId, dir) — arrow-key reorder
-  onReorderItems,        // v1.4.5 — fn(fromIdx, toIdx) — drag reorder
-  onConvertToNested,     // v1.4.5 — fn(itemId) — per-tag → nested sub-folder
-  onConvertToNestedBulk, // v1.4.5d — fn(itemIds[]) → count — atomic multi-convert
-}) {
-  const [draft, setDraft] = useState("");
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dropIdx, setDropIdx] = useState(null);
-  // v1.4.5d — Multi-select mode. Flip the toggle ON to show checkboxes;
-  // ticked chips form a selection set. When >=1 selected, a floating
-  // action bar surfaces bulk Delete / Convert / Clear. Dragging any
-  // selected chip carries the whole selection.
-  const [selectMode, setSelectMode] = useState(false);
-  const [selected, setSelected] = useState(() => new Set());
-  const items = sub?.filenameItems || [];
-
-  // Prune the selection when items change (e.g. after a bulk delete
-  // outside this pane) so we never carry stale ids.
-  useEffect(() => {
-    if (selected.size === 0) return;
-    const live = new Set(items.map((i) => i.id));
-    let dirty = false;
-    const next = new Set();
-    for (const id of selected) {
-      if (live.has(id)) next.add(id);
-      else dirty = true;
-    }
-    if (dirty) setSelected(next);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items]);
-
-  // Flipping OFF select-mode clears the selection so re-entering the
-  // mode doesn't inherit stale ticks.
-  useEffect(() => {
-    if (!selectMode && selected.size > 0) setSelected(new Set());
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectMode]);
-
-  const toggleOne = (id) => {
-    setSelected((cur) => {
-      const next = new Set(cur);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-  const selectAll = () => setSelected(new Set(items.map((i) => i.id)));
-  const clearAll = () => setSelected(new Set());
-
-  const add = () => {
-    const raw = draft.trim();
-    if (!raw) return;
-    if (/[,;\n]/.test(raw) && onAddItemsBulk) {
-      const parsed = parseRoster(raw);
-      const guarded = guardLargePaste(parsed, { targetName: sub?.name });
-      if (!guarded.ok) return;
-      const added = onAddItemsBulk(guarded.labels) || 0;
-      const skipped = guarded.labels.length - added;
-      if (added > 0) toast.success(
-        `Added ${added} filename tag${added === 1 ? "" : "s"}${sub?.name ? ` to "${sub.name}"` : ""}`,
-        skipped > 0 ? { description: `${skipped} were already there.` } : undefined,
-      );
-      else toast("All those labels already exist here", { icon: "🟰" });
-      setDraft("");
-      return;
-    }
-    onAddItem(raw);
-    setDraft("");
-  };
-
-  const doBulkDelete = () => {
-    if (selected.size === 0) return;
-    if (!window.confirm(
-      `Delete ${selected.size} filename tag${selected.size === 1 ? "" : "s"} from "${sub.name}"?\n\n` +
-      `They'll go to the Chip Trash so you can undo the delete from the header.`
-    )) return;
-    const removed = onRemoveItemsBulk ? (onRemoveItemsBulk(Array.from(selected)) || 0) : 0;
-    if (removed > 0) toast.success(`Deleted ${removed} tag${removed === 1 ? "" : "s"} — restore from Trash if that was a mistake.`);
-    setSelected(new Set());
-  };
-  const doBulkConvert = () => {
-    if (selected.size === 0 || !onConvertToNestedBulk) return;
-    if (!window.confirm(
-      `Convert ${selected.size} selected filename tag${selected.size === 1 ? "" : "s"} into nested sub-folders under "${sub.name}"?\n\n` +
-      `Each becomes its own sub-folder with an empty tag list.`
-    )) return;
-    const made = onConvertToNestedBulk(Array.from(selected)) || 0;
-    const skipped = selected.size - made;
-    if (made > 0) toast.success(
-      `Converted ${made} tag${made === 1 ? "" : "s"} → nested sub-folders`,
-      skipped > 0 ? { description: `${skipped} were skipped (a sub-folder with the same name already exists here).` } : undefined,
-    );
-    else toast("No conversions — all names collide with existing sub-folders", { icon: "🟰" });
-    setSelected(new Set());
-  };
-
-  return (
-    <div className="space-y-2" data-testid="subfolder-filename-editor">
-      <div className="flex gap-2 items-center">
-        <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          placeholder={`New filename tag for "${sub.name}"… (comma, semicolon, or newline for bulk)`}
-          className="flex-1 bg-app border border-app rounded px-2 py-1.5 text-sm focus-ring"
-          data-testid="subfolder-filename-input"
-        />
-        <button
-          onClick={add}
-          disabled={!draft.trim()}
-          className="px-3 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs flex items-center gap-1 hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-          data-testid="subfolder-filename-add-btn"
-          title={/[,;\n]/.test(draft || "")
-            ? `Add ${parseRoster(draft || "").length} tags in one shot`
-            : "Add this filename tag"}
-        >
-          <Plus size={12} /> {/[,;\n]/.test(draft || "")
-            ? `Add ${parseRoster(draft || "").length}`
-            : "Add"}
-        </button>
-        {onAddItemsBulk && (
-          <PasteRosterButton
-            testId={`subfolder-filename-paste-${sub.id}`}
-            targetName={sub?.name}
-            onCommit={(labels) => onAddItemsBulk(labels) || 0}
-          />
-        )}
-        {/* v1.4.5d — Multi-select mode toggle. Flipping ON shows a
-            checkbox on every chip so Kurt can tick multiples and drag
-            or bulk-act on them without modifier keys. */}
-        {items.length > 0 && onRemoveItemsBulk && (
-          <button
-            onClick={() => setSelectMode((m) => !m)}
-            className={`px-2 py-1.5 rounded text-xs flex items-center gap-1 border ${
-              selectMode
-                ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent"
-                : "bg-app border-app hover:bg-surface-hover"
-            }`}
-            data-testid="subfolder-filename-select-toggle"
-            title={selectMode
-              ? "Exit multi-select — hides the checkboxes and clears the current selection"
-              : "Turn on multi-select — tick chips to delete or convert several at once"}
-          >
-            {selectMode ? "Done" : "Select"}
-          </button>
-        )}
-      </div>
-      {items.length === 0 ? (
-        <p className="text-xs text-dim italic px-1">No filename tags yet. Add one above to get started.</p>
-      ) : (
-        <>
-          <div className="text-[10px] text-dim px-1 flex items-center gap-2">
-            <GripVertical size={10} className="text-primary-earth/60" />
-            <span>{selectMode
-              ? <>Tick chips → then <span className="text-primary-earth">Delete</span> or <span className="text-primary-earth">Convert</span> multiple at once. Drag any ticked chip and every selected chip travels with it.</>
-              : <>Click a tag to highlight it. Drag to reorder here, or drag onto any other sub-folder row above to <span className="text-primary-earth">move</span> it (Ctrl-drag to copy). Click <span className="text-primary-earth">→ Nest</span> to promote a tag into its own nested sub-folder.</>
-            }</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
-            {items.map((it, idx) => {
-              const isDragging = dragIdx === idx;
-              const isDropTarget = dropIdx === idx && dragIdx !== null && dragIdx !== idx;
-              const isTicked = selected.has(it.id);
-              return (
-                <div
-                  key={it.id}
-                  draggable={!!onReorderItems}
-                  onClick={(e) => {
-                    if (selectMode) {
-                      // In select mode any click on the chip body toggles
-                      // the tick — big-target friendly for injuries.
-                      e.stopPropagation();
-                      toggleOne(it.id);
-                      return;
-                    }
-                    e.stopPropagation();
-                  }}
-                  onDragStart={(e) => {
-                    if (!onReorderItems) return;
-                    setDragIdx(idx);
-                    // v1.4.5d — If Kurt is dragging a ticked chip while
-                    // multi-select is on, carry the WHOLE selection so
-                    // any drop target that understands the payload can
-                    // move them all together.
-                    const carry = selectMode && isTicked && selected.size > 1
-                      ? Array.from(selected)
-                      : [it.id];
-                    e.dataTransfer.setData("application/x-pps-filename-reorder", String(idx));
-                    if (sub?.id) {
-                      e.dataTransfer.setData(
-                        "application/x-pps-sfitem",
-                        JSON.stringify({ fromSfId: sub.id, itemId: it.id, itemIds: carry })
-                      );
-                    }
-                    e.dataTransfer.effectAllowed = "copyMove";
-                  }}
-                  onDragOver={(e) => {
-                    if (!onReorderItems) return;
-                    if (dragIdx === null) return;
-                    e.preventDefault();
-                    e.dataTransfer.dropEffect = "move";
-                    if (dropIdx !== idx) setDropIdx(idx);
-                  }}
-                  onDragLeave={() => { if (dropIdx === idx) setDropIdx(null); }}
-                  onDrop={(e) => {
-                    if (!onReorderItems) return;
-                    e.preventDefault();
-                    const from = Number(e.dataTransfer.getData("application/x-pps-filename-reorder"));
-                    setDragIdx(null);
-                    setDropIdx(null);
-                    if (Number.isFinite(from) && from !== idx) onReorderItems(from, idx);
-                  }}
-                  onDragEnd={() => { setDragIdx(null); setDropIdx(null); }}
-                  className={`flex items-center gap-1.5 px-2 py-1.5 rounded border group transition-colors cursor-pointer ${
-                    isDragging
-                      ? "border-primary-earth bg-primary-earth/20 opacity-50"
-                      : isDropTarget
-                      ? "border-primary-earth border-dashed bg-primary-earth/10"
-                      : isTicked
-                      ? "border-primary-earth bg-primary-earth/15 ring-1 ring-primary-earth"
-                      : "border-app bg-app/40 hover:border-primary-earth/40"
-                  }`}
-                  data-testid={`subfolder-filename-item-${it.id}`}
-                  data-idx={idx}
-                  data-selected={isTicked ? "true" : "false"}
-                  title={selectMode
-                    ? "Click to toggle the checkbox. Drag any ticked chip to move all selected together."
-                    : "Drag to reorder within this list, or drag onto another sub-folder row to MOVE it there (Ctrl-drag to copy)"}
-                >
-                  {/* v1.4.5d — Checkbox visible only in select mode. */}
-                  {selectMode && (
-                    <input
-                      type="checkbox"
-                      checked={isTicked}
-                      onChange={(e) => { e.stopPropagation(); toggleOne(it.id); }}
-                      className="accent-[color:var(--primary-earth,#a3835a)] shrink-0"
-                      onClick={(e) => e.stopPropagation()}
-                      data-testid={`subfolder-filename-check-${it.id}`}
-                    />
-                  )}
-                  {onReorderItems && (
-                    <GripVertical
-                      size={10}
-                      className="text-dim group-hover:text-primary-earth cursor-grab active:cursor-grabbing shrink-0"
-                      title="Drag to reorder"
-                    />
-                  )}
-                  <TagChipIcon item={it} />
-                  <span className="flex-1 text-sm truncate">{it.label}</span>
-                  {onMoveItem && !selectMode && (
-                    <>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, -1); }}
-                        disabled={idx === 0}
-                        className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed hidden group-hover:flex"
-                        data-testid={`subfolder-filename-up-${it.id}`}
-                        title="Move up"
-                      >
-                        <ArrowUp size={11} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, +1); }}
-                        disabled={idx === items.length - 1}
-                        className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth disabled:opacity-30 disabled:cursor-not-allowed hidden group-hover:flex"
-                        data-testid={`subfolder-filename-down-${it.id}`}
-                        title="Move down"
-                      >
-                        <ArrowDown size={11} />
-                      </button>
-                    </>
-                  )}
-                  {onConvertToNested && !selectMode && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onConvertToNested(it.id); }}
-                      className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth hidden group-hover:flex"
-                      data-testid={`subfolder-filename-convert-${it.id}`}
-                      title={`Convert "${it.label}" → nested sub-folder under "${sub.name}"`}
-                    >
-                      <ArrowRight size={11} />
-                    </button>
-                  )}
-                  {!selectMode && (
-                    <button
-                      onClick={(e) => { e.stopPropagation(); onRemoveItem(it.id); }}
-                      className="w-5 h-5 rounded items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] hidden group-hover:flex"
-                      data-testid={`subfolder-filename-remove-${it.id}`}
-                      title="Remove this filename tag (goes to Trash)"
-                    >
-                      <Trash2 size={11} />
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          {/* v1.4.5d — Floating bulk action bar. Renders inline below the
-              grid whenever the user has ticked at least one chip. */}
-          {selectMode && selected.size > 0 && (
-            <div
-              className="mt-2 px-3 py-2 rounded border border-primary-earth bg-primary-earth/10 flex items-center gap-2 flex-wrap"
-              data-testid="subfolder-filename-bulkbar"
-            >
-              <span className="text-xs font-medium text-primary-earth">
-                {selected.size} tag{selected.size === 1 ? "" : "s"} selected
-              </span>
-              <div className="ml-auto flex items-center gap-1.5">
-                <button
-                  onClick={selectAll}
-                  disabled={selected.size === items.length}
-                  className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-app disabled:opacity-40"
-                  data-testid="bulkbar-select-all"
-                  title="Tick every chip in this list"
-                >
-                  Select all
-                </button>
-                <button
-                  onClick={clearAll}
-                  className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-app"
-                  data-testid="bulkbar-clear"
-                  title="Uncheck every chip but stay in multi-select mode"
-                >
-                  Clear
-                </button>
-                {onConvertToNestedBulk && (
-                  <button
-                    onClick={doBulkConvert}
-                    className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-primary-earth/50 text-primary-earth flex items-center gap-1"
-                    data-testid="bulkbar-convert"
-                    title={`Turn each selected tag into its own nested sub-folder under "${sub.name}"`}
-                  >
-                    <FolderPlus size={11} /> Convert → nested
-                  </button>
-                )}
-                <button
-                  onClick={doBulkDelete}
-                  className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-app text-dim hover:text-[color:var(--danger,#c0392b)] flex items-center gap-1"
-                  data-testid="bulkbar-delete"
-                  title="Send every selected chip to the Chip Trash (you can restore from the header)"
-                >
-                  <Trash2 size={11} /> Delete
-                </button>
-              </div>
-            </div>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-
-/**
- * Tiny icon renderer used by SubfolderFilenameEditor. Reads the item's
+ * Tiny icon renderer used by chip rows. Reads the item's
  * iconType/iconName/imageDataUrl and renders the correct visual. Falls
  * back to a generic Tag icon.
  */
