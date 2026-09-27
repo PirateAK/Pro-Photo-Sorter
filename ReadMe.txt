@@ -1,6 +1,6 @@
 ========================================================================
               PRO PHOTO SORTER — READ ME FIRST
-                      Version 1.4.5e  (September 2026)
+                      Version 1.4.7  (February 2026)
 ========================================================================
 
 Thanks for grabbing Pro Photo Sorter. This is a fully offline Windows
@@ -10,68 +10,53 @@ machine.
 
 
 ------------------------------------------------------------------------
-  WHAT'S NEW IN 1.4  (highlights since 1.3.1)
+  WHAT'S NEW IN 1.4.7  (highlights since 1.4.5)
 ------------------------------------------------------------------------
 
-  UNLIMITED NESTED SUB-FOLDERS
-     Categories can now nest sub-folders as deep as you like. Great
-     for Sports -> Baseball (AL) -> Baltimore Orioles -> Player name.
-     Every level saves and reloads exactly as you left it.
+  XMP SIDECARS FOR LIGHTROOM
+     Every stored photo now drops a matching .xmp file alongside it
+     with your star rating and every folder / filename tag inside.
+     Lightroom, Bridge, and Capture One pick these up automatically
+     on their next catalog import — your tagging work is portable
+     across your whole DAM chain.
 
-  MULTI-SOURCE ROOTS
-     Load a second source folder (thumb drive, NAS mount) alongside
-     the primary one. The filmstrip splits so you can pull photos
-     from both without unloading either. Great for pairing an SD
-     card with your archive.
+  EDITOR ROUND-TRIP
+     Crop, rotate, or fine-tune a photo in the built-in editor and
+     the saved _edit_<stamp>.jpg inherits every folder tag,
+     filename tag, and the star rating from the original. No more
+     re-tagging after a quick edit.
 
-  FIRST-RUN SAMPLE FOLDER
-     On first launch we drop a small folder of demo photos in
-     Documents so you can play with sorting before touching your
-     own shoot. Restore the samples any time from Settings.
+  COMPARE-MODE STORE FLOURISH
+     Store a photo in x2 / x3 view and a green "Stored" pulse
+     paints the active pane before the strip shifts on. Confirms
+     the store with a satisfying beat instead of a silent hop.
 
-  SMART-PASTE TAGS
-     Paste a roster (comma, semicolon, OR newline separated) into
-     any "New tag" or "New sub-folder" box and it splits into the
-     right number of chips automatically. Works everywhere in the
-     Tag Manager. Confirms before adding 250+ chips so you don't
-     freeze the app.
+  COMPARE MODE — ACTIVE FOLLOWS CLICK
+     Clicking any visible pane in x2 / x3 view now only moves the
+     ACTIVE ring + label to that pane. Images do not slide. The
+     strip shifts only when you (a) Store the active photo, (b)
+     Delete it, (c) hit the left/right nav arrows, or (d) click a
+     filmstrip thumb (loads into the active pane).
 
-  CROSS-FOLDER TAG DRAG
-     Drag any filename-tag chip onto another sub-folder row (even
-     if it's collapsed) to MOVE it there. Ctrl-drag copies. Works
-     across sibling teams inside nested sub-folders too.
+  RESIZE CROP — ORIENTATION TOGGLE + CORNER DRAG
+     The Resize modal now offers Auto / Tall / Wide buttons so you
+     can force portrait or landscape crops regardless of the source
+     shape. Four corner handles let you shrink the crop to as tight
+     as 20% of max fit while the aspect ratio stays pinned.
 
-  MULTI-SELECT + BULK ACTIONS
-     Each sub-folder's chip area has a "Select" toggle. Flip it on
-     to reveal checkboxes on every chip. Tick as many as you want,
-     then Delete, Convert to nested, or drag them all together.
+  CLEANER DESTINATION PATHS
+     Fixed a v1.4.6 regression that inserted an "unsorted" folder
+     into paths that already had a pack + sub-folder context (e.g.
+     Wildlife / unsorted / Birds -> now correctly Wildlife / Birds).
 
-  CHIP TRASH (UNDO)
-     Every deleted filename tag lands in a trash bin at the top of
-     the Tag Manager. Restore selected chips back to their original
-     sub-folder anytime — capped at 200 items with oldest-first
-     evict so it never fills up.
-
-  COMPARE VIEW WITH PER-PANE ZOOM
-     Switch to 2x or 3x view and each pane is independently
-     zoomable. Mouse wheel over any pane to inspect side-by-side
-     without the filmstrip sliding out from under you. Left/right
-     arrow buttons still work in compare mode.
-
-  SPLASH SCREEN ON UPGRADES
-     A one-time welcome pops on first launch after each version
-     bump — highlights what's new, then you're back to work.
-
-  EDITOR AUTO-ENHANCE, CROP-IN-PLACE, RESET-TO-LAST
-     One-click auto-enhance with an on/off toggle, floating
-     Apply-crop pill so you never lose the OK button, and a 10-
-     step history stack for "Reset to last" so a bad edit is one
-     click away from being undone.
-
-  THUMBNAIL LOADING PLACEHOLDERS + LIVE CACHE STATS
-     Dashed borders + spinners so a slow drive doesn't look
-     frozen. Settings shows the exact cache size and a confirm
-     dialog before clearing it.
+  Plus everything shipped in 1.4.0 -> 1.4.5:
+     - Unlimited nested sub-folders
+     - Multi-Source Roots (two folders side-by-side)
+     - Smart-paste rosters + guardrails for huge lists
+     - Cross-folder tag drag + multi-select bulk actions
+     - Chip Trash with Restore
+     - Per-pane zoom in compare view
+     - First-run sample folder + splash on upgrades
 
 
 ------------------------------------------------------------------------
@@ -79,7 +64,7 @@ machine.
 ------------------------------------------------------------------------
 
   1. Double-click:
-        Pro Photo Sorter Setup 1.4.5.exe
+        Pro Photo Sorter Setup 1.4.7.exe
 
   2. If Windows shows a blue "SmartScreen" warning, click
         "More info" -> "Run anyway"
@@ -120,7 +105,8 @@ machine.
      destination path like:
         Wildlife / Bears / Grizzly / Alaska_Trip
      Photos are stored with their tags applied — original files are
-     never overwritten.
+     never overwritten. A matching .xmp sidecar is dropped next to
+     each stored JPEG so Lightroom sees your stars + tags on import.
 
 
 ------------------------------------------------------------------------
@@ -154,16 +140,59 @@ machine.
 
 
 ------------------------------------------------------------------------
+  COMPARE MODE — SIDE-BY-SIDE SORTING
+------------------------------------------------------------------------
+
+  The toolbar has an x1 / x2 / x3 segmented control. Pick x2 or x3
+  to load that many images into the viewer at once.
+
+     Click a pane      Moves ACTIVE ring + label there. Images do
+                       not slide. All tags, ratings, and Store
+                       apply to the ACTIVE pane.
+
+     Store (active)    Files the active photo AND paints a green
+                       "Stored" pulse where it was. The strip
+                       shifts one to the left; a fresh photo lands
+                       in the rightmost pane.
+
+     Arrow keys / <>   Whole strip shifts one; ACTIVE stays pinned
+                       in the same pane position.
+
+     Filmstrip click   The clicked photo loads into the ACTIVE
+                       pane. Window auto-shifts so the click lands
+                       under the ring.
+
+
+------------------------------------------------------------------------
   KEYBOARD SHORTCUTS
 ------------------------------------------------------------------------
 
-  Arrow keys      Previous / next photo (main window)
+  Arrow keys      Previous / next photo (or shift strip in compare)
   1 - 5           Set star rating on current photo
   0               Clear star rating
   Space           Toggle repeat-last-tags on next store
+  x1 / x2 / x3    Cycle compare view
   \ or `          Peek original (holds while pressed) in Editor
   Enter           Commit current tag input / add sub-folder
   Esc             Cancel current pop-over / disarm icon
+
+
+------------------------------------------------------------------------
+  LIGHTROOM WORKFLOW (XMP SIDECARS)
+------------------------------------------------------------------------
+
+  Every Store writes a companion .xmp file next to the JPEG:
+
+        Bald_Eagle.jpg
+        Bald_Eagle.jpg.xmp   <- keywords + rating live here
+
+  In Lightroom Classic:
+     1. File > Import Photos and Video
+     2. Point at the destination folder from Pro Photo Sorter
+     3. Under Metadata Presets, enable "Read metadata from files"
+
+  Your stars and tag keywords appear on every photo automatically.
+  Bridge and Capture One follow the same convention.
 
 
 ------------------------------------------------------------------------
@@ -205,6 +234,12 @@ machine.
   Cross-folder drag isn't landing
      Make sure you're dropping ON the row header (not just near
      it). A primary-earth ring lights up when the drop is valid.
+
+  Lightroom isn't picking up my tags
+     Make sure "Read metadata from files" is enabled in your
+     Lightroom Metadata preferences, AND right-click the folder
+     in Lightroom > "Read Metadata from Files" once to force a
+     re-scan of the .xmp sidecars.
 
 
 ------------------------------------------------------------------------

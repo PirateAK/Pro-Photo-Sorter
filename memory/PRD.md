@@ -1577,3 +1577,38 @@ Kurt greenlit shipping three quick wins together while deferring True RAW decodi
 **v2 roadmap (parked)**
 - **True RAW decoding** — libraw / dcraw bundled with Electron for accurate CR2 / NEF / ARW / DNG rendering.
 - **AI search** — face recognition, subject clustering, and natural-language folder queries as the v2 flagship features.
+
+
+### Iteration 37 — v1.4.7 · Docs seal + destination path fix (2026-02-13)
+
+Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface plus a small `unsorted`-folder path bug.
+
+**Bug fix — `unsorted` folder inserted into paths with pack + sub-folder context**
+- Root cause: `renderTemplate` emits the string `"unsorted"` as a fallback for `{folders}` when the folders row has no chips. `composeDestFolderParts` appended that literal to the path even when the pack name + sub-folder chain already provided full context (e.g. Kurt's `Wildlife/unsorted/Birds/Bald_Eagle.jpg` case).
+- Fix (`App.js` `composeDestFolderParts`): strip case-insensitive `"unsorted"` entries from `folderPartsFromTemplate` whenever `activePack?.name` OR `subChain` provides any non-empty segment. Kept the fallback only for the true orphan case (no pack, no sub-folder) so lost photos still land in a labeled bin.
+- New regression suite `tests/destFolderCompose.test.mjs` — 8 assertions covering Kurt's exact case, deep sub-folder chains, orphan preservation, case-insensitivity, whitespace filtering.
+
+**Docs seal — v1.4.5e → v1.4.7 refresh across every surface**
+- `ReadMe.txt` — rewrote "WHAT'S NEW IN 1.4.7" block with XMP sidecars, Editor Round-Trip, compare-mode active-follows-click, orientation toggle + corner-drag, green pulse flourish, `unsorted` fix, plus a new "COMPARE MODE — SIDE-BY-SIDE SORTING" section and a "LIGHTROOM WORKFLOW (XMP SIDECARS)" section. Installer filename bumped to `1.4.7.exe`.
+- `QUICK_START.md` — rewrote with new Compare view spec, Editor round-trip section, Resize crop orientation + corner drag section, XMP sidecar Lightroom setup, plus the mandatory "sidecar drops next to every Store" line in the first-launch walkthrough.
+- `USER_GUIDE.md` — brand-new sections replacing the old ones: Compare View (Active Follows Click), Editor Round-Trip, Resize Crop (Orientation + Corner Drag), XMP Sidecars for Lightroom, Compare-Mode Store Flourish. Bug-report version stamp updated to v1.4.7.
+- `CHANGELOG.md` — added consolidated **v1.4.7** entry covering the full v1.4.0-v1.4.7 arc grouped under Added / Fixed / Files touched / v2 roadmap.
+- `frontend/public/docs/*.md` mirrored so in-app Help modal serves the fresh docs at runtime.
+- `dist-docs/Quick Start.pdf` + `User Guide.pdf` regenerated via `node scripts/build-docs-pdf.js`.
+
+**Version stamps synced across the whole build**
+- `frontend/src/buildInfo.json` → 1.4.7 (runtime splash + About pill).
+- `frontend/package.json` → 1.4.7.
+- `electron-shell/package.json` → 1.4.7 (fixes `Pro Photo Sorter Setup 1.4.5.exe` → `Pro Photo Sorter Setup 1.4.7.exe` in `dist/`).
+
+**Files touched**
+- Fixed: `frontend/src/App.js` (`composeDestFolderParts` filter).
+- Created: `frontend/tests/destFolderCompose.test.mjs` (8 assertions).
+- Refreshed: `ReadMe.txt`, `QUICK_START.md`, `USER_GUIDE.md`, `CHANGELOG.md`, `frontend/public/docs/QUICK_START.md`, `frontend/public/docs/USER_GUIDE.md`, `frontend/public/docs/CHANGELOG.md`, `dist-docs/Quick Start.pdf`, `dist-docs/User Guide.pdf`.
+- Version bumps: `frontend/src/buildInfo.json`, `frontend/package.json`, `electron-shell/package.json`.
+
+**Test posture**
+- All 29 `.mjs` regression suites green (14 legacy + 7 xmp + 8 destFolderCompose).
+- Smoke: preview builds, splash renders v1.4.7 with updated highlight copy.
+
+**Marketing kit (draft)** — see next iteration entry.

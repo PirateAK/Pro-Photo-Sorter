@@ -330,7 +330,7 @@ The gear icon opens Settings:
 ## Reporting Bugs
 
 The bottom-right corner of the Destination panel shows the version and build
-date, e.g. `v1.4.5e · 2026-09-26`. **Please include this string** in any bug
+date, e.g. `v1.4.7 · 2026-02-13`. **Please include this string** in any bug
 report so we know exactly which build you're on.
 
 Screenshots, the source folder path, and the exact steps to reproduce are
@@ -340,7 +340,7 @@ gold — the more you share, the faster the fix.
 ---
 
 
-# New in v1.4 (September 2026)
+# New in v1.4.7 (February 2026)
 
 Everything below is **added on top** of the v1.3 workflow above — nothing was removed. If your muscle memory is from v1.3, keep doing what you're doing; the new features surface as extra buttons and gestures.
 
@@ -456,26 +456,72 @@ Open it to see:
 The bin is capped at 200 items with oldest-first evict so it never leaks storage.
 
 
-## Compare View — Per-Pane Zoom
+## Compare View — Active Follows Click (v1.4.7)
 
-Toolbar buttons **×1 / ×2 / ×3** switch how many images sit side-by-side.
+Toolbar buttons **×1 / ×2 / ×3** switch how many images sit side-by-side. In v1.4.7 the compare view has a strict "active follows click, images stay put" rule so you can inspect a fixed set of similar shots without the strip sliding out from under you.
 
+**What clicking a pane does:**
+- Moves the ACTIVE ring + label to that pane. Zero image reshuffle.
+
+**When the images slide (four triggers, exactly):**
+1. **Store the active photo** — its pane pulses green ("Stored ✓"), the strip shifts one to the left, and a fresh photo lands in the rightmost pane.
+2. **Delete the active photo** — same behavior as Store.
+3. **Left / Right nav arrow** (or ← / → keys) — whole strip shifts one; ACTIVE stays pinned in the same pane position.
+4. **Filmstrip click** — the clicked photo loads into the ACTIVE pane. The window auto-shifts so the click lands under the ring.
+
+**Other compare-mode goodies:**
 - Every pane is independently zoomable — mouse wheel over any pane zooms just that one
-- Left/right arrow buttons still work in compare mode — they advance the active pane
-- The filmstrip stops sliding out from under you while comparing
-- Star rating still applies to the active (highlighted) pane
+- Star rating (1-5, 0) still applies to the active (highlighted) pane
 - Press **×1** to return to single view for tagging & icon-drag
 
 
-## Editor Auto-Enhance / Crop-in-Place / Reset-to-Last
+## Editor Round-Trip (v1.4.6+)
 
-The Editor window (Ctrl+E) has three v1.4-specific goodies:
+Open a photo in the Editor (Ctrl+E), crop or rotate, hit Save. The new `<original>_edit_<timestamp>.jpg` file **inherits every folder tag, filename tag, and the star rating** from the original photo — no re-tagging after a quick edit.
 
+Also in the Editor:
 - **Auto-Enhance toggle** — one click balances tone, saturation, and mild sharpen. Toggle it off to compare against the original.
 - **Draw crop region → floating Apply pill** — as soon as you draw a crop rectangle, an Apply/Cancel pill hovers over the top-center of the stage so it's always in reach. Apply crop bakes the crop in-place so you can keep editing on the cropped version.
 - **Reset to last** — 10-step history of destructive edits. One click reverts just the most recent bake. **Reset all** wipes every edit and reloads the original.
 - Cancel also exits crop mode (the "Draw crop region" toggle un-lights) so you're never stuck in cropping mode.
 - **Slider quick-reset** — click the value pill on any slider to snap it back to default.
+
+
+## Resize Crop — Orientation Toggle & Corner Drag (v1.4.6+)
+
+The Resize modal (open via any 4×6 / 5×7 / 8×10 / etc. button) has been upgraded:
+
+- **Auto / Tall / Wide** buttons in the header force the crop into portrait or landscape shape regardless of the source photo's orientation. Auto = match source.
+- **Four corner handles** on the crop rectangle let you shrink the crop to as tight as 20% of the max fit. Aspect ratio stays pinned so the print size is always honoured.
+- **Drag inside** the crop to reposition; **Auto-center · Max size** button resets to full-size centered.
+- The preview canvas now sizes itself to match the source photo's aspect ratio, so portrait sources no longer letterbox awkwardly inside a fixed landscape frame.
+- Live readout in the corner: `size: XX% · center: x XX% · y XX%`.
+
+
+## XMP Sidecars for Lightroom (v1.4.6+)
+
+Every Store now drops a companion `.xmp` sidecar next to the JPEG. Lightroom, Bridge, and Capture One pick these up automatically.
+
+**What's in the sidecar:**
+- `xmp:Rating` — your star rating (1-5, or omitted if you didn't rate)
+- `dc:subject` — a keyword bag containing every folder tag AND every filename tag applied to the photo
+- `xmp:CreatorTool` — the Pro Photo Sorter version that wrote the file
+
+**Lightroom Classic setup (one-time):**
+1. Edit → Preferences → Metadata → tick **Automatically write changes into XMP** *(this is for LR itself; Pro Photo Sorter writes sidecars unconditionally)*
+2. Import your Pro Photo Sorter destination folder
+3. Right-click the folder → **Read Metadata from Files** to force a scan on first import
+
+After that, every future Store is picked up automatically on your next Sync.
+
+**Sidecar naming:** `PhotoName.jpg` → `PhotoName.jpg.xmp` (the Adobe-preferred full-basename convention).
+
+**Opt-out:** Currently on by default with no UI toggle. If you *don't* want sidecars, edit `%APPDATA%\Pro Photo Sorter\<settings>.json` and set `"writeXmpSidecar": false`. A proper toggle will land in Settings when there's demand.
+
+
+## Compare-Mode Store Flourish (v1.4.6+)
+
+Storing a photo in ×2 / ×3 view now paints a green "Stored ✓" pulse on the pane you filed before the strip shifts on. Batch stores skip the pulse to avoid spamming the screen.
 
 
 ## Thumbnail Loading + Cache Stats
@@ -492,7 +538,7 @@ Settings → **Thumbnail cache** shows:
 
 | Key | Action |
 | --- | --- |
-| Arrow keys | Previous / next photo |
+| Arrow keys | Previous / next photo (or shift the strip in ×2/×3) |
 | 1 – 5 | Set star rating |
 | 0 | Clear star rating |
 | Space | Toggle repeat-last-tags |

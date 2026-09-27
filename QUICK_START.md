@@ -1,12 +1,12 @@
 # Pro Photo Sorter — Quick Start
 
-**Version 1.4.5e · Fully offline · Windows desktop**
+**Version 1.4.7 · Fully offline · Windows desktop**
 
 ---
 
 ## Install (60 seconds)
 
-1. Double-click **Pro Photo Sorter Setup 1.4.5.exe**
+1. Double-click **Pro Photo Sorter Setup 1.4.7.exe**
 2. If Windows shows a blue "SmartScreen" warning: **More info → Run anyway** (indie app, not Microsoft-signed)
 3. Wait for the installer to finish. The app opens automatically.
 
@@ -21,7 +21,7 @@ Installed to: `C:\Users\<You>\AppData\Local\Programs\Pro Photo Sorter\`
 3. Click **Load Source** (top-left) → pick a folder of photos. They appear in the filmstrip.
 4. Click any photo → arrow keys / arrow buttons move through. Press **1–5** to rate.
 5. Open **Tag Manager** (toolbar) → pick a Category → drill into its sub-folder tree → click chips to build a destination path like `Wildlife / Bears / Grizzly / Alaska_Trip`.
-6. Store the photo with **Ctrl+S** (or the Store button). Originals never overwritten — a fresh JPG is written to your destination.
+6. Store the photo with **Ctrl+S** (or the Store button). Originals never overwritten — a fresh JPG is written to your destination **with a matching `.xmp` sidecar** so Lightroom sees your stars + tags on next import.
 
 ---
 
@@ -51,12 +51,40 @@ Installed to: `C:\Users\<You>\AppData\Local\Programs\Pro Photo Sorter\`
 
 ---
 
-## Compare view
+## Compare view — side-by-side sorting
 
 - Toolbar shows **×1 / ×2 / ×3** — switches how many images sit side-by-side
+- **Click any pane** → moves the ACTIVE ring + label there. Images do NOT slide.
+- **Store** the active photo → a green "Stored" pulse paints the pane, then the strip shifts one to the left
+- **Left/right arrows** → whole strip shifts one; ACTIVE stays pinned in the same pane
+- **Filmstrip click** → the clicked photo loads into the ACTIVE pane
 - Each pane is independently zoomable (mouse wheel over the pane)
-- Left/right arrow buttons still work — they advance the active pane
-- Press **×1** to return to single view and resume tagging
+
+---
+
+## Editor round-trip (v1.4.6+)
+
+Open a photo in the built-in Editor, crop or rotate, hit Save.
+The new `<original>_edit_<timestamp>.jpg` inherits **every folder tag, filename tag, and the star rating** from the original — no re-tagging needed.
+
+---
+
+## Resize crop — orientation + corner drag (v1.4.6+)
+
+In the Resize modal:
+- **Auto / Tall / Wide** buttons force the crop into portrait or landscape shape regardless of the source
+- **Four corner handles** let you shrink the crop to 20% of max fit — aspect ratio stays pinned so the print size is honoured
+- **Drag inside** the crop to reposition; **Auto-center** resets to max fit + centered
+
+---
+
+## Lightroom sync (XMP sidecars)
+
+Every Store now drops a `PhotoName.jpg.xmp` next to the JPEG containing your rating + keywords.
+- **Lightroom Classic**: enable *Metadata → Read metadata from files*, then right-click the folder → *Read Metadata from Files*
+- **Bridge / Capture One**: automatic on next catalog refresh
+
+Your tagging work now travels with the photos.
 
 ---
 

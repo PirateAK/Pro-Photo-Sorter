@@ -2,6 +2,80 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.4.7 — 2026-02-13 · Lightroom sync + compare-mode polish (v1 seal)
+
+The closing act of v1. Consolidates every change from v1.4.0 through v1.4.7.
+
+### Added — Lightroom / DAM interop
+- **XMP sidecars on every Store.** A `PhotoName.jpg.xmp` file is written next to every stored JPEG containing star rating (`xmp:Rating`) and every folder + filename tag (`dc:subject` bag). Compatible with Lightroom Classic, Bridge, and Capture One. Opt-out via `writeXmpSidecar: false` in settings.
+- **Editor Round-Trip.** Saving an edited photo (`<name>_edit_<timestamp>.jpg`) now inherits every folder tag, filename tag, and the star rating from the original so cropping / rotating never wipes tagging work.
+
+### Added — Compare view refit
+- **Active follows click.** In ×2 / ×3, clicking a visible pane only moves the ACTIVE ring + label. Images never slide.
+- **Sliding triggers narrowed to four.** Store, Delete, Left/Right nav arrow, or a filmstrip click. Filmstrip clicks in compare mode load the clicked photo into the ACTIVE pane (window auto-shifts to place it under the ring).
+- **Green "Stored ✓" pulse** paints the active pane when Store fires in ×2 / ×3.
+
+### Added — Resize modal upgrades
+- **Orientation toggle (Auto / Tall / Wide)** forces portrait or landscape crops regardless of the source photo's shape. Output filename gains `_tall` / `_wide` suffix when non-Auto so mixed exports don't collide.
+- **Corner-drag aspect-locked resize.** Four handles let the crop shrink to 20% of max fit while preserving the print aspect ratio.
+- **Canvas re-shapes to the source.** No more portrait sources letterboxed inside a fixed landscape frame — the preview always fills the modal.
+
+### Added — Cascade Tag Manager v2 (v1.4.0-v1.4.5)
+- **Unlimited nested sub-folders** — any sub-folder can host children, which can host children, forever. All levels persist and reload as-is.
+- **Smart-paste rosters** — pasting comma / newline / semicolon lists into any tag input splits into individual chips atomically. Guardrails at 250+ chips.
+- **Cross-folder tag drag + drop** — drag any chip onto another sub-folder row header (even collapsed) to move it. Ctrl-drag copies.
+- **Multi-select bulk actions** — per-sub-folder [Select] toggle reveals checkboxes; floating bar offers Delete / Convert-to-nested / drag-together.
+- **Chip Trash** — every deleted filename tag lands in an in-app trash bin with Restore. 200-item cap with oldest-first eviction.
+
+### Added — Workflow enhancements
+- **Multi-Source Roots** — open a SECOND source folder alongside the primary. Both filmstrips render side-by-side. One-tap "Swap active roots" so Store / Delete always target the right shoot.
+- **First-run sample folder** — a starter pack of demo photos lands in Documents on first launch. Restore from Settings anytime.
+- **Splash screen on version bumps** — one-time welcome per install showing the highlights of the just-installed version.
+- **Custom filename templates** with `{folders}`, `{tags}`, `{date}`, `{stars}`, `{original}`, `{ext}`, plus numbered `{folder1}` / `{tag1}` tokens and validation of unknown tokens with "did you mean?" suggestions.
+
+### Added — Editor upgrades
+- **Auto-Enhance toggle** — one-click tone / saturation / sharpen with A/B compare.
+- **Draw crop region → floating Apply/Cancel pill** so the OK button is always visible.
+- **10-step Reset-to-last** history stack.
+- **Slider quick-reset pills** — click any value pill to snap to default.
+
+### Added — Compare view (v1.4.5c → v1.4.5g)
+- **Per-pane independent zoom** — mouse wheel or +/- targets whichever pane's active.
+- **Two-tone ACTIVE ring** with pill for high-contrast pane identification at any screen size.
+- Filmstrip auto-scroll disabled in compare mode so it doesn't jerk under Kurt while comparing.
+
+### Fixed
+- **`unsorted` folder no longer inserted into paths** that already have a pack + sub-folder context. `Wildlife → Birds → Bald Eagle` now correctly stores to `Wildlife/Birds/Bald_Eagle.jpg` instead of `Wildlife/unsorted/Birds/Bald_Eagle.jpg`.
+- **Compare-mode flashing** eliminated — the `transition-all` animation that ran on every pane click was replaced with an instant ring swap.
+- **Wide crop preview on portrait sources** no longer looks tiny — the preview canvas matches source aspect ratio.
+- **Editor crop Cancel** now also exits crop mode so the "Draw crop region" toggle un-lights.
+- **Filename-tag chip** cross-folder drag now includes both reorder AND cross-folder payloads so either drop target wins.
+- **Row-header drop targets** now accept drops even when the sub-folder is collapsed.
+- **Filename tag pill** in compare mode is now solid `--surface` with dark ring so it reads on any image colour.
+
+### Files touched during v1.4 arc
+- `frontend/src/App.js` (core state + storeCurrent + confirmResizeStore + editor round-trip + compareWindowStart + green flash + composeDestFolderParts)
+- `frontend/src/components/CategoryManager.jsx` (cascade v2 + bulk + Trash)
+- `frontend/src/components/NestedSubfolderEditor.jsx` (recursive infinite nesting + smart paste)
+- `frontend/src/components/ComparisonView.jsx` (fully-controlled window, per-pane zoom, active-follows-click)
+- `frontend/src/components/ResizeCropModal.jsx` (orientation toggle + corner-drag + aspect-fit canvas)
+- `frontend/src/components/ImageEditor.jsx` (auto-enhance + crop-in-place + Reset-to-last)
+- `frontend/src/lib/xmp.js` (new)
+- `frontend/src/lib/chipTrash.js` (new)
+- `frontend/src/lib/resize.js` (orientation + sizeFrac)
+- `frontend/src/lib/template.js` (unknown-token validator)
+- `frontend/src/components/SplashScreen.jsx` (new)
+- `electron-shell/main.js` (multi-source, sample folder)
+- Docs: `ReadMe.txt`, `QUICK_START.md`, `USER_GUIDE.md`, `CHANGELOG.md`, plus regenerated PDFs.
+
+### Version
+- `buildInfo.json`, `frontend/package.json`, and `electron-shell/package.json` all bumped to **1.4.7**.
+
+### v2 roadmap (parked)
+- **True RAW decoding** — libraw / dcraw bundled with Electron for accurate CR2 / NEF / ARW / DNG rendering.
+- **AI search** — face recognition, subject clustering, and natural-language folder queries as the v2 flagship features.
+
+
 ## v1.3.0 — 2026-02-21 · CASCADE Tag Manager (Category → Sub-Folder → Filename)
 
 ### Reshaped
