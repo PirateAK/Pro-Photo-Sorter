@@ -1532,3 +1532,48 @@ Kurt reported that in ×2 / ×3 compare view, clicking a non-active pane still s
 - All 14 `.mjs` regression suites green.
 - Smoke test: splash shows `v1.4.5i · offline · built for photographers who shoot more than they type`. Compile clean (only pre-existing eslint warnings on unrelated `currentOverlay`).
 - Windows verification pending — Kurt to run the packaged `.bat` and test the four slide-only triggers.
+
+
+### Iteration 36 — v1.4.6 · Editor Round-Trip + XMP Sidecars + Store flourish (2026-02-13)
+
+Kurt greenlit shipping three quick wins together while deferring True RAW decoding + AI search to a v2 release band.
+
+**1. Editor Round-Trip (P1 clear)**
+- When `ImageEditor` saves an `<original>_edit_<stamp>.jpg`, App.js now clones the ORIGINAL photo's overlay (`appliedByImage[originalName]`) and star rating (`ratings[${sourcePath}/${originalName}]`) onto the new filename before refreshing the folder listing.
+- Chip `uid`s are regenerated on clone so the two photos can be independently reordered without collision.
+- Toast: "Edit inherits tags & stars from original" so Kurt sees the round-trip landed.
+- No-op path: if the editor closes without saving (`newFileName === null`) or writes back to the same name, nothing changes.
+
+**2. XMP Sidecars — write-only (P1 clear)**
+- Added `/app/frontend/src/lib/xmp.js` with `buildXmpPacket({ keywords, stars, version })` and `writeXmpSidecar({ dirHandle, jpegName, keywords, stars, version })`.
+- Packet format is Adobe RDF/XML with `xmp:Rating` (integer 0..5, omitted at 0 so Lightroom sees "unrated" instead of "zero stars") and `dc:subject` (deduped, trimmed keyword bag). `xmp:CreatorTool` embeds the Pro Photo Sorter build version.
+- Written next to every stored JPEG from BOTH the standard `storeCurrent` loop (single + batch) AND the resize `confirmResizeStore` path. Sidecar naming follows the Adobe-friendly `PhotoName.jpg.xmp` convention.
+- Soft-fail: sidecar write errors are console-warned but never abort a Store. Gated by `settings.writeXmpSidecar !== false` for future opt-out.
+- New regression suite `tests/xmpSidecar.test.mjs` — 7 assertions covering keyword dedupe/trim, rating clamp+round, zero-star omission, empty-input safety, XML escaping, keyword-object `.label` support, version injection.
+
+**3. Compare-mode Store flourish (Spark)**
+- On Store in ×2 / ×3 compare mode (single-photo only — batches skip the pulse to avoid screen spam), App.js snapshots the ACTIVE pane's `getBoundingClientRect()`, then renders a fixed-position green pulse overlay + pop-and-drift "Stored ✓" badge at that spot for 480 ms.
+- Overlay is `position: fixed`, so it stays where the pane WAS on screen even after the strip shifts underneath — reads as "that spot got a store, next photo is on deck".
+- Two CSS keyframes added to `index.css`: `pps-flash-pulse` (inset emerald glow + inner ring) and `pps-flash-badge` (scale-in pop + upward drift + fade).
+
+**Splash refresh**
+- Bumped highlights: "One-shot photo editor" now mentions "tags and star rating follow the edit". "100% offline" is now "100% offline · Lightroom-ready" with a .xmp sidecar callout so Kurt's first-boot users see the flagship v1.4.6 wins immediately.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.6** (build date 2026-02-13). Package.json files stay at `1.4.5` since the release band is still 1.4.x.
+
+**Files touched**
+- Created: `frontend/src/lib/xmp.js`, `frontend/tests/xmpSidecar.test.mjs`.
+- Updated: `frontend/src/App.js` (xmp import + write in storeCurrent + confirmResizeStore, editor round-trip on onClose, compareFlash state + trigger + overlay render), `frontend/src/components/SplashScreen.jsx` (highlight copy), `frontend/src/index.css` (2 keyframes), `frontend/src/buildInfo.json`.
+
+**Test posture**
+- All 21 `.mjs` regression suites green (14 legacy + 7 new xmp).
+- Smoke: splash renders `v1.4.6` with updated highlight copy, no compile errors, only pre-existing `currentOverlay` eslint warnings.
+- Windows verification pending — Kurt to run the packaged `.bat` and validate:
+  1. Storing in ×2 / ×3 shows the green pulse at the active pane.
+  2. Editing a photo produces `*_edit_<stamp>.jpg` with tags and stars intact.
+  3. Every stored photo has a companion `.xmp` sidecar readable by Lightroom.
+
+**v2 roadmap (parked)**
+- **True RAW decoding** — libraw / dcraw bundled with Electron for accurate CR2 / NEF / ARW / DNG rendering.
+- **AI search** — face recognition, subject clustering, and natural-language folder queries as the v2 flagship features.
