@@ -1,0 +1,404 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Pro Photo Sorter — the offline photo organizer that hands your work back to Lightroom</title>
+<meta name="description" content="Sort thousands of photos with no internet. Unlimited nested tag folders, side-by-side compare, built-in editor, and Lightroom-compatible .xmp sidecars. Windows. $29 lifetime. No subscription." />
+<meta property="og:title" content="Pro Photo Sorter — offline photo organizer for Windows" />
+<meta property="og:description" content="Cull and tag thousands of shots off-grid, then hand every star and keyword to Lightroom. $29 lifetime, no subscription." />
+<meta property="og:image" content="https://muskegman.com/assets/app-hero.png" />
+<meta property="og:url" content="https://muskegman.com/" />
+<meta name="twitter:card" content="summary_large_image" />
+<link rel="icon" type="image/png" href="assets/icon.png" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --bg:#1A1715; --bg-deep:#110F0E; --surface:#26221F; --surface-2:#332D29; --border:#423A35;
+    --primary:#C68A53; --primary-hover:#D99D66; --sage:#7A9073; --terra:#B65A5A;
+    --text:#F2EBE5; --dim:#A69C95; --inverse:#1A1715;
+    --h:'Manrope',sans-serif; --b:'IBM Plex Sans',sans-serif; --m:'JetBrains Mono',monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--text);font-family:var(--b);line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  ::selection{background:var(--primary);color:var(--inverse)}
+  a{color:inherit;text-decoration:none}
+  img{display:block;max-width:100%}
+  .wrap{width:min(1180px,92vw);margin:0 auto}
+  h1,h2,h3{font-family:var(--h);letter-spacing:-.02em;line-height:1.1}
+  h1{font-size:clamp(2.4rem,5.2vw,4.2rem);font-weight:800}
+  h2{font-size:clamp(1.7rem,3.2vw,2.6rem);font-weight:800}
+  h3{font-size:1.1rem;font-weight:700}
+  .eyebrow{font-family:var(--m);font-size:.75rem;letter-spacing:.14em;text-transform:uppercase;color:var(--primary)}
+  .dim{color:var(--dim)}
+  .mono{font-family:var(--m)}
+
+  /* grain */
+  body::before{content:"";position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.045;
+    background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")}
+  main,header,footer{position:relative;z-index:1}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;backdrop-filter:blur(16px);background:rgba(26,23,21,.72);border-bottom:1px solid var(--border)}
+  nav .wrap{display:flex;align-items:center;justify-content:space-between;height:64px}
+  .brand{display:flex;align-items:center;gap:.65rem;font-family:var(--h);font-weight:800;font-size:1.05rem}
+  .brand img{width:30px;height:30px;border-radius:7px}
+  .navlinks{display:flex;gap:1.6rem;font-size:.9rem;color:var(--dim)}
+  .navlinks a{transition:color .2s}.navlinks a:hover{color:var(--text)}
+  @media(max-width:760px){.navlinks{display:none}}
+
+  .btn{display:inline-flex;align-items:center;gap:.5rem;padding:.8rem 1.35rem;border-radius:999px;font-weight:600;font-size:.95rem;border:1px solid transparent;transition:transform .18s,background-color .2s,border-color .2s,box-shadow .2s;cursor:pointer;white-space:nowrap}
+  .btn:hover{transform:translateY(-2px)}
+  .btn-primary{background:var(--primary);color:var(--inverse);box-shadow:0 8px 28px -10px rgba(198,138,83,.7)}
+  .btn-primary:hover{background:var(--primary-hover);box-shadow:0 12px 32px -10px rgba(198,138,83,.9)}
+  .btn-ghost{background:transparent;color:var(--text);border-color:var(--border)}
+  .btn-ghost:hover{border-color:var(--primary);background:var(--surface)}
+  .btn-sm{padding:.55rem 1rem;font-size:.85rem}
+
+  /* hero */
+  .hero{padding:clamp(3.5rem,9vw,7.5rem) 0 3rem}
+  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:4rem;align-items:center}
+  @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:3rem}}
+  .hero p.lead{font-size:1.2rem;color:var(--dim);margin:1.5rem 0 2.2rem;max-width:34rem}
+  .hero h1 em{font-style:normal;color:var(--primary)}
+  .cta-row{display:flex;gap:.9rem;flex-wrap:wrap;align-items:center}
+  .cta-note{font-size:.8rem;color:var(--dim);margin-top:1rem}
+  .cta-note b{color:var(--text);font-weight:600}
+  .shot{position:relative;border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--bg-deep);
+    box-shadow:0 40px 80px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.02) inset;transform:rotate(-1.2deg);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
+  .shot:hover{transform:rotate(0) scale(1.01)}
+  .shot img{width:100%;max-height:520px;object-fit:cover;object-position:center}
+  .shot-bar{height:30px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px}
+  .shot-bar i{width:10px;height:10px;border-radius:50%;background:var(--border)}
+  .shot-bar i:first-child{background:var(--terra)}.shot-bar i:nth-child(2){background:var(--primary)}.shot-bar i:nth-child(3){background:var(--sage)}
+
+  /* reveal */
+  .rv{opacity:0;transform:translateY(18px);animation:rv .8s cubic-bezier(.2,.8,.2,1) forwards}
+  .d1{animation-delay:.08s}.d2{animation-delay:.18s}.d3{animation-delay:.3s}.d4{animation-delay:.42s}
+  @keyframes rv{to{opacity:1;transform:none}}
+
+  /* problem strip */
+  .strip{border-top:1px solid var(--border);border-bottom:1px solid var(--border);background:var(--bg-deep);padding:2.2rem 0;margin-top:3rem}
+  .strip .wrap{display:grid;grid-template-columns:repeat(3,1fr);gap:2rem}
+  @media(max-width:760px){.strip .wrap{grid-template-columns:1fr}}
+  .strip .item{display:flex;gap:.9rem;align-items:flex-start;color:var(--dim);font-size:.95rem}
+  .strip .x{color:var(--terra);font-family:var(--m);font-weight:600;flex-shrink:0}
+  .strip b{color:var(--text);font-weight:600}
+
+  section{padding:clamp(4rem,8vw,6.5rem) 0}
+  .sec-head{max-width:40rem;margin-bottom:3rem}
+  .sec-head h2{margin:.7rem 0 1rem}
+  .sec-head p{color:var(--dim);font-size:1.05rem}
+
+  /* features */
+  .feat{display:grid;grid-template-columns:repeat(3,1fr);gap:1.1rem}
+  @media(max-width:900px){.feat{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:600px){.feat{grid-template-columns:1fr}}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.6rem;transition:border-color .25s,transform .25s,background-color .25s;position:relative;overflow:hidden}
+  .card:hover{border-color:rgba(198,138,83,.6);transform:translateY(-3px);background:var(--surface-2)}
+  .card .ic{width:40px;height:40px;border-radius:10px;display:grid;place-items:center;background:rgba(198,138,83,.14);color:var(--primary);margin-bottom:1.1rem}
+  .card .ic svg{width:20px;height:20px}
+  .card h3{margin-bottom:.5rem}
+  .card p{color:var(--dim);font-size:.93rem}
+  .card .path{margin-top:.9rem;font-family:var(--m);font-size:.74rem;color:var(--primary);background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;display:inline-block}
+  .card.wide{grid-column:span 2}
+  @media(max-width:600px){.card.wide{grid-column:span 1}}
+
+  /* how */
+  .how{background:var(--bg-deep);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--surface)}
+  @media(max-width:900px){.steps{grid-template-columns:repeat(2,1fr)}}
+  @media(max-width:560px){.steps{grid-template-columns:1fr}}
+  .step{padding:1.8rem 1.6rem;border-right:1px solid var(--border);position:relative}
+  .step:last-child{border-right:0}
+  @media(max-width:900px){.step:nth-child(2){border-right:0}.step:nth-child(1),.step:nth-child(2){border-bottom:1px solid var(--border)}}
+  .step .n{font-family:var(--m);font-size:.8rem;color:var(--primary);margin-bottom:.9rem}
+  .step h3{font-size:1.05rem;margin-bottom:.45rem}
+  .step p{color:var(--dim);font-size:.9rem}
+  .step kbd{font-family:var(--m);font-size:.72rem;background:var(--bg-deep);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:.1rem .45rem;color:var(--text)}
+
+  /* lightroom callout */
+  .lr{display:grid;grid-template-columns:1fr 1fr;gap:3.5rem;align-items:center}
+  @media(max-width:900px){.lr{grid-template-columns:1fr}}
+  .xmp{background:var(--bg-deep);border:1px solid var(--border);border-radius:14px;padding:1.4rem 1.6rem;font-family:var(--m);font-size:.8rem;line-height:1.75;color:var(--dim);overflow:auto;box-shadow:0 30px 60px -30px rgba(0,0,0,.8)}
+  .xmp .t{color:var(--sage)}.xmp .a{color:var(--primary)}.xmp .v{color:var(--text)}
+  .checks{list-style:none;margin-top:1.4rem;display:grid;gap:.7rem}
+  .checks li{display:flex;gap:.75rem;align-items:flex-start;color:var(--dim)}
+  .checks li b{color:var(--text);font-weight:600}
+  .checks svg{width:18px;height:18px;color:var(--sage);flex-shrink:0;margin-top:.2rem}
+
+  /* story */
+  .story{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .story .wrap{display:grid;grid-template-columns:.9fr 1.1fr;gap:4rem;align-items:start}
+  @media(max-width:900px){.story .wrap{grid-template-columns:1fr;gap:2rem}}
+  .story blockquote{font-family:var(--h);font-size:clamp(1.25rem,2.2vw,1.65rem);font-weight:700;line-height:1.35;letter-spacing:-.01em}
+  .story blockquote span{color:var(--primary)}
+  .story .body p{color:var(--dim);margin-bottom:1.1rem;font-size:1rem}
+  .story .body p b{color:var(--text);font-weight:600}
+  .sig{margin-top:1.6rem;display:flex;align-items:center;gap:.9rem}
+  .sig .av{width:44px;height:44px;border-radius:50%;background:var(--primary);display:grid;place-items:center;color:var(--inverse);font-family:var(--h);font-weight:800}
+  .sig .who{font-size:.9rem}.sig .who small{display:block;color:var(--dim);font-size:.78rem}
+
+  /* pricing */
+  .price-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem;max-width:860px}
+  @media(max-width:760px){.price-grid{grid-template-columns:1fr}}
+  .plan{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2rem;display:flex;flex-direction:column}
+  .plan.hot{border-color:var(--primary);box-shadow:0 30px 70px -40px rgba(198,138,83,.8);position:relative}
+  .plan.hot::before{content:"Lifetime license";position:absolute;top:-12px;left:2rem;background:var(--primary);color:var(--inverse);font-family:var(--m);font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;padding:.25rem .7rem;border-radius:999px}
+  .plan .amt{font-family:var(--h);font-size:3rem;font-weight:800;letter-spacing:-.03em;margin:.6rem 0 .2rem}
+  .plan .amt small{font-size:1rem;color:var(--dim);font-weight:500;letter-spacing:0;font-family:var(--b)}
+  .plan ul{list-style:none;margin:1.4rem 0 1.8rem;display:grid;gap:.6rem;color:var(--dim);font-size:.93rem;flex:1}
+  .plan li{display:flex;gap:.6rem}.plan li::before{content:"—";color:var(--primary)}
+  .compare{margin-top:2.4rem;color:var(--dim);font-size:.9rem;font-family:var(--m)}
+  .compare span{color:var(--text)}
+
+  /* faq */
+  details{border-bottom:1px solid var(--border);padding:1.1rem 0}
+  details:first-of-type{border-top:1px solid var(--border)}
+  summary{cursor:pointer;font-weight:600;font-size:1.02rem;list-style:none;display:flex;justify-content:space-between;align-items:center;gap:1rem}
+  summary::-webkit-details-marker{display:none}
+  summary::after{content:"+";font-family:var(--m);color:var(--primary);font-size:1.3rem;transition:transform .25s}
+  details[open] summary::after{transform:rotate(45deg)}
+  details p{color:var(--dim);margin-top:.7rem;max-width:52rem}
+  .faq-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:3rem}
+  @media(max-width:900px){.faq-grid{grid-template-columns:1fr}}
+
+  /* final cta */
+  .final{text-align:left;background:var(--bg-deep);border-top:1px solid var(--border)}
+  .final .wrap{display:flex;justify-content:space-between;align-items:center;gap:2rem;flex-wrap:wrap}
+  footer{padding:2rem 0 3rem;color:var(--dim);font-size:.82rem}
+  footer .wrap{display:flex;justify-content:space-between;gap:1rem;flex-wrap:wrap}
+  footer a:hover{color:var(--text)}
+</style>
+</head>
+<body>
+
+<nav data-testid="site-nav">
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="assets/icon.png" alt="" />Pro Photo Sorter</a>
+    <div class="navlinks">
+      <a href="#features">Features</a>
+      <a href="#how">How it works</a>
+      <a href="#lightroom">Lightroom</a>
+      <a href="#story">Story</a>
+      <a href="#faq">FAQ</a>
+    </div>
+    <a class="btn btn-primary btn-sm" href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener" data-testid="nav-buy-button">Buy · $29</a>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap hero-grid">
+    <div>
+      <div class="eyebrow rv">Windows · 100% offline · Lightroom-ready</div>
+      <h1 class="rv d1" style="margin-top:1rem">Sort thousands of photos <em>off the grid.</em> Hand Lightroom the finished work.</h1>
+      <p class="lead rv d2">Pro Photo Sorter is a one-time-purchase desktop organizer that lives entirely on your machine. Nested tag folders, side-by-side compare, a built-in editor — and an Adobe-standard <span class="mono">.xmp</span> sidecar next to every photo you store.</p>
+      <div class="cta-row rv d3">
+        <a class="btn btn-primary" href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener" data-testid="hero-buy-button">
+          Buy on Gumroad — $29 lifetime
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </a>
+        <a class="btn btn-ghost" href="https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest" target="_blank" rel="noopener" data-testid="hero-download-button">Download free trial</a>
+      </div>
+      <p class="cta-note rv d4"><b>No subscription. No cloud. No telemetry.</b> The trial has every feature — stored photos just get a small watermark until you enter your key.</p>
+    </div>
+    <div class="shot rv d2" data-testid="hero-screenshot">
+      <div class="shot-bar"><i></i><i></i><i></i></div>
+      <img src="assets/app-hero.png" alt="Pro Photo Sorter welcome screen showing nested folders, one-shot editor, multi-source workflow and offline Lightroom-ready features" width="1600" height="1000" />
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="wrap">
+      <div class="item"><span class="x">✕</span><div><b>Lightroom Cloud</b> needs a connection. On a boat, a plane, or a ridge line, it's a paperweight.</div></div>
+      <div class="item"><span class="x">✕</span><div><b>Photo Mechanic</b> costs $150 and does one thing. Great thing — but one thing.</div></div>
+      <div class="item"><span class="x">✕</span><div><b>Windows Explorer</b> means typing every folder and filename by hand. Thousands of times.</div></div>
+    </div>
+  </div>
+</header>
+
+<main>
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">What's inside</div>
+      <h2>Built for people who shoot more than they type.</h2>
+      <p>Every action is a click, a drag, or a single key. Tag once, store once, and the folder path and filename write themselves.</p>
+    </div>
+    <div class="feat">
+      <div class="card" data-testid="feature-nested-folders">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M8 13h8M8 17h5"/></svg></div>
+        <h3>Unlimited nested categories</h3>
+        <p>Category → Sub-Folder → Filename tag. Drop tags onto a photo and the destination path assembles itself.</p>
+        <div class="path">Sports/Baseball/AL/Yankees_Judge_0412.jpg</div>
+      </div>
+      <div class="card" data-testid="feature-compare">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="8" height="16" rx="1.5"/><rect x="13" y="4" width="8" height="16" rx="1.5"/></svg></div>
+        <h3>Compare ×2 and ×3</h3>
+        <p>Cull near-identical frames side by side with independent zoom in each pane. Rate, tag and store without leaving compare mode.</p>
+      </div>
+      <div class="card" data-testid="feature-editor">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l5 5L8 21H3v-5z"/><path d="M13 6l5 5"/></svg></div>
+        <h3>Built-in editor</h3>
+        <p>Auto-enhance, crop, rotate, straighten, sharpen. Your tags and star rating follow the edited copy, so nothing gets re-typed.</p>
+      </div>
+      <div class="card" data-testid="feature-multisource">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M3 12l9 4.5 9-4.5"/><path d="M3 16.5L12 21l9-4.5"/></svg></div>
+        <h3>Multi-source workflow</h3>
+        <p>Open an SD card and your archive at the same time. Swap the active source with one tap; Store and Delete always know which shoot you're on.</p>
+      </div>
+      <div class="card" data-testid="feature-print">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9V3h12v6"/><rect x="3" y="9" width="18" height="8" rx="2"/><path d="M6 14h12v7H6z"/></svg></div>
+        <h3>Print-ready resize</h3>
+        <p>4×6 · 5×7 · 8×10 · 10×12 · 16×20 at 300 DPI, with a draggable aspect-locked crop preview. Optional watermark baked in.</p>
+      </div>
+      <div class="card" data-testid="feature-offline">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <h3>Your files never leave your PC</h3>
+        <p>One activation ping to Gumroad, then it never phones home. No account, no cloud, no telemetry. Works on satellite, works on nothing.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="how" id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">The loop</div>
+      <h2>Four moves per photo. Then the next one is already loaded.</h2>
+    </div>
+    <div class="steps" data-testid="how-it-works">
+      <div class="step"><div class="n">01</div><h3>Open</h3><p>Point the left tree at any folder — SD card, external drive, NAS. Thumbnails cache locally so the second visit is instant.</p></div>
+      <div class="step"><div class="n">02</div><h3>Tag</h3><p>Drag or click tags onto the photo. Rate with <kbd>1</kbd>–<kbd>5</kbd>. Hit <kbd>R</kbd> to repeat the last set on a similar shot.</p></div>
+      <div class="step"><div class="n">03</div><h3>Store</h3><p>Press <kbd>S</kbd>. The photo lands in the right folder with the right name and an <span class="mono">.xmp</span> sidecar beside it.</p></div>
+      <div class="step"><div class="n">04</div><h3>Repeat</h3><p>Next frame is up. <kbd>Space</kbd> skips, <kbd>Del</kbd> trashes (with undo), <kbd>B</kbd> batches a whole selection at once.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="lightroom">
+  <div class="wrap lr">
+    <div>
+      <div class="eyebrow">Lightroom · Bridge · Photo Mechanic</div>
+      <h2 style="margin:.7rem 0 1rem">Do the work offline. Sync it when you're back on WiFi.</h2>
+      <p class="dim" style="font-size:1.05rem">Every stored photo gets an Adobe-standard XMP sidecar containing your star rating and every keyword. Import the folder into Lightroom and the whole cull shows up — already rated, already tagged. Zero re-typing.</p>
+      <ul class="checks">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Stars round-trip</b> as <span class="mono">xmp:Rating</span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Tags become keywords</b> as <span class="mono">dc:subject</span> — hierarchical, too</div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Originals untouched.</b> Sidecars sit beside the file; nothing is written into your JPEG.</div></li>
+      </ul>
+    </div>
+    <pre class="xmp" data-testid="xmp-sample"><span class="t">&lt;rdf:Description</span> <span class="a">xmlns:xmp</span>=<span class="v">"http://ns.adobe.com/xap/1.0/"</span>
+                 <span class="a">xmlns:dc</span>=<span class="v">"http://purl.org/dc/elements/1.1/"</span>
+                 <span class="a">xmp:Rating</span>=<span class="v">"5"</span><span class="t">&gt;</span>
+  <span class="t">&lt;dc:subject&gt;</span>
+    <span class="t">&lt;rdf:Bag&gt;</span>
+      <span class="t">&lt;rdf:li&gt;</span><span class="v">Wildlife</span><span class="t">&lt;/rdf:li&gt;</span>
+      <span class="t">&lt;rdf:li&gt;</span><span class="v">Bears</span><span class="t">&lt;/rdf:li&gt;</span>
+      <span class="t">&lt;rdf:li&gt;</span><span class="v">Grizzly</span><span class="t">&lt;/rdf:li&gt;</span>
+      <span class="t">&lt;rdf:li&gt;</span><span class="v">Katmai_2026</span><span class="t">&lt;/rdf:li&gt;</span>
+    <span class="t">&lt;/rdf:Bag&gt;</span>
+  <span class="t">&lt;/dc:subject&gt;</span>
+<span class="t">&lt;/rdf:Description&gt;</span></pre>
+  </div>
+</section>
+
+<section class="story" id="story">
+  <div class="wrap">
+    <blockquote>"I built the sorter I needed on a boat in Alaska with satellite internet <span>that isn't worth the name.</span>"</blockquote>
+    <div class="body">
+      <p>I'm Kurt. I've shot wildlife and sports for years, and I spend weeks at a time working off a ship where the connection drops every time the weather turns. <b>Lightroom's cloud features were useless out there,</b> and the offline tools either cost a fortune or made me type every folder name by hand.</p>
+      <p>Then I broke my back and both elbows. Typing went from tedious to genuinely painful. So I built a tool where sorting a photo is a click, a drag, and one key — and where the folder path and filename write themselves from the tags I already applied.</p>
+      <p><b>Pro Photo Sorter is that tool.</b> It's the thing I open every morning on deck with a coffee and 3,000 frames from the day before. I hope it saves you the same hours it saves me.</p>
+      <div class="sig">
+        <div class="av">K</div>
+        <div class="who">Captain Kurt<small>Wildlife &amp; sports photographer · Alaska</small></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="pricing">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Pricing</div>
+      <h2>One price. Yours forever.</h2>
+      <p>Lightroom is $9.99 a month for as long as you use it. Photo Mechanic is $150. This is $29, once.</p>
+    </div>
+    <div class="price-grid">
+      <div class="plan" data-testid="plan-trial">
+        <div class="eyebrow" style="color:var(--dim)">Free trial</div>
+        <div class="amt">$0</div>
+        <p class="dim" style="font-size:.9rem">Every feature unlocked. No time limit.</p>
+        <ul>
+          <li>Full app, all features</li>
+          <li>Stored photos get a small "TRIAL" watermark</li>
+          <li>Filenames get a <span class="mono">_TRIAL</span> suffix</li>
+          <li>Enter your key any time — nothing to reinstall</li>
+        </ul>
+        <a class="btn btn-ghost" href="https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest" target="_blank" rel="noopener" data-testid="plan-trial-download">Download the installer</a>
+      </div>
+      <div class="plan hot" data-testid="plan-lifetime">
+        <div class="eyebrow">Pro Photo Sorter</div>
+        <div class="amt">$29 <small>one-time</small></div>
+        <p class="dim" style="font-size:.9rem">One license key, one PC at a time, all future v1.x updates.</p>
+        <ul>
+          <li>Watermark and <span class="mono">_TRIAL</span> suffix removed</li>
+          <li>Your own custom watermark text, font and position</li>
+          <li>Lightroom-compatible XMP sidecars</li>
+          <li>Six starter tag packs + icon packs included</li>
+          <li>Built-in auto-updater — new releases in one click</li>
+        </ul>
+        <a class="btn btn-primary" href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener" data-testid="plan-lifetime-buy">Buy on Gumroad — $29</a>
+      </div>
+    </div>
+    <p class="compare">Photo Mechanic <span>$150</span> · Lightroom <span>$120/yr</span> · ACDSee Pro <span>$90</span> · Pro Photo Sorter <span>$29 once</span></p>
+  </div>
+</section>
+
+<section id="faq">
+  <div class="wrap faq-grid">
+    <div>
+      <div class="eyebrow">Questions</div>
+      <h2 style="margin:.7rem 0 1rem">Things people ask before buying.</h2>
+      <p class="dim">Still stuck? Email <a href="mailto:kurt@muskegman.com" style="color:var(--primary)">kurt@muskegman.com</a> — replies may take a day if the boat's out of range.</p>
+    </div>
+    <div data-testid="faq-list">
+      <details><summary>Does it work with RAW files?</summary><p>Version 1 sorts, tags and stores any file your camera writes — RAW included — but the viewer previews JPEG, PNG, WebP, GIF and BMP. Native RAW previews are the headline feature for v2. Shoot RAW+JPEG and you get the best of both today.</p></details>
+      <details><summary>Does it modify my original photos?</summary><p>Never. Store copies (or moves, if you choose) your file to the destination and writes a separate <span class="mono">.xmp</span> sidecar. Edits are always saved as new files. Deleted photos go to a <span class="mono">.pps-trash</span> folder with one-click undo.</p></details>
+      <details><summary>Is it really offline?</summary><p>Yes. The only network call is a single license check against Gumroad when you enter your key. After that it never connects. There is no account, no sync, no analytics.</p></details>
+      <details><summary>What about Mac or Linux?</summary><p>Windows 10/11 only for now. Mac is on the roadmap once v1 is paying for the coffee.</p></details>
+      <details><summary>Can I move my tag packs to another PC?</summary><p>Yes — Tag Manager has Export, Import and a one-click "Backup All" zip. The app also keeps a daily safety backup in your Documents folder so a reinstall never loses your work.</p></details>
+      <details><summary>Refunds?</summary><p>If it doesn't fit your workflow, reply to your Gumroad receipt within 30 days and you'll get your money back. No forms.</p></details>
+    </div>
+  </div>
+</section>
+
+<section class="final">
+  <div class="wrap">
+    <div>
+      <h2>Ready when you are.</h2>
+      <p class="dim" style="margin-top:.5rem">Download the trial, open a folder of photos, and sort ten of them. You'll know in five minutes.</p>
+    </div>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener" data-testid="footer-buy-button">Buy — $29 lifetime</a>
+      <a class="btn btn-ghost" href="https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest" target="_blank" rel="noopener" data-testid="footer-download-button">Free trial</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>© 2026 Muskegman · Pro Photo Sorter v1.4.7 · Built for photographers</div>
+    <div style="display:flex;gap:1.4rem">
+      <a href="https://github.com/PirateAK/Pro-Photo-Sorter" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener">Gumroad</a>
+      <a href="mailto:kurt@muskegman.com">Contact</a>
+    </div>
+  </div>
+</footer>
+</body>
+</html>
