@@ -1279,6 +1279,50 @@ Kurt's UX picks: 1-c collapsible accordions in the left rail, 2-c split-filmstri
 - testing_agent Playwright pass: **95% initial → 100% after fixes** — nested-button DOM issue fixed and re-verified manually via screenshot tool (aria-expanded flips cleanly `true → false → true` on chevron/label clicks; Open button coordinates confirm proper stopPropagation isolation).
 
 
+### Iteration 35 — v1.4.5d · Chip Trash + Multi-select (bottom pane) (2026-09-26)
+
+**BIG additions Kurt asked for after v1.4.5c smoke-test:**
+
+**Nested filename-tag drag between siblings (Sports → Baltimore Orioles → other-team flow):**
+- Each nested filename-tag chip inside `NestedSubfolderEditor` is now `draggable` with an `application/x-pps-nested-tag` payload carrying `{ fromChildId, tagId }`.
+- Every nested child row body is a drop target — accepts the payload (collapsed or expanded), shows a primary-earth ring/tint hover, drops trigger `moveTagBetweenChildren(fromChildId, toChildId, tagId, mode)`.
+- Ctrl-drag copies; plain drag moves. Duplicate-name in target is skipped with a friendly toast so nothing is silently overwritten.
+- Toast: `Moved "Rutschman" to "Boston Red Sox"`.
+
+**Chip Trash / Undo bin (`frontend/src/lib/chipTrash.js`, `TrashPanel` in `CategoryManager`):**
+- Every filename-tag delete anywhere in the Tag Manager (bottom Filename Tags pane, inline chevron-expanded chip remove, nested chip remove, plus bulk-delete via multi-select) now pushes the chip into a persistent trash queue in `localStorage["pps.chip-trash"]`.
+- Cap 200 items with FIFO evict — never leaks storage.
+- New header button "Trash · N" opens a full panel: checkbox list of deleted chips with breadcrumbs ("from Wildlife › Mammals"), relative timestamps ("just now" / "2m ago" / "3d ago"), Select all / Clear / Restore selected / Empty trash, plus per-row Restore.
+- Restore walks the current categories tree — if the deepest owner still exists it drops the chip back in place with a collision-safe rename ("`Lynx (restored)`"); if any hop is missing it stays in trash with a helpful error toast.
+- `pps:trash-updated` custom event keeps the header count and panel in sync in real time.
+
+**Multi-select on the bottom "Filename Tags" pane (`SubfolderFilenameEditor`):**
+- New "Select" toggle in the pane header. Flipping ON shows a checkbox on every chip; ticks accumulate into a `Set<itemId>`.
+- Clicking anywhere on a chip in select mode toggles the tick (big-target, injury-friendly).
+- Floating action bar appears when ≥1 chip is ticked: `[N tags selected] [Select all] [Clear] [Convert → nested] [Delete]`.
+- Bulk **Delete** routes through `removeSubfolderItemsBulk` (single atomic state update + push-many-to-trash) so undo is fully wired.
+- Bulk **Convert → nested** routes through `convertSubfolderItemsToNestedBulk` (single atomic patch that promotes ticked chips to sibling nested sub-folders; collision-skipped chips stay behind visible so Kurt can decide).
+- Drag any ticked chip → `application/x-pps-sfitem` payload carries `itemIds: []` (the whole selection); receiver can move them all together (existing single-drop path unaffected).
+- Selection auto-prunes stale ids when the underlying items change (external delete, folder swap).
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5d** (build date 2026-09-26). Release band still v1.4.5.
+
+**Files touched**
+- New: `frontend/src/lib/chipTrash.js` (pushToTrash / pushManyToTrash / getTrash / restoreChip / locateOwnerNode / emptyTrash / cap constants).
+- Updated: `frontend/src/components/CategoryManager.jsx` (Trash button in header, `TrashPanel` component, bulk helpers `removeSubfolderItemsBulk` / `convertSubfolderItemsToNestedBulk`, trash wiring on every delete path, `SubfolderFilenameEditor` overhaul with select mode + bulk bar + multi-drag).
+- Updated: `frontend/src/components/NestedSubfolderEditor.jsx` (per-chip drag + row drop target for cross-sibling move, `moveTagBetweenChildren` helper, `trashContext` propagation on recursion, `removeTagFromChild` wired to trash + new bulk variant).
+- Updated: `frontend/src/buildInfo.json`.
+
+**Test posture**
+- Live Playwright smoke: multi-select mode → tick 3 chips → bulk-bar shows "3 tags selected" → Delete → Trash counter goes to 3 → open Trash panel shows 3 rows with correct breadcrumbs → Select all + Restore → chips return to Mammals, Trash counter back to 0. Cross-sibling nested drag confirmed via dispatchEvent probe in v1.4.5c.
+
+**Still deferred to v1.4.5e (next iteration, Kurt confirmed A + iii + trash):**
+- Multi-select mode in the inline chevron-expanded chip area (`SubfolderItemChip` inside each top-level sub-folder row).
+- Multi-select mode inside `NestedSubfolderEditor` (nested filename-tag chips per child, e.g. inside Baltimore Orioles).
+- Docs refresh remains queued.
+
+
 ### Backlog — Documentation Refresh (queued for next session, top priority)
 
 Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to reflect v1.4.0 → v1.4.2 changes before the next release.

@@ -8,7 +8,17 @@ import { parseTagList, serializePack as serializePackText, serializePacks as ser
 import { toast } from "sonner";
 import NestedSubfolderEditor from "./NestedSubfolderEditor";
 import PasteRosterButton, { parseRoster, guardLargePaste } from "./PasteRosterButton";
-import { ArrowRight, GripVertical } from "lucide-react";
+import { ArrowRight, GripVertical, RotateCcw, Undo2 } from "lucide-react";
+import {
+  pushToTrash,
+  pushManyToTrash,
+  getTrash,
+  getTrashCount,
+  restoreChip,
+  removeFromTrash,
+  removeManyFromTrash,
+  emptyTrash,
+} from "../lib/chipTrash";
 
 // Curated built-in icons
 const BUILTIN_ICONS = [
@@ -47,8 +57,225 @@ function IconPreview({ item, size = 20 }) {
 
 export { IconPreview };
 
+// v1.4.5d — Chip Trash panel. Sits on top of the Tag Manager modal
+// (its own overlay). Lists every deleted filename tag with breadcrumbs
+// so Kurt can pick which ones to restore. Restore walks the current
+// categories tree — if the original owner still exists it drops the
+// chip back with a label collision guard; otherwise it toasts a
+// helpful error so nothing gets silently misplaced.
+function TrashPanel({ categories, onChange, onClose }) {
+  const [items, setItems] = useState(() => getTrash());
+  const [picked, setPicked] = useState(new Set());
+  useEffect(() => {
+    const refresh = () => setItems(getTrash());
+    window.addEventListener("pps:trash-updated", refresh);
+    return () => window.removeEventListener("pps:trash-updated", refresh);
+  }, []);
+
+  const toggle = (id) => {
+    setPicked((cur) => {
+      const next = new Set(cur);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const pickAll = () => setPicked(new Set(items.map((r) => r.id)));
+  const pickNone = () => setPicked(new Set());
+
+  const doRestore = (ids) => {
+    if (ids.length === 0) return;
+    let nextCategories = categories;
+    const restored = [];
+    const failed = [];
+    // Restore newest → oldest so a matching label collision numbers
+    // stack up predictably.
+    const ordered = items.filter((r) => ids.includes(r.id)).sort((a, b) => b.ts - a.ts);
+    for (const rec of ordered) {
+      const result = restoreChip(nextCategories, rec, { newId: uid });
+      if (result.ok) {
+        nextCategories = result.categories;
+        restored.push({ id: rec.id, label: result.restoredLabel });
+      } else {
+        failed.push(rec);
+      }
+    }
+    if (restored.length > 0) {
+      onChange(nextCategories);
+      removeManyFromTrash(restored.map((r) => r.id));
+      toast.success(
+        `Restored ${restored.length} chip${restored.length === 1 ? "" : "s"}`,
+        failed.length > 0
+          ? { description: `${failed.length} couldn't be placed — their original sub-folder was removed. Kept in Trash so you can decide.` }
+          : undefined,
+      );
+    } else if (failed.length > 0) {
+      toast.error("Couldn't restore any chips", {
+        description: "Every original parent has been deleted. Recreate the sub-folder first, then try again.",
+      });
+    }
+    setPicked(new Set());
+  };
+
+  const doEmpty = () => {
+    if (items.length === 0) return;
+    if (!window.confirm(`Empty the Chip Trash?\n\n${items.length} deleted chip${items.length === 1 ? "" : "s"} will be gone for good. This can't be undone.`)) return;
+    emptyTrash();
+    setPicked(new Set());
+    toast.success("Chip Trash emptied");
+  };
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center p-6" data-testid="trash-panel">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative pane rounded-lg shadow-2xl flex flex-col" style={{ width: "min(720px, 100%)", maxHeight: "min(78vh, 720px)" }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-app">
+          <div className="flex items-center gap-2">
+            <Trash2 size={16} className="text-primary-earth" />
+            <h3 className="font-heading font-semibold text-base">Chip Trash</h3>
+            <span className="text-xs text-dim font-mono">{items.length} item{items.length === 1 ? "" : "s"}</span>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover"
+            data-testid="trash-panel-close"
+            title="Close (deleted chips stay in the bin until you restore or empty)"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {items.length === 0 ? (
+          <div className="flex-1 flex items-center justify-center text-sm text-dim px-6 py-10 text-center">
+            <div>
+              <p className="mb-1 font-medium text-app">Chip Trash is empty.</p>
+              <p className="text-xs">Deleted filename tags land here so a wrong click doesn't cost you the label. They stick around until you restore or empty the bin.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="px-4 py-2 border-b border-app/60 flex items-center gap-2 text-xs">
+              <button
+                onClick={pickAll}
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app"
+                data-testid="trash-pick-all"
+              >
+                Select all
+              </button>
+              <button
+                onClick={pickNone}
+                disabled={picked.size === 0}
+                className="px-2 py-1 rounded bg-app hover:bg-surface-hover border border-app disabled:opacity-40"
+                data-testid="trash-pick-none"
+              >
+                Clear
+              </button>
+              <span className="text-dim ml-1">{picked.size} selected</span>
+              <div className="ml-auto flex items-center gap-2">
+                <button
+                  onClick={() => doRestore(Array.from(picked))}
+                  disabled={picked.size === 0}
+                  className="px-3 py-1 rounded bg-primary-earth text-[color:var(--text-inverse)] font-medium flex items-center gap-1 disabled:opacity-40"
+                  data-testid="trash-restore-selected"
+                  title={picked.size > 0
+                    ? `Restore ${picked.size} chip${picked.size === 1 ? "" : "s"} back to their original sub-folders`
+                    : "Pick chips above, then click here to put them back."}
+                >
+                  <Undo2 size={12} /> Restore selected
+                </button>
+                <button
+                  onClick={doEmpty}
+                  className="px-3 py-1 rounded bg-app hover:bg-surface-hover border border-app text-dim hover:text-danger-earth flex items-center gap-1"
+                  data-testid="trash-empty"
+                  title="Delete every chip in the bin permanently"
+                >
+                  <Trash2 size={12} /> Empty trash
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-auto divide-y divide-app/40" data-testid="trash-list">
+              {[...items].sort((a, b) => b.ts - a.ts).map((rec) => {
+                const isPicked = picked.has(rec.id);
+                const when = new Date(rec.ts);
+                const ago = timeAgo(rec.ts);
+                const trail = (rec.pathNames || []).filter(Boolean).join(" › ") || "(unknown path)";
+                return (
+                  <label
+                    key={rec.id}
+                    className={`flex items-start gap-3 px-4 py-2.5 cursor-pointer hover:bg-surface-hover ${isPicked ? "bg-primary-earth/10" : ""}`}
+                    data-testid={`trash-row-${rec.id}`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isPicked}
+                      onChange={() => toggle(rec.id)}
+                      className="mt-1 accent-[color:var(--primary-earth,#a3835a)]"
+                      data-testid={`trash-check-${rec.id}`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <IconPreview item={rec.chip} size={14} />
+                        <span className="font-mono text-sm truncate">{rec.chip.label}</span>
+                      </div>
+                      <div className="text-[10px] text-dim mt-0.5 truncate" title={trail}>
+                        from <span className="text-app">{trail}</span>
+                      </div>
+                    </div>
+                    <div className="text-[10px] text-dim shrink-0 mt-1 font-mono" title={when.toLocaleString()}>
+                      {ago}
+                    </div>
+                    <button
+                      onClick={(e) => { e.preventDefault(); doRestore([rec.id]); }}
+                      className="opacity-60 hover:opacity-100 text-xs px-1.5 py-0.5 rounded border border-primary-earth/40 text-primary-earth"
+                      data-testid={`trash-restore-${rec.id}`}
+                      title="Restore just this chip"
+                    >
+                      Restore
+                    </button>
+                  </label>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div className="px-4 py-2 border-t border-app/60 text-[10px] text-dim">
+          Trash holds up to 200 chips. Oldest fall off automatically when new ones come in.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Tiny helper — "2m ago", "3h ago", "4d ago". Uses relative units up
+// to a week, then falls back to a locale date string.
+function timeAgo(ts) {
+  const now = Date.now();
+  const d = Math.max(0, now - ts);
+  const s = Math.floor(d / 1000);
+  if (s < 45) return "just now";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const dy = Math.floor(h / 24);
+  if (dy < 7) return `${dy}d ago`;
+  return new Date(ts).toLocaleDateString();
+}
+
 export default function CategoryManager({ open, onClose, categories, onChange, customImages = [], onCustomImagesChange }) {
   const [activeCat, setActiveCat] = useState(categories[0]?.id || null);
+  // v1.4.5d — Chip Trash. Header shows a live count; clicking opens
+  // the panel where Kurt can select which chips to restore or empty.
+  const [trashOpen, setTrashOpen] = useState(false);
+  const [trashCount, setTrashCount] = useState(() => getTrashCount());
+  useEffect(() => {
+    const refresh = () => setTrashCount(getTrashCount());
+    window.addEventListener("pps:trash-updated", refresh);
+    // Also refresh whenever the Tag Manager opens so the count reflects
+    // any deletes that happened while it was closed.
+    if (open) refresh();
+    return () => window.removeEventListener("pps:trash-updated", refresh);
+  }, [open]);
   // v1.2.8 — resizable modal. Size persisted to localStorage; defaults tuned
   // to be close to the old fixed size (max-w-4xl / h-80vh).
   const SIZE_KEY = "pps.tagmgr.size.v1";
@@ -383,13 +610,101 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
     }));
     toast.success(`Converted "${it.label}" to nested sub-folder`);
   };
+  // v1.4.5d — Bulk-convert a SET of filename tags to nested sub-folders
+  // in ONE atomic commit. Skips names that would collide with existing
+  // nested folders under the same parent so nothing is silently merged.
+  const convertSubfolderItemsToNestedBulk = (sfId, itemIds) => {
+    if (!current || !Array.isArray(itemIds) || itemIds.length === 0) return 0;
+    const sf = (current.subfolders || []).find((s) => s.id === sfId);
+    if (!sf) return 0;
+    const set = new Set(itemIds);
+    const goingUp = (sf.filenameItems || []).filter((it) => set.has(it.id));
+    if (goingUp.length === 0) return 0;
+    const existingChildNames = new Set((sf.subfolders || []).map((c) => (c.name || "").toLowerCase()));
+    const additions = [];
+    for (const it of goingUp) {
+      const nm = (it.label || "").toLowerCase();
+      if (existingChildNames.has(nm)) continue;
+      existingChildNames.add(nm);
+      additions.push({
+        id: uid("sf"),
+        name: (it.label || "Nested").slice(0, 60),
+        iconType: it.iconType || "lucide",
+        iconName: it.iconName || "Folder",
+        ...(it.iconData ? { iconData: it.iconData } : {}),
+        filenameItems: [],
+        subfolders: [],
+      });
+    }
+    if (additions.length === 0) return 0;
+    // Only pull the labels we actually promoted out of filenameItems —
+    // the collision-skipped ones stay behind so Kurt sees them clearly.
+    const promotedLabels = new Set(additions.map((a) => a.name.toLowerCase()));
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) =>
+        s.id !== sfId ? s : {
+          ...s,
+          filenameItems: (s.filenameItems || []).filter((x) => {
+            if (!set.has(x.id)) return true;
+            return !promotedLabels.has((x.label || "").toLowerCase());
+          }),
+          subfolders: [...(s.subfolders || []), ...additions],
+        }
+      ),
+    }));
+    return additions.length;
+  };
   const removeSubfolderItem = (sfId, itemId) => {
+    // v1.4.5d — Snapshot the chip for the Trash bin BEFORE removing.
+    // Restore later will find the same sfId inside categoryId and drop
+    // the chip back on its original filenameItems list.
+    if (current) {
+      const sf = (current.subfolders || []).find((s) => s.id === sfId);
+      const chip = sf?.filenameItems?.find((it) => it.id === itemId);
+      if (chip) {
+        pushToTrash({
+          chip,
+          categoryId: current.id,
+          sfPath: [sfId],
+          pathNames: [current.name, sf.name],
+          deletedFromLabel: sf.name,
+        });
+      }
+    }
     updateCurrentPack((c) => ({
       ...c,
       subfolders: (c.subfolders || []).map((s) =>
         s.id === sfId ? { ...s, filenameItems: (s.filenameItems || []).filter((it) => it.id !== itemId) } : s
       ),
     }));
+  };
+  // v1.4.5d — Bulk-remove filename tags in ONE atomic state update.
+  // Pushes each chip to Trash before removing so multi-delete is fully
+  // undoable. Used by the multi-select "Delete selected" action.
+  const removeSubfolderItemsBulk = (sfId, itemIds) => {
+    if (!current || !Array.isArray(itemIds) || itemIds.length === 0) return 0;
+    const sf = (current.subfolders || []).find((s) => s.id === sfId);
+    if (!sf) return 0;
+    const idSet = new Set(itemIds);
+    const goners = (sf.filenameItems || []).filter((it) => idSet.has(it.id));
+    if (goners.length === 0) return 0;
+    pushManyToTrash(
+      goners.map((chip) => ({
+        chip,
+        categoryId: current.id,
+        sfPath: [sfId],
+        pathNames: [current.name, sf.name],
+        deletedFromLabel: sf.name,
+      }))
+    );
+    updateCurrentPack((c) => ({
+      ...c,
+      subfolders: (c.subfolders || []).map((s) =>
+        s.id === sfId ? { ...s, filenameItems: (s.filenameItems || []).filter((it) => !idSet.has(it.id)) } : s
+      ),
+    }));
+    return goners.length;
   };
 
   // v1.4.0 — Recursive nested-subfolder tree editor callback. The
@@ -942,13 +1257,33 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
             <Palette size={18} className="text-primary-earth" />
             <h2 className="font-heading font-semibold text-lg">Tag Manager</h2>
           </div>
-          <button
-            onClick={onClose}
-            className="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover"
-            data-testid="category-manager-close"
-          >
-            <X size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            {/* v1.4.5d — Chip Trash button. Live count updates via the
+                pps:trash-updated event. Opens the panel where Kurt can
+                selectively restore deleted chips or empty the bin. */}
+            <button
+              onClick={() => setTrashOpen(true)}
+              className={`h-8 px-2.5 rounded flex items-center gap-1.5 text-xs border transition-colors ${
+                trashCount > 0
+                  ? "border-primary-earth bg-primary-earth/10 text-primary-earth hover:bg-primary-earth/20"
+                  : "border-app text-dim hover:bg-surface-hover"
+              }`}
+              data-testid="tagmgr-trash-open"
+              title={trashCount > 0
+                ? `${trashCount} deleted chip${trashCount === 1 ? "" : "s"} — click to review or restore`
+                : "Chip Trash is empty. Deleted filename tags show up here so you can undo mistakes."}
+            >
+              <Trash2 size={12} />
+              <span>Trash{trashCount > 0 ? ` · ${trashCount}` : ""}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover"
+              data-testid="category-manager-close"
+            >
+              <X size={16} />
+            </button>
+          </div>
         </div>
 
         <div className="flex-1 flex overflow-hidden">
@@ -1248,10 +1583,12 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                         onAddItem={(label) => addSubfolderItem(selectedSub.id, label)}
                         onAddItemsBulk={(labels) => addSubfolderItemsBulk(selectedSub.id, labels)}
                         onRemoveItem={(itemId) => removeSubfolderItem(selectedSub.id, itemId)}
+                        onRemoveItemsBulk={(itemIds) => removeSubfolderItemsBulk(selectedSub.id, itemIds)}
                         onSwapItemIcon={(itemId, patch) => swapSubfolderItemIcon(selectedSub.id, itemId, patch)}
                         onMoveItem={(itemId, dir) => moveSubfolderItemWithin(selectedSub.id, itemId, dir)}
                         onReorderItems={(fromIdx, toIdx) => reorderSubfolderItems(selectedSub.id, fromIdx, toIdx)}
                         onConvertToNested={(itemId) => convertSubfolderItemToNested(selectedSub.id, itemId)}
+                        onConvertToNestedBulk={(itemIds) => convertSubfolderItemsToNestedBulk(selectedSub.id, itemIds)}
                       />
                     )}
                   </div>
@@ -1326,6 +1663,17 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
             <path d="M0 10 L10 10 L10 0 Z M0 6 L6 0 M3 10 L10 3 M7 10 L10 7" stroke="currentColor" strokeWidth="1" fill="currentColor" />
           </svg>
         </div>
+
+        {/* v1.4.5d — Chip Trash panel. Nested inside the Tag Manager modal
+            (not a separate portal) so it inherits our resize + z-index and
+            closes cleanly with the manager. */}
+        {trashOpen && (
+          <TrashPanel
+            categories={categories}
+            onChange={onChange}
+            onClose={() => setTrashOpen(false)}
+          />
+        )}
 
         {/* Bundle picker overlay — nested inside the Tag Manager modal */}
         {bundlePickerOpen && (
@@ -2245,6 +2593,11 @@ function SubfolderSection({
                         node={sf}
                         onChange={(patched) => onReplaceSubfolderNode(sf.id, patched)}
                         ancestorPath={[{ name: pack?.name }]}
+                        trashContext={{
+                          categoryId: pack?.id,
+                          sfIdPath: [sf.id],
+                          sfNamePath: [pack?.name, sf.name].filter(Boolean),
+                        }}
                       />
                     )}
                   </div>
@@ -2465,26 +2818,59 @@ function SubfolderFilenameEditor({
   onAddItem,
   onAddItemsBulk,        // v1.4.5 — atomic bulk-add (fn(labels[]) → count)
   onRemoveItem,
+  onRemoveItemsBulk,     // v1.4.5d — atomic bulk-remove (fn(itemIds[]) → count)
   onSwapItemIcon,
   onMoveItem,            // v1.4.5 — fn(itemId, dir) — arrow-key reorder
   onReorderItems,        // v1.4.5 — fn(fromIdx, toIdx) — drag reorder
   onConvertToNested,     // v1.4.5 — fn(itemId) — per-tag → nested sub-folder
+  onConvertToNestedBulk, // v1.4.5d — fn(itemIds[]) → count — atomic multi-convert
 }) {
   const [draft, setDraft] = useState("");
-  const [dragIdx, setDragIdx] = useState(null);   // v1.4.5 — currently dragged index (reorder)
-  const [dropIdx, setDropIdx] = useState(null);   // v1.4.5 — hover target index
-  // v1.4.5 — Click-to-highlight (Kurt asked). Single-select; clicking a
-  // chip again toggles it off. Selected state is purely local visual —
-  // no other behavior changes yet (Move/Convert-selected is v1.4.6).
-  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dropIdx, setDropIdx] = useState(null);
+  // v1.4.5d — Multi-select mode. Flip the toggle ON to show checkboxes;
+  // ticked chips form a selection set. When >=1 selected, a floating
+  // action bar surfaces bulk Delete / Convert / Clear. Dragging any
+  // selected chip carries the whole selection.
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState(() => new Set());
   const items = sub?.filenameItems || [];
+
+  // Prune the selection when items change (e.g. after a bulk delete
+  // outside this pane) so we never carry stale ids.
+  useEffect(() => {
+    if (selected.size === 0) return;
+    const live = new Set(items.map((i) => i.id));
+    let dirty = false;
+    const next = new Set();
+    for (const id of selected) {
+      if (live.has(id)) next.add(id);
+      else dirty = true;
+    }
+    if (dirty) setSelected(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items]);
+
+  // Flipping OFF select-mode clears the selection so re-entering the
+  // mode doesn't inherit stale ticks.
+  useEffect(() => {
+    if (!selectMode && selected.size > 0) setSelected(new Set());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectMode]);
+
+  const toggleOne = (id) => {
+    setSelected((cur) => {
+      const next = new Set(cur);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const selectAll = () => setSelected(new Set(items.map((i) => i.id)));
+  const clearAll = () => setSelected(new Set());
 
   const add = () => {
     const raw = draft.trim();
     if (!raw) return;
-    // v1.4.5 — Smart bulk (atomic). If Kurt pastes a roster into the
-    // "New filename tag" input, split and commit ONCE via the bulk
-    // helper. Falls back to single-add when only one label is present.
     if (/[,;\n]/.test(raw) && onAddItemsBulk) {
       const parsed = parseRoster(raw);
       const guarded = guardLargePaste(parsed, { targetName: sub?.name });
@@ -2503,9 +2889,35 @@ function SubfolderFilenameEditor({
     setDraft("");
   };
 
+  const doBulkDelete = () => {
+    if (selected.size === 0) return;
+    if (!window.confirm(
+      `Delete ${selected.size} filename tag${selected.size === 1 ? "" : "s"} from "${sub.name}"?\n\n` +
+      `They'll go to the Chip Trash so you can undo the delete from the header.`
+    )) return;
+    const removed = onRemoveItemsBulk ? (onRemoveItemsBulk(Array.from(selected)) || 0) : 0;
+    if (removed > 0) toast.success(`Deleted ${removed} tag${removed === 1 ? "" : "s"} — restore from Trash if that was a mistake.`);
+    setSelected(new Set());
+  };
+  const doBulkConvert = () => {
+    if (selected.size === 0 || !onConvertToNestedBulk) return;
+    if (!window.confirm(
+      `Convert ${selected.size} selected filename tag${selected.size === 1 ? "" : "s"} into nested sub-folders under "${sub.name}"?\n\n` +
+      `Each becomes its own sub-folder with an empty tag list.`
+    )) return;
+    const made = onConvertToNestedBulk(Array.from(selected)) || 0;
+    const skipped = selected.size - made;
+    if (made > 0) toast.success(
+      `Converted ${made} tag${made === 1 ? "" : "s"} → nested sub-folders`,
+      skipped > 0 ? { description: `${skipped} were skipped (a sub-folder with the same name already exists here).` } : undefined,
+    );
+    else toast("No conversions — all names collide with existing sub-folders", { icon: "🟰" });
+    setSelected(new Set());
+  };
+
   return (
     <div className="space-y-2" data-testid="subfolder-filename-editor">
-      <div className="flex gap-2">
+      <div className="flex gap-2 items-center">
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -2527,13 +2939,31 @@ function SubfolderFilenameEditor({
             ? `Add ${parseRoster(draft || "").length}`
             : "Add"}
         </button>
-        {/* v1.4.5 — Paste-roster popover on the Filename Tags pane too. */}
         {onAddItemsBulk && (
           <PasteRosterButton
             testId={`subfolder-filename-paste-${sub.id}`}
             targetName={sub?.name}
             onCommit={(labels) => onAddItemsBulk(labels) || 0}
           />
+        )}
+        {/* v1.4.5d — Multi-select mode toggle. Flipping ON shows a
+            checkbox on every chip so Kurt can tick multiples and drag
+            or bulk-act on them without modifier keys. */}
+        {items.length > 0 && onRemoveItemsBulk && (
+          <button
+            onClick={() => setSelectMode((m) => !m)}
+            className={`px-2 py-1.5 rounded text-xs flex items-center gap-1 border ${
+              selectMode
+                ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent"
+                : "bg-app border-app hover:bg-surface-hover"
+            }`}
+            data-testid="subfolder-filename-select-toggle"
+            title={selectMode
+              ? "Exit multi-select — hides the checkboxes and clears the current selection"
+              : "Turn on multi-select — tick chips to delete or convert several at once"}
+          >
+            {selectMode ? "Done" : "Select"}
+          </button>
         )}
       </div>
       {items.length === 0 ? (
@@ -2542,41 +2972,45 @@ function SubfolderFilenameEditor({
         <>
           <div className="text-[10px] text-dim px-1 flex items-center gap-2">
             <GripVertical size={10} className="text-primary-earth/60" />
-            <span>Click a tag to highlight it. Drag to reorder here, or drag onto any other sub-folder row above to <span className="text-primary-earth">move</span> it (Ctrl-drag to copy). Click <span className="text-primary-earth">→ Nest</span> to promote a tag into its own nested sub-folder.</span>
+            <span>{selectMode
+              ? <>Tick chips → then <span className="text-primary-earth">Delete</span> or <span className="text-primary-earth">Convert</span> multiple at once. Drag any ticked chip and every selected chip travels with it.</>
+              : <>Click a tag to highlight it. Drag to reorder here, or drag onto any other sub-folder row above to <span className="text-primary-earth">move</span> it (Ctrl-drag to copy). Click <span className="text-primary-earth">→ Nest</span> to promote a tag into its own nested sub-folder.</>
+            }</span>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5" data-testid="subfolder-filename-list">
             {items.map((it, idx) => {
               const isDragging = dragIdx === idx;
               const isDropTarget = dropIdx === idx && dragIdx !== null && dragIdx !== idx;
-              const isSelected = selectedItemId === it.id;
+              const isTicked = selected.has(it.id);
               return (
                 <div
                   key={it.id}
                   draggable={!!onReorderItems}
                   onClick={(e) => {
-                    // v1.4.5 — Click a chip to highlight it (single-select).
-                    // Clicking the same chip again unselects. Doesn't move
-                    // or edit — just visual feedback so Kurt knows which
-                    // tag his next action will act on.
+                    if (selectMode) {
+                      // In select mode any click on the chip body toggles
+                      // the tick — big-target friendly for injuries.
+                      e.stopPropagation();
+                      toggleOne(it.id);
+                      return;
+                    }
                     e.stopPropagation();
-                    setSelectedItemId((cur) => (cur === it.id ? null : it.id));
                   }}
                   onDragStart={(e) => {
                     if (!onReorderItems) return;
                     setDragIdx(idx);
-                    // v1.4.5 — Two payloads on the same drag:
-                    //   1) x-pps-filename-reorder → in-list reorder (same folder)
-                    //   2) x-pps-sfitem            → cross-folder move/copy
-                    // Whichever drop target is hit wins. This lets Kurt
-                    // drag a chip from the bottom Filename Tags pane
-                    // onto a DIFFERENT sub-folder row in the top list
-                    // (collapsed or expanded) and have it move there,
-                    // while still allowing reorder within this list.
+                    // v1.4.5d — If Kurt is dragging a ticked chip while
+                    // multi-select is on, carry the WHOLE selection so
+                    // any drop target that understands the payload can
+                    // move them all together.
+                    const carry = selectMode && isTicked && selected.size > 1
+                      ? Array.from(selected)
+                      : [it.id];
                     e.dataTransfer.setData("application/x-pps-filename-reorder", String(idx));
                     if (sub?.id) {
                       e.dataTransfer.setData(
                         "application/x-pps-sfitem",
-                        JSON.stringify({ fromSfId: sub.id, itemId: it.id })
+                        JSON.stringify({ fromSfId: sub.id, itemId: it.id, itemIds: carry })
                       );
                     }
                     e.dataTransfer.effectAllowed = "copyMove";
@@ -2603,17 +3037,28 @@ function SubfolderFilenameEditor({
                       ? "border-primary-earth bg-primary-earth/20 opacity-50"
                       : isDropTarget
                       ? "border-primary-earth border-dashed bg-primary-earth/10"
-                      : isSelected
+                      : isTicked
                       ? "border-primary-earth bg-primary-earth/15 ring-1 ring-primary-earth"
                       : "border-app bg-app/40 hover:border-primary-earth/40"
                   }`}
                   data-testid={`subfolder-filename-item-${it.id}`}
                   data-idx={idx}
-                  data-selected={isSelected ? "true" : "false"}
-                  title="Click to select · Drag to reorder within this list, or drag onto another sub-folder row to MOVE it there (Ctrl-drag to copy)"
+                  data-selected={isTicked ? "true" : "false"}
+                  title={selectMode
+                    ? "Click to toggle the checkbox. Drag any ticked chip to move all selected together."
+                    : "Drag to reorder within this list, or drag onto another sub-folder row to MOVE it there (Ctrl-drag to copy)"}
                 >
-                  {/* v1.4.5 — Drag handle. Makes the whole row draggable
-                      but also gives Kurt a visible grab point. */}
+                  {/* v1.4.5d — Checkbox visible only in select mode. */}
+                  {selectMode && (
+                    <input
+                      type="checkbox"
+                      checked={isTicked}
+                      onChange={(e) => { e.stopPropagation(); toggleOne(it.id); }}
+                      className="accent-[color:var(--primary-earth,#a3835a)] shrink-0"
+                      onClick={(e) => e.stopPropagation()}
+                      data-testid={`subfolder-filename-check-${it.id}`}
+                    />
+                  )}
                   {onReorderItems && (
                     <GripVertical
                       size={10}
@@ -2623,9 +3068,7 @@ function SubfolderFilenameEditor({
                   )}
                   <TagChipIcon item={it} />
                   <span className="flex-1 text-sm truncate">{it.label}</span>
-                  {/* v1.4.5 — Up/Down arrow buttons for injury-friendly
-                      reorder when dragging is too fussy. */}
-                  {onMoveItem && (
+                  {onMoveItem && !selectMode && (
                     <>
                       <button
                         onClick={(e) => { e.stopPropagation(); onMoveItem(it.id, -1); }}
@@ -2647,8 +3090,7 @@ function SubfolderFilenameEditor({
                       </button>
                     </>
                   )}
-                  {/* v1.4.5 — Per-tag Convert to nested sub-folder. */}
-                  {onConvertToNested && (
+                  {onConvertToNested && !selectMode && (
                     <button
                       onClick={(e) => { e.stopPropagation(); onConvertToNested(it.id); }}
                       className="w-5 h-5 rounded items-center justify-center text-dim hover:text-primary-earth hidden group-hover:flex"
@@ -2658,23 +3100,75 @@ function SubfolderFilenameEditor({
                       <ArrowRight size={11} />
                     </button>
                   )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onRemoveItem(it.id); }}
-                    className="w-5 h-5 rounded items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] hidden group-hover:flex"
-                    data-testid={`subfolder-filename-remove-${it.id}`}
-                    title="Remove this filename tag"
-                  >
-                    <Trash2 size={11} />
-                  </button>
+                  {!selectMode && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); onRemoveItem(it.id); }}
+                      className="w-5 h-5 rounded items-center justify-center text-dim hover:text-[color:var(--danger,#c0392b)] hidden group-hover:flex"
+                      data-testid={`subfolder-filename-remove-${it.id}`}
+                      title="Remove this filename tag (goes to Trash)"
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  )}
                 </div>
               );
             })}
           </div>
+          {/* v1.4.5d — Floating bulk action bar. Renders inline below the
+              grid whenever the user has ticked at least one chip. */}
+          {selectMode && selected.size > 0 && (
+            <div
+              className="mt-2 px-3 py-2 rounded border border-primary-earth bg-primary-earth/10 flex items-center gap-2 flex-wrap"
+              data-testid="subfolder-filename-bulkbar"
+            >
+              <span className="text-xs font-medium text-primary-earth">
+                {selected.size} tag{selected.size === 1 ? "" : "s"} selected
+              </span>
+              <div className="ml-auto flex items-center gap-1.5">
+                <button
+                  onClick={selectAll}
+                  disabled={selected.size === items.length}
+                  className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-app disabled:opacity-40"
+                  data-testid="bulkbar-select-all"
+                  title="Tick every chip in this list"
+                >
+                  Select all
+                </button>
+                <button
+                  onClick={clearAll}
+                  className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-app"
+                  data-testid="bulkbar-clear"
+                  title="Uncheck every chip but stay in multi-select mode"
+                >
+                  Clear
+                </button>
+                {onConvertToNestedBulk && (
+                  <button
+                    onClick={doBulkConvert}
+                    className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-primary-earth/50 text-primary-earth flex items-center gap-1"
+                    data-testid="bulkbar-convert"
+                    title={`Turn each selected tag into its own nested sub-folder under "${sub.name}"`}
+                  >
+                    <FolderPlus size={11} /> Convert → nested
+                  </button>
+                )}
+                <button
+                  onClick={doBulkDelete}
+                  className="px-2 py-1 rounded text-[11px] bg-app hover:bg-surface-hover border border-app text-dim hover:text-[color:var(--danger,#c0392b)] flex items-center gap-1"
+                  data-testid="bulkbar-delete"
+                  title="Send every selected chip to the Chip Trash (you can restore from the header)"
+                >
+                  <Trash2 size={11} /> Delete
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>
   );
 }
+
 
 /**
  * Tiny icon renderer used by SubfolderFilenameEditor. Reads the item's
