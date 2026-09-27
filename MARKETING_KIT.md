@@ -195,3 +195,39 @@ Structure: hook → problem → what it does (8 bullets) → privacy → what yo
 Old changelog-style text moved to Gumroad "Post an update" for existing owners.
 Price confirmed $29. Plan: raise to $39 after first handful of reviews.
 Tags added: "Photo Mechanic alternative", "photo culling", "XMP sidecar".
+
+## 9 · Traffic plan — "bring the masses" (saved for tomorrow, Jun 2026)
+
+Status: GoDaddy DNS ✅ · GitHub Pages + HTTPS ✅ · Release v1.4.7 ✅ ·
+Gumroad exe/PDFs/description ✅ · Hero = eagle screenshot ✅. Gate is built;
+nothing yet drives traffic to it.
+
+**Week 1 — free listings (agent drafts, Kurt pastes)**
+1. Google Search Console — verify muskegman.com (GoDaddy DNS TXT record, one
+   click), submit https://muskegman.com/. Agent walks through clicks.
+2. AlternativeTo.net — list vs Photo Mechanic, Lightroom Classic, Bridge.
+3. Softpedia / MajorGeeks — 200-word blurb + installer link.
+
+**Week 2 — story posts where buyers live**
+4. Reddit: r/wildlifephotography first, then r/Lightroom (XMP hook),
+   r/photography. Story-first, no link in title, link in first comment.
+5. Facebook groups: wildlife / sports / wedding photographers. Same story +
+   eagle screenshot.
+
+**Week 3 — launch day**
+6. Product Hunt (Tuesday). Need 4–6 gallery images (have eagle + flowers ×3
+   compare), 60-sec demo GIF/video — agent builds Playwright GIF scripts.
+
+**Quiet wins**
+- Reviews: give free keys to 3–5 photographer friends, ask for honest
+  Gumroad reviews. Zero reviews = biggest conversion killer.
+- Visitor counter: add free privacy-friendly analytics (GoatCounter or
+  similar, no cookies/banner) to docs/index.html so we know which channel
+  sends buyers.
+
+**Proposed next session:** draft AlternativeTo listing + r/wildlifephotography
+post + add visitor counter + Search Console click-through.
+
+**Later ideas:** screenshot gallery section on the landing page (eagle, ×3
+compare, Tag Manager); Gumroad "Post an update" with old changelog text;
+raise price to $39 after first reviews; Gmail → kpunet.net forwarding.

@@ -1637,3 +1637,8 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
 - ✅ Price confirmed $29 (raise to $39 after first reviews). Contact =
   leaderteamk@gmail.com. Gumroad: v1.4.7 exe + PDFs uploaded, description rewritten (§8).
 - ✅ GitHub Release v1.4.7 published with exe/blockmap/latest.yml/PDFs/ReadMe.txt.
+- 📌 NEXT SESSION (Kurt paused, late night): traffic plan saved in
+  MARKETING_KIT.md §9. Start with: AlternativeTo listing draft, Reddit
+  r/wildlifephotography post draft, visitor counter on landing page, Google
+  Search Console walkthrough. Kurt has NOT hit Save to GitHub for the eagle
+  hero yet — remind him (site updates itself once pushed).
