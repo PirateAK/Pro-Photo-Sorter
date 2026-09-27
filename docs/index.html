@@ -59,8 +59,9 @@
 
   /* hero */
   .hero{padding:clamp(3.5rem,9vw,7.5rem) 0 3rem}
-  .hero-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:4rem;align-items:center}
-  @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:3rem}}
+  .hero-grid{display:grid;grid-template-columns:.9fr 1.1fr;gap:3rem;align-items:center}
+  .shot{width:118%}
+  @media(max-width:900px){.hero-grid{grid-template-columns:1fr;gap:3rem}.shot{width:100%}}
   .hero p.lead{font-size:1.2rem;color:var(--dim);margin:1.5rem 0 2.2rem;max-width:34rem}
   .hero h1 em{font-style:normal;color:var(--primary)}
   .cta-row{display:flex;gap:.9rem;flex-wrap:wrap;align-items:center}
@@ -69,7 +70,7 @@
   .shot{position:relative;border-radius:14px;border:1px solid var(--border);overflow:hidden;background:var(--bg-deep);
     box-shadow:0 40px 80px -30px rgba(0,0,0,.8),0 0 0 1px rgba(255,255,255,.02) inset;transform:rotate(-1.2deg);transition:transform .5s cubic-bezier(.2,.8,.2,1)}
   .shot:hover{transform:rotate(0) scale(1.01)}
-  .shot img{width:100%;max-height:520px;object-fit:cover;object-position:center}
+  .shot img{width:100%;height:auto}
   .shot-bar{height:30px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 12px}
   .shot-bar i{width:10px;height:10px;border-radius:50%;background:var(--border)}
   .shot-bar i:first-child{background:var(--terra)}.shot-bar i:nth-child(2){background:var(--primary)}.shot-bar i:nth-child(3){background:var(--sage)}
@@ -206,7 +207,7 @@
     </div>
     <div class="shot rv d2" data-testid="hero-screenshot">
       <div class="shot-bar"><i></i><i></i><i></i></div>
-      <img src="assets/app-hero.png" alt="Pro Photo Sorter welcome screen showing nested folders, one-shot editor, multi-source workflow and offline Lightroom-ready features" width="1600" height="1000" />
+      <img src="assets/app-hero.png" alt="Pro Photo Sorter in ×3 compare mode: three flower photos side by side with tags applied, star rating, source and destination file trees, and the filmstrip below" width="1922" height="1017" />
     </div>
   </div>
 
