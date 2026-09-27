@@ -22,7 +22,7 @@ const HIGHLIGHTS = [
   {
     icon: Wand2,
     title: "One-shot photo editor",
-    body: "Auto-Enhance, crop, rotate, fine-tune — every slider has a click-to-reset pill so precise edits take one click, not five.",
+    body: "Auto-Enhance, crop, rotate, fine-tune. Your tags and star rating follow the edit so nothing gets wiped on the way out.",
   },
   {
     icon: Layers,
@@ -31,8 +31,8 @@ const HIGHLIGHTS = [
   },
   {
     icon: Package,
-    title: "100% offline. Forever.",
-    body: "One-time activation ping to Gumroad, then the app runs off satellite, off-grid, off the boat. Every action is local.",
+    title: "100% offline · Lightroom-ready",
+    body: "Runs off satellite, off-grid, off the boat. Every Store also drops a .xmp sidecar so Lightroom / Bridge pick up your stars + tags automatically.",
   },
 ];
 

@@ -58,6 +58,7 @@ import { autoAnalyzeFile } from "@/lib/autoTone";
 import { computeAutoRating } from "@/lib/focusScore";
 import { writeWithWatermark, canWatermark } from "@/lib/watermark";
 import { cropAndResize, PRINT_SIZES } from "@/lib/resize";
+import { writeXmpSidecar } from "@/lib/xmp";
 import ResizeCropModal from "@/components/ResizeCropModal";
 import buildInfo from "./buildInfo.json";
 import BatchRenameModal from "@/components/BatchRenameModal";
@@ -335,6 +336,13 @@ export default function App() {
   // Clicking one of the currently visible panes changes selectedIdx but
   // leaves compareWindowStart alone — no slide.
   const [compareWindowStart, setCompareWindowStart] = useState(0);
+  // v1.4.6 — Green flash flourish. When Store fires in compare mode, we
+  // snapshot the active pane's DOM rect and render a floating green
+  // pulse overlay at that exact spot for ~450 ms so Kurt gets a
+  // satisfying "stored!" reward before the strip shifts. The overlay
+  // is position:fixed so it stays put even after the strip re-lays out.
+  //   { rect: { left, top, width, height }, id }
+  const [compareFlash, setCompareFlash] = useState(null);
   const [autoRating, setAutoRating] = useState(false); // in-progress flag
 
   // Current image star rating
@@ -1228,6 +1236,27 @@ export default function App() {
       return;
     }
 
+    // v1.4.6 — Green flash flourish. When Store fires in compare mode
+    // on a SINGLE photo, snapshot the active pane's rect so we can
+    // paint a green pulse where it lived, even after the strip shifts.
+    // Batch stores skip this (they'd spam the screen with pulses).
+    if (compareMode > 1 && !(batchMode && batchSelected.size > 0)) {
+      try {
+        const paneEl = document.querySelector('[data-testid^="compare-pane-"][data-active="true"]');
+        if (paneEl) {
+          const r = paneEl.getBoundingClientRect();
+          const id = Date.now() + Math.random();
+          setCompareFlash({
+            rect: { left: r.left, top: r.top, width: r.width, height: r.height },
+            id,
+          });
+          setTimeout(() => {
+            setCompareFlash((cur) => (cur && cur.id === id ? null : cur));
+          }, 480);
+        }
+      } catch { /* non-fatal */ }
+    }
+
     const isBatch = batchMode && batchSelected.size > 0;
     let targets = isBatch
       ? images.filter((i) => batchSelected.has(i.name))
@@ -1369,6 +1398,24 @@ export default function App() {
         if (stars > 0) {
           const destKey = `${targetPath}/${writtenName}`;
           setRatings((cur) => ({ ...cur, [destKey]: stars }));
+        }
+        // v1.4.6 — Write a Lightroom-compatible XMP sidecar next to the JPEG
+        // so Kurt's tagging + rating work round-trips into any DAM that
+        // reads .xmp files. Soft-fail: sidecar issues never abort a store.
+        if (settings.writeXmpSidecar !== false) {
+          try {
+            const kwLabels = [
+              ...overlay.folders.map((f) => f.label),
+              ...overlay.tags.map((t) => t.label),
+            ];
+            await writeXmpSidecar({
+              dirHandle: targetDir,
+              jpegName: writtenName,
+              keywords: kwLabels,
+              stars,
+              version: buildInfo?.version,
+            });
+          } catch { /* handled inside writeXmpSidecar */ }
         }
         undoEntries.push({
           type: "store",
@@ -1553,6 +1600,22 @@ export default function App() {
         } : null,
       });
       const writtenName = await writeBlobTo(blob, targetDir, fileName);
+      // v1.4.6 — XMP sidecar next to the resized JPEG.
+      if (settings.writeXmpSidecar !== false) {
+        try {
+          const kwLabels = [
+            ...overlay.folders.map((f) => f.label),
+            ...overlay.tags.map((t) => t.label),
+          ];
+          await writeXmpSidecar({
+            dirHandle: targetDir,
+            jpegName: writtenName,
+            keywords: kwLabels,
+            stars,
+            version: buildInfo?.version,
+          });
+        } catch { /* soft-fail */ }
+      }
       const fullPath = [anchorPath, ...effectiveFolderParts].filter(Boolean).join("/");
       setSessionStats((s) => ({ ...s, stored: s.stored + 1 }));
       setHistory((h) => [
@@ -3274,6 +3337,37 @@ export default function App() {
         open={showEditor}
         onClose={async (newFileName) => {
           setShowEditor(false);
+          // v1.4.6 — Editor Round-Trip. When the editor writes an
+          // `<original>_edit_<stamp>.jpg` file, propagate the original
+          // photo's overlay (folder tags + filename tags) and its star
+          // rating to the new file so Kurt's tagging work isn't lost
+          // just because he cropped or rotated. Both stores are keyed
+          // by IMAGE NAME (appliedByImage) and by `${sourcePath}/${name}`
+          // (ratings), so we mirror both.
+          if (newFileName && currentImage?.name && currentImage.name !== newFileName) {
+            const originalName = currentImage.name;
+            setAppliedByImage((cur) => {
+              const src = cur[originalName];
+              if (!src) return cur;
+              // Deep-copy the arrays and hand out fresh chip uids so the
+              // two photos can be independently reordered/edited without
+              // affecting each other.
+              const cloneRow = (row = []) => row.map((c) => ({ ...c, uid: uid() }));
+              return {
+                ...cur,
+                [newFileName]: {
+                  folders: cloneRow(src.folders),
+                  tags: cloneRow(src.tags),
+                },
+              };
+            });
+            if (currentSourcePath) {
+              const oldKey = `${currentSourcePath}/${originalName}`;
+              const newKey = `${currentSourcePath}/${newFileName}`;
+              setRatings((r) => (r[oldKey] != null ? { ...r, [newKey]: r[oldKey] } : r));
+            }
+            toast("Edit inherits tags & stars from original", { description: newFileName });
+          }
           // If a new file was saved to the source folder, refresh listing
           if (newFileName && currentSourceFolder) {
             try {
@@ -3391,6 +3485,30 @@ export default function App() {
         onClose={() => { setShowHelp(false); setHelpInitialTab(null); }}
         initialTab={helpInitialTab}
       />
+
+      {/* v1.4.6 — Compare-mode Store flourish. A green pulse painted at
+          the active pane's rect that was captured at store-fire time.
+          Stays put on screen even after the strip shifts underneath,
+          so it reads as "that pane got a store" and gracefully fades
+          in the same beat as the shift animation. */}
+      {compareFlash && (
+        <div
+          className="pointer-events-none fixed z-[70]"
+          style={{
+            left: compareFlash.rect.left,
+            top: compareFlash.rect.top,
+            width: compareFlash.rect.width,
+            height: compareFlash.rect.height,
+          }}
+          data-testid="compare-store-flash"
+        >
+          <div className="w-full h-full rounded pps-flash-pulse flex items-center justify-center">
+            <div className="pps-flash-badge px-4 py-2 rounded-full bg-emerald-500 text-white text-sm font-heading font-bold shadow-2xl flex items-center gap-2 uppercase tracking-widest">
+              <Check size={16} strokeWidth={3} /> Stored
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );
