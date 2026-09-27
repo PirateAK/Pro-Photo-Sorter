@@ -85,6 +85,43 @@ export default function NestedSubfolderEditor({
   // Ctrl-drag) the tag between siblings. State tracks which target row
   // the dragged chip is currently hovering so we can show a drop ring.
   const [dropOverChildId, setDropOverChildId] = useState(null);
+  // v1.4.5e — Multi-select per child. `selectModeChildren` = Set of
+  // child ids currently in select mode; `selectionByChild` holds each
+  // child's ticked tag ids; `highlightByChild` gives single-click
+  // feedback when NOT in select mode.
+  const [selectModeChildren, setSelectModeChildren] = useState(() => new Set());
+  const [selectionByChild, setSelectionByChild] = useState({});
+  const [highlightByChild, setHighlightByChild] = useState({});
+  const isChildSelectMode = (childId) => selectModeChildren.has(childId);
+  const toggleChildSelectMode = (childId) => {
+    setSelectModeChildren((cur) => {
+      const next = new Set(cur);
+      if (next.has(childId)) {
+        next.delete(childId);
+        setSelectionByChild((s) => ({ ...s, [childId]: new Set() }));
+      } else {
+        next.add(childId);
+      }
+      return next;
+    });
+  };
+  const getChildSelection = (childId) => selectionByChild[childId] || new Set();
+  const toggleChildTick = (childId, tagId) => {
+    setSelectionByChild((cur) => {
+      const set = new Set(cur[childId] || []);
+      set.has(tagId) ? set.delete(tagId) : set.add(tagId);
+      return { ...cur, [childId]: set };
+    });
+  };
+  const selectAllChildTags = (childId, allIds) => {
+    setSelectionByChild((cur) => ({ ...cur, [childId]: new Set(allIds) }));
+  };
+  const clearChildSelection = (childId) => {
+    setSelectionByChild((cur) => ({ ...cur, [childId]: new Set() }));
+  };
+  const toggleChildHighlight = (childId, tagId) => {
+    setHighlightByChild((cur) => ({ ...cur, [childId]: cur[childId] === tagId ? null : tagId }));
+  };
 
   const children = Array.isArray(node.subfolders) ? node.subfolders : [];
   const parentTags = Array.isArray(node.filenameItems) ? node.filenameItems : [];
@@ -257,6 +294,39 @@ export default function NestedSubfolderEditor({
         : c)),
     });
     return goners.length;
+  };
+  // v1.4.5e — Bulk-convert a SET of nested filename tags into
+  // grandchild sub-folders in ONE atomic patch. Skips collisions.
+  const convertTagsFromChildBulk = (childId, tagIds) => {
+    if (!Array.isArray(tagIds) || tagIds.length === 0) return 0;
+    const child = children.find((c) => c.id === childId);
+    if (!child) return 0;
+    const set = new Set(tagIds);
+    const promoting = (child.filenameItems || []).filter((t) => set.has(t.id));
+    if (promoting.length === 0) return 0;
+    const existingChildNames = new Set((child.subfolders || []).map((k) => (k.name || "").toLowerCase()));
+    const additions = [];
+    const promotedLabels = new Set();
+    for (const t of promoting) {
+      const nm = (t.label || "").toLowerCase();
+      if (existingChildNames.has(nm)) continue;
+      existingChildNames.add(nm);
+      promotedLabels.add(nm);
+      additions.push(tagToNestedSeed(t));
+    }
+    if (additions.length === 0) return 0;
+    onChange({
+      ...node,
+      subfolders: children.map((c) => (c.id !== childId ? c : {
+        ...c,
+        filenameItems: (c.filenameItems || []).filter((x) => {
+          if (!set.has(x.id)) return true;
+          return !promotedLabels.has((x.label || "").toLowerCase());
+        }),
+        subfolders: [...(c.subfolders || []), ...additions],
+      })),
+    });
+    return additions.length;
   };
   const patchChildNode = (childId, patchedChild) => {
     onChange({ ...node, subfolders: children.map((c) => (c.id === childId ? patchedChild : c)) });
@@ -548,66 +618,193 @@ export default function NestedSubfolderEditor({
                     <div className="px-3 pb-2 pt-1 border-t border-app/30">
                       <div className="text-[9px] uppercase tracking-widest text-dim font-heading mb-1 flex items-center justify-between gap-2">
                         <span>Filename tags for "{c.name}"</span>
-                        {tags.length > 0 && (
-                          <span className="normal-case tracking-normal italic text-[10px]">
-                            Drag chip → another team above to <span className="text-primary-earth">move</span> (Ctrl-drag = copy)
-                          </span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          {tags.length > 0 && (
+                            <span className="normal-case tracking-normal italic text-[10px]">
+                              Drag chip → another team above to <span className="text-primary-earth">move</span> (Ctrl-drag = copy)
+                            </span>
+                          )}
+                          {/* v1.4.5e — Per-child Select toggle. */}
+                          {tags.length > 0 && (
+                            <button
+                              onClick={() => toggleChildSelectMode(c.id)}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded border text-[10px] normal-case tracking-normal ${
+                                isChildSelectMode(c.id)
+                                  ? "bg-primary-earth text-[color:var(--text-inverse)] border-transparent"
+                                  : "bg-app hover:bg-surface-hover border-app text-app"
+                              }`}
+                              data-testid={`nested-select-toggle-${c.id}`}
+                              title={isChildSelectMode(c.id)
+                                ? "Exit select mode"
+                                : "Enter select mode — tick multiple tags to delete or convert several at once"}
+                            >
+                              {isChildSelectMode(c.id) ? "Done" : "Select"}
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="flex flex-wrap gap-1 mb-1.5">
                         {tags.length === 0 ? (
                           <span className="text-[11px] text-dim italic">
                             No filename tags. Sub-folders without tags inherit the parent's list.
                           </span>
-                        ) : tags.map((t) => (
-                          <span
-                            key={t.id}
-                            draggable
-                            onDragStart={(e) => {
-                              // v1.4.5c — Drag nested filename tags to
-                              // OTHER siblings. Payload carries the
-                              // owning-child id + tag id so the local
-                              // moveTagBetweenChildren handler can wire
-                              // it up without any global plumbing.
-                              e.dataTransfer.setData(
-                                "application/x-pps-nested-tag",
-                                JSON.stringify({ fromChildId: c.id, tagId: t.id })
-                              );
-                              e.dataTransfer.effectAllowed = "copyMove";
-                            }}
-                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-app border border-app text-[11px] cursor-grab active:cursor-grabbing hover:border-primary-earth/50"
-                            data-testid={`nested-tag-${t.id}`}
-                            title={`Drag "${t.label}" to another team/sub-folder above to MOVE it there (Ctrl-drag to copy). → to nest, trash to remove.`}
-                          >
-                            <span className="font-mono">{t.label}</span>
+                        ) : tags.map((t) => {
+                          const selMode = isChildSelectMode(c.id);
+                          const sel = getChildSelection(c.id);
+                          const ticked = sel.has(t.id);
+                          const highlighted = highlightByChild[c.id] === t.id && !selMode;
+                          return (
+                            <span
+                              key={t.id}
+                              draggable
+                              onClick={(e) => {
+                                if (selMode) {
+                                  e.stopPropagation();
+                                  toggleChildTick(c.id, t.id);
+                                  return;
+                                }
+                                // v1.4.5e — single-click highlight for feedback.
+                                e.stopPropagation();
+                                toggleChildHighlight(c.id, t.id);
+                              }}
+                              onDragStart={(e) => {
+                                // v1.4.5e — Carry the whole child selection
+                                // when Kurt drags a ticked chip. Payload
+                                // now includes tagIds[] for the receiver.
+                                const carry = selMode && ticked && sel.size > 1
+                                  ? Array.from(sel)
+                                  : [t.id];
+                                e.dataTransfer.setData(
+                                  "application/x-pps-nested-tag",
+                                  JSON.stringify({ fromChildId: c.id, tagId: t.id, tagIds: carry })
+                                );
+                                e.dataTransfer.effectAllowed = "copyMove";
+                              }}
+                              className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-app border text-[11px] hover:border-primary-earth/50 ${
+                                selMode ? "cursor-pointer" : "cursor-grab active:cursor-grabbing"
+                              } ${
+                                ticked
+                                  ? "border-primary-earth bg-primary-earth/20 ring-1 ring-primary-earth"
+                                  : highlighted
+                                  ? "border-primary-earth bg-primary-earth/10 ring-1 ring-primary-earth/70"
+                                  : "border-app"
+                              }`}
+                              data-testid={`nested-tag-${t.id}`}
+                              data-ticked={ticked ? "true" : "false"}
+                              data-highlighted={highlighted ? "true" : "false"}
+                              title={selMode
+                                ? `${t.label}  ·  Click to toggle selection. Drag any ticked chip to move all selected together.`
+                                : `${t.label}  ·  Click to highlight. Drag to another team above to MOVE it there (Ctrl-drag to copy). → to nest, trash to remove.`}
+                            >
+                              {selMode && (
+                                <input
+                                  type="checkbox"
+                                  checked={ticked}
+                                  readOnly
+                                  className="accent-[color:var(--primary-earth,#a3835a)] shrink-0 pointer-events-none"
+                                  tabIndex={-1}
+                                  data-testid={`nested-tag-check-${t.id}`}
+                                />
+                              )}
+                              <span className="font-mono">{t.label}</span>
+                              {!selMode && (
+                                <>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      // v1.4.1 — Promote THIS tag into a nested
+                                      // sub-folder under its owning sub-folder.
+                                      if (!window.confirm(`Convert filename tag "${t.label}" into a nested sub-folder under "${c.name}"?`)) return;
+                                      patchChildNode(c.id, {
+                                        ...c,
+                                        filenameItems: (c.filenameItems || []).filter((x) => x.id !== t.id),
+                                        subfolders: [...(c.subfolders || []), tagToNestedSeed(t)],
+                                      });
+                                    }}
+                                    className="text-primary-earth hover:text-primary-earth/80"
+                                    title={`Promote "${t.label}" to a nested sub-folder`}
+                                    data-testid={`nested-tag-promote-${t.id}`}
+                                  >
+                                    <ArrowRight size={9} />
+                                  </button>
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); removeTagFromChild(c.id, t.id); }}
+                                    className="text-dim hover:text-danger-earth"
+                                    title="Remove (goes to Chip Trash — restore from the Tag Manager header)"
+                                    data-testid={`nested-tag-remove-${t.id}`}
+                                  >
+                                    <Trash2 size={9} />
+                                  </button>
+                                </>
+                              )}
+                            </span>
+                          );
+                        })}
+                      </div>
+                      {/* v1.4.5e — Nested bulk-action bar (same UX as
+                          the top-level sub-folder chevron area). */}
+                      {isChildSelectMode(c.id) && getChildSelection(c.id).size > 0 && (
+                        <div
+                          className="mb-1.5 px-2 py-1 rounded border border-primary-earth bg-primary-earth/10 flex items-center gap-1.5 flex-wrap"
+                          data-testid={`nested-bulkbar-${c.id}`}
+                        >
+                          <span className="text-[10px] font-medium text-primary-earth">
+                            {getChildSelection(c.id).size} tag{getChildSelection(c.id).size === 1 ? "" : "s"} selected
+                          </span>
+                          <div className="ml-auto flex items-center gap-1">
+                            <button
+                              onClick={() => selectAllChildTags(c.id, tags.map((x) => x.id))}
+                              disabled={getChildSelection(c.id).size === tags.length}
+                              className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-app disabled:opacity-40"
+                              data-testid={`nested-bulkbar-all-${c.id}`}
+                            >
+                              Select all
+                            </button>
+                            <button
+                              onClick={() => clearChildSelection(c.id)}
+                              className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-app"
+                              data-testid={`nested-bulkbar-clear-${c.id}`}
+                            >
+                              Clear
+                            </button>
                             <button
                               onClick={() => {
-                                // v1.4.1 — Promote THIS tag into a nested
-                                // sub-folder under its owning sub-folder.
-                                // Same pattern as the parent-level promotion.
-                                if (!window.confirm(`Convert filename tag "${t.label}" into a nested sub-folder under "${c.name}"?`)) return;
-                                patchChildNode(c.id, {
-                                  ...c,
-                                  filenameItems: (c.filenameItems || []).filter((x) => x.id !== t.id),
-                                  subfolders: [...(c.subfolders || []), tagToNestedSeed(t)],
-                                });
+                                const ids = Array.from(getChildSelection(c.id));
+                                if (!window.confirm(
+                                  `Convert ${ids.length} tag${ids.length === 1 ? "" : "s"} into nested sub-folders under "${c.name}"?`
+                                )) return;
+                                const made = convertTagsFromChildBulk(c.id, ids);
+                                const skipped = ids.length - made;
+                                if (made > 0) toast.success(
+                                  `Converted ${made} tag${made === 1 ? "" : "s"} → nested sub-folders`,
+                                  skipped > 0 ? { description: `${skipped} skipped (name collision).` } : undefined,
+                                );
+                                else toast("Nothing converted — all names collide", { icon: "🟰" });
+                                clearChildSelection(c.id);
                               }}
-                              className="text-primary-earth hover:text-primary-earth/80"
-                              title={`Promote "${t.label}" to a nested sub-folder`}
-                              data-testid={`nested-tag-promote-${t.id}`}
+                              className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-primary-earth/50 text-primary-earth flex items-center gap-1"
+                              data-testid={`nested-bulkbar-convert-${c.id}`}
                             >
-                              <ArrowRight size={9} />
+                              <FolderPlus size={9} /> Convert
                             </button>
                             <button
-                              onClick={() => removeTagFromChild(c.id, t.id)}
-                              className="text-dim hover:text-danger-earth"
-                              title="Remove tag"
+                              onClick={() => {
+                                const ids = Array.from(getChildSelection(c.id));
+                                if (!window.confirm(
+                                  `Delete ${ids.length} filename tag${ids.length === 1 ? "" : "s"} from "${c.name}"?\n\nThey'll go to Chip Trash so you can undo.`
+                                )) return;
+                                const removed = removeTagsFromChildBulk(c.id, ids);
+                                if (removed > 0) toast.success(`Deleted ${removed} tag${removed === 1 ? "" : "s"} — restore from Trash if needed.`);
+                                clearChildSelection(c.id);
+                              }}
+                              className="px-1.5 py-0.5 rounded text-[10px] bg-app hover:bg-surface-hover border border-app text-dim hover:text-danger-earth flex items-center gap-1"
+                              data-testid={`nested-bulkbar-delete-${c.id}`}
                             >
-                              <Trash2 size={9} />
+                              <Trash2 size={9} /> Delete
                             </button>
-                          </span>
-                        ))}
-                      </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-1">
                         <input
                           type="text"

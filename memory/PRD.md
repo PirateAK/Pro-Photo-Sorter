@@ -1323,6 +1323,41 @@ Kurt's UX picks: 1-c collapsible accordions in the left rail, 2-c split-filmstri
 - Docs refresh remains queued.
 
 
+### Iteration 36 — v1.4.5e · Multi-select everywhere + bottom pane removed (2026-09-26)
+
+Kurt smoke-tested v1.4.5d and reported (a) he was clicking tags in the chevron-expanded area, not the bottom pane where multi-select lived, and (b) the bottom pane duplicates the chevron-expand area and should go. Answer: kill the bottom pane, put multi-select + click-highlight everywhere, keep the [Select] toggle visible.
+
+**Removed** — `SubfolderFilenameEditor` and its mount point in `CategoryManager`. The middle column's tag work is now 100% inside each sub-folder row's chevron-expanded area — one canonical workspace, no "wait, which list am I editing?" confusion.
+
+**Multi-select in the chevron-expanded chip area (`SubfolderSection` + `SubfolderItemChip`):**
+- Per-sub-folder [Select]/[Done] toggle button in the "Filename tags for X" header. Flipping ON reveals a checkbox on every chip; per-sub-folder selection Set so entering/leaving select mode on one sub-folder doesn't disturb another.
+- Chip visual states: **ticked** (primary-earth ring + fill), **highlighted** (single-click feedback outside select mode, lighter ring), **drop-target** (icon-swap hover), **default**. `data-ticked` / `data-highlighted` attributes for scripting.
+- Bulk-action bar renders inline below the chip grid: `[N tags selected] [Select all] [Clear] [Convert] [Delete]`. Delete pushes each chip to Chip Trash (fully undoable). Convert atomically promotes each selected chip to a nested sub-folder, skipping name collisions with a description toast.
+- Multi-drag: dragging any ticked chip attaches `itemIds: []` to the existing `application/x-pps-sfitem` payload so the whole selection travels together (single-drop path unchanged).
+- Right-click / X remove / arrow reorder hide in select mode so the UI stays uncluttered.
+
+**Multi-select in the nested chip area (`NestedSubfolderEditor`):**
+- Per-nested-child state (Sets keyed by child id) mirrors the same UX at the deeper level — Kurt's Sports → Baseball(AL) → Baltimore Orioles → players view now has [Select], checkboxes, single-click highlight, and a bulk-action bar with the same Delete / Convert / Clear / Select all buttons.
+- Bulk delete goes through `removeTagsFromChildBulk` (atomic + trash-aware).
+- Bulk convert goes through new `convertTagsFromChildBulk` (atomic multi-promote to grandchild sub-folders, collision-skipped).
+- Multi-drag on nested chips extends the `application/x-pps-nested-tag` payload with `tagIds: []` for the whole selection.
+
+**Kurt's requested single-click highlight** (option "b" from his choice):
+- Both chevron-expanded chips AND nested chips now respond to a plain click with a single-select ring so Kurt sees "yes, something happened" — even when select mode is OFF. Click the same chip again to un-highlight. Doesn't touch the underlying tag; purely visual feedback.
+
+**Trash bin coverage:**
+- All new bulk-delete paths route through `pushManyToTrash` so the Chip Trash header count updates in real time and every chip is recoverable, including from the deepest nested Orioles/Red Sox depth.
+
+**Version bump**
+- `frontend/src/buildInfo.json` → **1.4.5e** (build date 2026-09-26).
+
+**Files touched**
+- Updated: `frontend/src/components/CategoryManager.jsx` (removed `SubfolderFilenameEditor` def + mount, added multi-select state to `SubfolderSection`, upgraded `SubfolderItemChip` with select/highlight/multi-drag props, wired [Select] toggle + bulk bar inline), `frontend/src/components/NestedSubfolderEditor.jsx` (per-child multi-select state, upgraded chip render, inline bulk bar, `convertTagsFromChildBulk` helper), `frontend/src/buildInfo.json`.
+
+**Test posture**
+- Live Playwright smoke: middle column no longer shows bottom pane (`filename-editor-pane` count = 0); single-click on a chevron chip flips `data-highlighted="true"`; [Select] on Mammals reveals 4 checkboxes; ticking 3 → bulk bar reads "3 tags selected"; Delete → Trash counter jumps to 3.
+
+
 ### Backlog — Documentation Refresh (queued for next session, top priority)
 
 Kurt requested (2026-02-19 end of day): Update the thumb-drive retail bundle to reflect v1.4.0 → v1.4.2 changes before the next release.
