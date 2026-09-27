@@ -65,10 +65,19 @@ const Pane = forwardRef(function Pane({ img, active, onClick, stars, zoomResetKe
       // makes clicking any pane feel instant AND keeps the accessibility
       // click-handler intact for keyboard users.
       onPointerDown={(e) => { if (e.button === 0 && !active) onClick?.(e); }}
-      className={`relative flex-1 min-w-0 h-full flex items-center justify-center overflow-hidden cursor-pointer transition-all rounded ${
+      // v1.4.5j — Kurt reported "lots of flashing lights" when the ACTIVE
+      // ring hopped between panes. Root cause: `transition-all` was
+      // animating ring width, ring offset, box-shadow glow AND border
+      // simultaneously on every click — a full frame worth of property
+      // transitions per pane, times two panes, per click = disco.
+      // Fix: drop the transition entirely on the active swap. The ring
+      // + glow now snap INSTANTLY to the newly-clicked pane. The hover
+      // affordance still fades softly (transition-colors duration-150)
+      // so the pane doesn't feel dead when the mouse enters it.
+      className={`relative flex-1 min-w-0 h-full flex items-center justify-center overflow-hidden cursor-pointer rounded ${
         active
           ? "ring-4 ring-primary-earth ring-offset-2 ring-offset-[color:var(--app-bg,#1a1a1a)] shadow-[0_0_24px_-4px_var(--primary-earth,#a3835a)]"
-          : "ring-2 ring-transparent hover:ring-primary-earth/40 border border-transparent"
+          : "ring-2 ring-transparent border border-transparent hover:ring-primary-earth/40 transition-colors duration-150"
       }`}
       data-testid={`compare-pane-${img?.name || "empty"}`}
       data-active={active ? "true" : "false"}
