@@ -231,3 +231,20 @@ post + add visitor counter + Search Console click-through.
 **Later ideas:** screenshot gallery section on the landing page (eagle, ×3
 compare, Tag Manager); Gumroad "Post an update" with old changelog text;
 raise price to $39 after first reviews; Gmail → kpunet.net forwarding.
+
+### §9 progress log
+- ✅ AlternativeTo: account created, Pro Photo Sorter submitted, approved + reviewed
+  (Jun 2026). TODO: add listing URL to site footer.
+- ✅ Payhip: considered, rejected (would break Gumroad-only license verify;
+  Payhip is a checkout not a marketplace). Revisit dual-verifier after ~50 sales.
+- ⏳ Reddit r/wildlifephotography post drafted (below). Then r/Lightroom, r/photography.
+- ⏳ Visitor counter — candidate: Cloudflare Web Analytics (free, no cookies).
+
+## 10 · Reddit post — r/wildlifephotography (draft, Jun 2026)
+
+Title: I built the offline photo sorter I needed after weeks on a boat in Alaska with satellite internet — and two broken elbows
+
+Body: story-first (Alaska ship, LR cloud useless, PM $150, typing folder names ×3000,
+broke back + elbows → built click/drag/one-key sorter, XMP sidecars to LR,
+$29 once, offline). Ask for workflow feedback. Link in first comment only.
+Follow-ups: r/Lightroom (lead with XMP sidecars), r/photography (lead with culling loop).
