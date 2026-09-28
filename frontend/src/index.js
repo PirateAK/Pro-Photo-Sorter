@@ -5,6 +5,11 @@ import "@/index.css";
 import App from "@/App";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { bootRestoreFromSafetyIfEmpty } from "@/lib/bootRestore";
+import TagPackCreator from "@/tpc/TagPackCreator";
+
+// v1.5.0 — the Tag Pack Creator shares this bundle; its Electron shell (and
+// browser dev) opens index.html#/tpc.
+const isTpc = window.location.hash.startsWith("#/tpc");
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,7 +31,7 @@ async function boot() {
     <React.StrictMode>
       <ErrorBoundary>
         <QueryClientProvider client={queryClient}>
-          <App />
+          {isTpc ? <TagPackCreator /> : <App />}
         </QueryClientProvider>
       </ErrorBoundary>
     </React.StrictMode>,

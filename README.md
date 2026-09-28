@@ -59,10 +59,13 @@ One-time Electron polish (spell-check menu + drive info bridge):
 Pro-Photo-Sorter/
 ├── frontend/            React source (App.js, components/, lib/)
 ├── electron-shell/      Electron wrapper — lives on your PC, see ELECTRON-SETUP.md
+├── electron-shell-tpc/  Electron wrapper for the Tag Pack Creator companion app
 ├── electron-additions/  Files to paste into electron-shell (preload.js, main.js, icon)
 ├── starter-packs/       Six ready-to-import Tag Packs
 ├── run-app.bat          Daily launch: pull, build, run in dev
 ├── pack-app.bat         Build a redistributable Windows installer
+├── pack-tpc.bat         Build the Tag Pack Creator installer (reuses the React build)
+├── docs/                muskegman.com landing page (GitHub Pages)
 ├── USER_GUIDE.md        Full manual
 ├── QUICK_START.md       Ten-minute install
 ├── CHANGELOG.md         Version history
@@ -78,6 +81,16 @@ pack-app.bat
 Produces `electron-shell\dist\Pro Photo Sorter Setup <version>.exe` (the
 version is taken from `frontend/package.json` — bump it there before
 packaging a public release).
+
+### Tag Pack Creator
+
+```cmd
+pack-app.bat && pack-tpc.bat
+```
+
+Produces `electron-shell-tpc\dist\Tag Pack Creator Setup <version>.exe`. Both
+apps share one React bundle (`frontend/build`); the Creator opens it at
+`index.html#/tpc`. In browser dev: `http://localhost:3000/#/tpc`.
 
 ## License
 

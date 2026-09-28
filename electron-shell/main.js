@@ -464,3 +464,24 @@ app.whenReady().then(() => {
   createWindow();
 });
 app.on('window-all-closed', () => process.platform !== 'darwin' && app.quit());
+
+// v1.5.0 — Tag Pack Creator hand-off. TPC drops *.pps-tagpack.json files
+// into Documents\Pro Photo Sorter\Inbox\; PPS lists them when the Tag
+// Manager opens and deletes each one after a successful import.
+const INBOX_DIR = path.join(app.getPath('documents'), 'Pro Photo Sorter', 'Inbox');
+ipcMain.handle('pps:inbox-list', async () => {
+  try {
+    if (!fs.existsSync(INBOX_DIR)) return [];
+    return fs.readdirSync(INBOX_DIR)
+      .filter((f) => f.toLowerCase().endsWith('.pps-tagpack.json'))
+      .map((f) => ({ name: f, json: fs.readFileSync(path.join(INBOX_DIR, f), 'utf8') }));
+  } catch { return []; }
+});
+ipcMain.handle('pps:inbox-remove', async (_e, name) => {
+  try {
+    const safe = path.basename(String(name || ''));
+    if (!safe) return false;
+    fs.unlinkSync(path.join(INBOX_DIR, safe));
+    return true;
+  } catch { return false; }
+});

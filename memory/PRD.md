@@ -1697,3 +1697,23 @@ Kurt asked to shelve these; "has other thoughts". Do not propose again until v2 
 - Open existing .pps-tagpack.json to edit/re-save (no auto-load of starters;
   allow importing them).
 - Output: v4 pack file; "Install into PPS" nice-to-have later.
+
+## Tag Pack Creator v1.5.0 — 2026-06-16 · BUILT (browser-verified)
+- `frontend/src/tpc/TagPackCreator.jsx` (route `#/tpc` via index.js), `tpc/previewCard.jsx`.
+- Role buttons w/ depth digit (nests under most-recently-created chain `lastCreated[depth-1]`),
+  path preview, 3-row display (drag reorder siblings / tags; drag library tag onto folder = copy),
+  20-cap paste hold (`held` + "Add the rest" + prompt after Save), Tag box library,
+  IconPicker (BUILTIN_ICONS exported from CategoryManager + PNG upload + rename), Undo stack,
+  Open pack (v1–v4), Save (Electron dialog `tpc:save-pack`, browser = download),
+  Install into PPS (`tpc:install-pack` → Documents\Pro Photo Sorter\Inbox), Cover PNG 1280×720.
+- PPS side: `electron-shell/main.js` + preload `pps:inbox-list/remove`; CategoryManager toasts
+  "Tag pack waiting" with Import/Discard on open (uses importPackJson → decision dialog).
+- `electron-shell-tpc/` (main.js, preload.js, package.json productName "Tag Pack Creator",
+  appId com.muskegman.tagpackcreator, artifact "Tag Pack Creator Setup ${version}.exe"), `pack-tpc.bat`.
+- data-testids: tpc-role-*, tpc-depth, tpc-text, tpc-add, tpc-held(-add), tpc-path-preview,
+  tpc-folder-*, tpc-tag-*, tpc-lib-*, tpc-category-chip, tpc-icon-picker, tpc-icon-<Name>,
+  tpc-title, tpc-author, tpc-save, tpc-install, tpc-cover, tpc-open(-input), tpc-undo.
+- NOT yet tested: Electron IPC paths (Kurt's Windows build). Inbox flow untested end-to-end.
+- Kurt to do: Save to GitHub → pull+build one-liner (pack-app.bat && pack-tpc.bat) → GitHub
+  Release v1.5.0 with BOTH installers + latest.yml/blockmap → update Gumroad file → add TPC
+  (free) to Gumroad/landing later.

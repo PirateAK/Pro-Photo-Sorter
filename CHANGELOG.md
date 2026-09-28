@@ -13,6 +13,14 @@ All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 - **Restore** puts the category back exactly as it was (re-inserted at its old position if it was deleted). **Keep both** restores the snapshot *and* keeps the current version as a numbered copy — turns a bad Replace into a Create-new after the fact.
 - Entries persist across restarts until you **Empty History** (newest 50, 90 days). Live count badge in the Tag Manager header.
 
+### Added — Tag Pack Creator (new free companion app)
+- **Standalone `Tag Pack Creator Setup 1.5.0.exe`** built from the same codebase (`electron-shell-tpc/`, `pack-tpc.bat`). Anyone — PPS owner or not — can author and share `.pps-tagpack.json` packs.
+- Kurt's layout: **Category · Folder · Sub-Folder (n) · Filename** role buttons (enabled once text is typed, one role per entry, Sub-Folder digit = nesting depth under the most recently created sub-folder), live **"Will store to"** path preview, three-row tag display (category / sub-folders with nesting markers / filename tags of the highlighted folder) with drag-to-reorder, comma-separated paste with a **20-at-a-time cap** (extras are held; "Add the rest" banner + prompt after Save), a **Tag box** library of every filename tag (drag onto a sub-folder to add it there), pack title = file name, author field, **Undo** stack.
+- **Icons**: right-click any chip → same built-in icon grid as PPS + your own PNG (auto 64×64) + rename.
+- **Open pack…** loads any v1–v4 `.pps-tagpack.json` (including PPS exports) for re-work and re-save.
+- **Install into PPS**: one click drops the pack in `Documents\Pro Photo Sorter\Inbox\`; PPS offers to import it (with the Replace / Merge / Create-new dialog) the next time Tag Manager opens. In the browser it falls back to a download.
+- **Cover**: generates a 1280×720 Gumroad-ready PNG — pack name, author, icon mosaic, counts, sample path.
+
 ### Fixed
 - **Nested sub-folders were dropped on Export / Import.** Pack file format bumped to v4 with a recursive `subfolders` key. v1–v3 files still open; v4 files open in older builds (top level only).
 

@@ -22,6 +22,7 @@ import {
 import { serializeCategory, deserializePack, findByName, applyImport, countPack, numberedName } from "../lib/packFormat";
 import { getHistory, getHistoryCount, recordHistory, removeHistory, emptyHistory, applyEntry, ACTION_LABELS } from "../lib/tagHistory";
 import { History as HistoryIcon } from "lucide-react";
+import { inboxList, inboxRemove } from "../lib/electronBridge";
 
 // v1.5.0 — Tag History panel. Whole-category snapshots taken before every
 // import Replace/Merge, category delete, sub-folder delete or pasted list.
@@ -136,7 +137,7 @@ function ImportDecision({ pending, onPick, onCancel }) {
 }
 
 // Curated built-in icons
-const BUILTIN_ICONS = [
+export const BUILTIN_ICONS = [
   "Star", "Heart", "Flag", "Bookmark", "Tag", "Award", "Trophy",
   "Camera", "Aperture", "Sun", "Moon", "Cloud", "CloudRain", "Snowflake",
   "Mountain", "Trees", "Tent", "Palmtree", "Flower2", "Leaf", "Sprout",
@@ -392,6 +393,27 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
     window.addEventListener("pps:history-updated", refresh);
     if (open) refresh();
     return () => window.removeEventListener("pps:history-updated", refresh);
+  }, [open]);
+  const inboxImportRef = useRef(() => {});
+  // v1.5.0 — packs handed over by the Tag Pack Creator (Documents\Pro Photo
+  // Sorter\Inbox). Offer each one when the Tag Manager opens.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      const items = await inboxList();
+      if (cancelled || items.length === 0) return;
+      for (const it of items) {
+        toast(`Tag pack waiting: ${it.name.replace(/\.pps-tagpack\.json$/i, "")}`, {
+          description: "Sent from Tag Pack Creator.",
+          duration: 15000,
+          action: { label: "Import", onClick: () => { try { inboxImportRef.current(it.json); inboxRemove(it.name); } catch (e) { toast.error("Import failed", { description: e.message }); } } },
+          cancel: { label: "Discard", onClick: () => inboxRemove(it.name) },
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const snapshot = (action, cat, note) => {
     if (!cat) return;
@@ -1293,17 +1315,17 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
       toast.success(`Imported "${res.category.name}"`, { description: counts });
     }
   };
+  const importPackJson = (text) => {
+    const incoming = deserializePack(JSON.parse(text), uid);
+    const existing = findByName(categories, incoming.name);
+    if (existing) setImportPending({ incoming, existing });
+    else finishImport(incoming, "new", null);
+  };
+  inboxImportRef.current = importPackJson;
   const importFromFile = async (file) => {
     if (!file) return;
-    try {
-      const data = JSON.parse(await file.text());
-      const incoming = deserializePack(data, uid);
-      const existing = findByName(categories, incoming.name);
-      if (existing) setImportPending({ incoming, existing });
-      else finishImport(incoming, "new", null);
-    } catch (e) {
-      toast.error("Import failed", { description: e.message });
-    }
+    try { importPackJson(await file.text()); }
+    catch (e) { toast.error("Import failed", { description: e.message }); }
   };
 
   const handleImagePick = (listKey, e) => {

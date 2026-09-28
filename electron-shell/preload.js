@@ -33,4 +33,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   samplesInfo: () => ipcRenderer.invoke('pps:samples-info'),
   samplesRestore: () => ipcRenderer.invoke('pps:samples-restore'),
   samplesOpenFolder: () => ipcRenderer.invoke('pps:samples-open-folder'),
+
+  // Tag Pack Creator inbox (v1.5.0)
+  inboxList: () => ipcRenderer.invoke('pps:inbox-list'),
+  inboxRemove: (name) => ipcRenderer.invoke('pps:inbox-remove', name),
 });
