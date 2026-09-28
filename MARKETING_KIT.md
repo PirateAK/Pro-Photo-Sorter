@@ -195,3 +195,99 @@ Structure: hook → problem → what it does (8 bullets) → privacy → what yo
 Old changelog-style text moved to Gumroad "Post an update" for existing owners.
 Price confirmed $29. Plan: raise to $39 after first handful of reviews.
 Tags added: "Photo Mechanic alternative", "photo culling", "XMP sidecar".
+
+## 9 · Traffic plan — "bring the masses" (saved for tomorrow, Jun 2026)
+
+Status: GoDaddy DNS ✅ · GitHub Pages + HTTPS ✅ · Release v1.4.7 ✅ ·
+Gumroad exe/PDFs/description ✅ · Hero = eagle screenshot ✅. Gate is built;
+nothing yet drives traffic to it.
+
+**Week 1 — free listings (agent drafts, Kurt pastes)**
+1. Google Search Console — verify muskegman.com (GoDaddy DNS TXT record, one
+   click), submit https://muskegman.com/. Agent walks through clicks.
+2. AlternativeTo.net — list vs Photo Mechanic, Lightroom Classic, Bridge.
+3. Softpedia / MajorGeeks — 200-word blurb + installer link.
+
+**Week 2 — story posts where buyers live**
+4. Reddit: r/wildlifephotography first, then r/Lightroom (XMP hook),
+   r/photography. Story-first, no link in title, link in first comment.
+5. Facebook groups: wildlife / sports / wedding photographers. Same story +
+   eagle screenshot.
+
+**Week 3 — launch day**
+6. Product Hunt (Tuesday). Need 4–6 gallery images (have eagle + flowers ×3
+   compare), 60-sec demo GIF/video — agent builds Playwright GIF scripts.
+
+**Quiet wins**
+- Reviews: give free keys to 3–5 photographer friends, ask for honest
+  Gumroad reviews. Zero reviews = biggest conversion killer.
+- Visitor counter: add free privacy-friendly analytics (GoatCounter or
+  similar, no cookies/banner) to docs/index.html so we know which channel
+  sends buyers.
+
+**Proposed next session:** draft AlternativeTo listing + r/wildlifephotography
+post + add visitor counter + Search Console click-through.
+
+**Later ideas:** screenshot gallery section on the landing page (eagle, ×3
+compare, Tag Manager); Gumroad "Post an update" with old changelog text;
+raise price to $39 after first reviews; Gmail → kpunet.net forwarding.
+
+### §9 progress log
+- ✅ AlternativeTo: account created, Pro Photo Sorter submitted, approved + reviewed
+  (Jun 2026). TODO: add listing URL to site footer.
+- ✅ Payhip: considered, rejected (would break Gumroad-only license verify;
+  Payhip is a checkout not a marketplace). Revisit dual-verifier after ~50 sales.
+- ⏳ Reddit r/wildlifephotography post drafted (below). Then r/Lightroom, r/photography.
+- ⏳ Visitor counter — candidate: Cloudflare Web Analytics (free, no cookies).
+
+## 10 · Reddit post — r/wildlifephotography (draft, Jun 2026)
+
+Title: I built the offline photo sorter I needed after weeks on a boat in Alaska with satellite internet — and two broken elbows
+
+Body: story-first (Alaska ship, LR cloud useless, PM $150, typing folder names ×3000,
+broke back + elbows → built click/drag/one-key sorter, XMP sidecars to LR,
+$29 once, offline). Ask for workflow feedback. Link in first comment only.
+Follow-ups: r/Lightroom (lead with XMP sidecars), r/photography (lead with culling loop).
+
+## 11 · Download-site blurbs (Softpedia · MajorGeeks · Softonic) — ready to paste
+
+**Product name:** Pro Photo Sorter
+**Version:** 1.4.7 · **OS:** Windows 10 / 11 (64-bit) · **License:** Trial / Shareware, $29 one-time
+**Homepage:** https://muskegman.com
+**Download URL:** https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest
+**File:** Pro Photo Sorter Setup 1.4.7.exe (≈78 MB)
+**Category:** Multimedia › Graphic › Image Management / Photo Organizers
+**Developer:** Kurt Morin (Muskegman) · leaderteamk@gmail.com
+
+**Short description (≤150 chars):**
+Offline photo organizer with nested tag folders, side-by-side compare, built-in editor and Lightroom-compatible XMP sidecars.
+
+**Full description (~200 words):**
+Pro Photo Sorter is a Windows desktop application for culling and organizing large photo collections without an internet connection. Point it at any folder — memory card, external drive or network share — and sort photos by dropping tags onto the image. The destination folder and filename are assembled automatically from the tags applied (for example Wildlife/Birds/Bald_Eagle.jpg), so nothing is typed by hand.
+
+Every stored photo receives an Adobe-standard .xmp sidecar containing the star rating and keywords, allowing Adobe Lightroom, Bridge and Photo Mechanic to import the finished work already rated and tagged.
+
+Key features include unlimited nested categories, side-by-side comparison of two or three images with independent zoom, one-to-five star ratings, a dedicated cull mode, batch store and move operations, a built-in editor (auto-enhance, crop, rotate, straighten, sharpen) that preserves tags on edited copies, print-size cropping from 4×6 to 16×20 at 300 DPI with optional watermark, contact-sheet PDF export, photo search and a multi-source workflow.
+
+The application runs entirely offline: a single license check is performed on activation and no data is transmitted afterwards. The trial version includes every feature; stored photos carry a small watermark until a license key is entered.
+
+**Keywords:** photo organizer, photo sorter, image tagging, photo culling, XMP sidecar, Lightroom, offline, batch rename, star rating, contact sheet
+
+**Submission URLs**
+- Softpedia: https://www.softpedia.com/user/submit.shtml (needs free account; moderated ~2–5 days)
+- MajorGeeks: https://www.majorgeeks.com/content/page/submit_a_file.html
+- Softonic: https://en.softonic.com/developers (upload form; slower approval)
+
+## 12 · Site additions (Jun 2026, no Kurt action needed)
+- Screenshot gallery section (#gallery): eagle hero + ×3 compare shot with captions.
+- JSON-LD SoftwareApplication schema: price $29 USD, Windows, v1.4.7, screenshots,
+  download URL → Google rich results can show price/platform.
+- robots.txt + sitemap.xml at site root (for Search Console submission).
+- Footer link → AlternativeTo listing (URL guessed as /software/pro-photo-sorter/ — Kurt to confirm).
+- Canonical URL tag.
+
+## 13 · Visitor counter — Cloudflare Web Analytics (free, no cookies, no banner)
+Kurt clicks: dash.cloudflare.com → Sign up (email + password) → left menu
+"Web Analytics" → "Add a site" → enter muskegman.com → copy the JS snippet
+(one line containing a `token`) → paste it in chat. Agent inserts before </body>.
+Shows visits, referrers (Reddit vs Google vs AlternativeTo), countries, pages.

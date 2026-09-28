@@ -110,3 +110,24 @@ export async function samplesOpenFolder() {
   if (!isElectron() || !window.electronAPI?.samplesOpenFolder) return { ok: false };
   try { return await window.electronAPI.samplesOpenFolder(); } catch { return { ok: false }; }
 }
+
+// v1.5.0 — Tag Pack Creator ↔ PPS hand-off via
+// %USERPROFILE%\Documents\Pro Photo Sorter\Inbox\*.pps-tagpack.json
+export async function inboxList() {
+  if (!isElectron() || !window.electronAPI?.inboxList) return [];
+  try { return (await window.electronAPI.inboxList()) || []; } catch { return []; }
+}
+export async function inboxRemove(name) {
+  if (!isElectron() || !window.electronAPI?.inboxRemove) return false;
+  try { return await window.electronAPI.inboxRemove(name); } catch { return false; }
+}
+// Creator side: write a pack into the Inbox (returns { ok, path }) or save
+// via a native dialog. Both are no-ops in the browser (caller falls back to download).
+export async function tpcInstallPack(name, json) {
+  if (!isElectron() || !window.electronAPI?.tpcInstallPack) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.tpcInstallPack({ name, json }); } catch (e) { return { ok: false, error: e.message }; }
+}
+export async function tpcSavePack(name, json) {
+  if (!isElectron() || !window.electronAPI?.tpcSavePack) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.tpcSavePack({ name, json }); } catch (e) { return { ok: false, error: e.message }; }
+}

@@ -1637,3 +1637,83 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
 - ✅ Price confirmed $29 (raise to $39 after first reviews). Contact =
   leaderteamk@gmail.com. Gumroad: v1.4.7 exe + PDFs uploaded, description rewritten (§8).
 - ✅ GitHub Release v1.4.7 published with exe/blockmap/latest.yml/PDFs/ReadMe.txt.
+- 📌 NEXT SESSION (Kurt paused, late night): traffic plan saved in
+  MARKETING_KIT.md §9. Start with: AlternativeTo listing draft, Reddit
+  r/wildlifephotography post draft, visitor counter on landing page, Google
+  Search Console walkthrough. Kurt has NOT hit Save to GitHub for the eagle
+  hero yet — remind him (site updates itself once pushed).
+- ✅ 2026-06 (session 2): site gallery section (#gallery, eagle + ×3 compare),
+  JSON-LD SoftwareApplication schema ($29, Windows, v1.4.7), canonical tag,
+  robots.txt + sitemap.xml, footer AlternativeTo link (URL unconfirmed).
+  MARKETING_KIT §11 download-site blurbs, §13 Cloudflare analytics steps.
+  AlternativeTo listing approved. Payhip rejected. Reddit post drafted (§10);
+  Kurt learning Reddit first (lurk/comment a week before posting).
+- ⏳ Kurt: Save to GitHub; confirm AlternativeTo URL; Cloudflare token for
+  analytics; Search Console verification; Softpedia/MajorGeeks submissions.
+
+## Parked for v2 (Kurt, 2026-06) — marketing follow-ups deferred
+Kurt asked to shelve these; "has other thoughts". Do not propose again until v2 kickoff.
+- Cloudflare visitor counter on landing page (MARKETING_KIT §13)
+- Google Search Console verification + sitemap submit
+- Softpedia / MajorGeeks / Softonic submissions (blurbs ready, §11)
+- Demo GIF / Playwright capture scripts for site, Reddit, Gumroad
+- Reddit posts (drafts in §10) — Kurt learning Reddit at his own pace
+- Product Hunt launch; Facebook groups
+- Portable (no-install) build target via electron-builder
+- Payhip / dual-verifier license (after ~50 sales)
+
+## v1.5.0 — 2026-06-16 · Un-losable tag library (TPC groundwork) — DONE
+- ✅ `lib/packFormat.js`: v4 pack format (recursive subfolders — fixes v3 export
+  dropping nested folders), deserialize v1–v4, `numberedName` ("Wildlife 2"),
+  `findByName`, `mergeCategory` (recursive, dedupe by label, icon-upgrade rule),
+  `applyImport(mode: replace|merge|new)`.
+- ✅ `lib/tagHistory.js`: localStorage "pps.tag-history", cap 50 / 90 days,
+  `applyEntry(mode restore|keepBoth)`. Event `pps:history-updated`.
+- ✅ CategoryManager: ImportDecision overlay (data-testid import-merge/replace/new/
+  cancel), HistoryPanel (tagmgr-history-open, history-restore-*, history-keepboth-*,
+  history-empty), snapshots on delete-category, delete-subfolder (top + nested via
+  `pps:before-destructive` event from NestedSubfolderEditor), paste-roster (>1),
+  import replace/merge. uniqueName now "Name 2" style.
+- ✅ Tests: packMerge.test.mjs (8), tagHistory.test.mjs (5). Suite 42/42.
+- ✅ Version 1.5.0 (frontend + electron-shell + buildInfo), CHANGELOG entry.
+- Browser-verified: import → Merge → History → Keep both → Wildlife + Wildlife 2.
+
+## Tag Pack Creator (TPC) — Phase 2 plan (decisions locked 2026-06-16)
+- Customer-facing, FREE, own installer/download (non-PPS users can make packs).
+  Same repo; shares packFormat.js, icon picker, starter packs. Build: separate
+  electron shell dir (e.g. electron-shell-tpc/, productName "Tag Pack Creator")
+  loading the same React build with a `#/tpc` hash route; `pack-tpc.bat`.
+- Layout (Kurt): title → button row [Category][Folder][Sub-Folder (n)][Filename]
+  (toggle color on press, one selection per entry, disabled until text typed;
+  Sub-Folder digit increments = nesting depth under MOST RECENTLY CREATED
+  sub-folder; deselect resets digit) → path preview line (like PPS "Will store
+  to") → tag display: row1 category, row2 sub-folders (nested inline, drag
+  reorder), row3 filename tags (drag reorder) → text box (comma list paste,
+  cap 20, extras held → after Save ask "paste the rest? (+N)") → filename tag
+  box library (same chip UX as PPS: drag, right-click edit, x remove) →
+  pack title field (= save filename) → Save · Trash-with-undo.
+- Filename tags land in highlighted sub-folder AND appear in tag box library.
+- Icons: same picker as PPS Tag Manager (built-ins + custom PNGs), right-click.
+- Open existing .pps-tagpack.json to edit/re-save (no auto-load of starters;
+  allow importing them).
+- Output: v4 pack file; "Install into PPS" nice-to-have later.
+
+## Tag Pack Creator v1.5.0 — 2026-06-16 · BUILT (browser-verified)
+- `frontend/src/tpc/TagPackCreator.jsx` (route `#/tpc` via index.js), `tpc/previewCard.jsx`.
+- Role buttons w/ depth digit (nests under most-recently-created chain `lastCreated[depth-1]`),
+  path preview, 3-row display (drag reorder siblings / tags; drag library tag onto folder = copy),
+  20-cap paste hold (`held` + "Add the rest" + prompt after Save), Tag box library,
+  IconPicker (BUILTIN_ICONS exported from CategoryManager + PNG upload + rename), Undo stack,
+  Open pack (v1–v4), Save (Electron dialog `tpc:save-pack`, browser = download),
+  Install into PPS (`tpc:install-pack` → Documents\Pro Photo Sorter\Inbox), Cover PNG 1280×720.
+- PPS side: `electron-shell/main.js` + preload `pps:inbox-list/remove`; CategoryManager toasts
+  "Tag pack waiting" with Import/Discard on open (uses importPackJson → decision dialog).
+- `electron-shell-tpc/` (main.js, preload.js, package.json productName "Tag Pack Creator",
+  appId com.muskegman.tagpackcreator, artifact "Tag Pack Creator Setup ${version}.exe"), `pack-tpc.bat`.
+- data-testids: tpc-role-*, tpc-depth, tpc-text, tpc-add, tpc-held(-add), tpc-path-preview,
+  tpc-folder-*, tpc-tag-*, tpc-lib-*, tpc-category-chip, tpc-icon-picker, tpc-icon-<Name>,
+  tpc-title, tpc-author, tpc-save, tpc-install, tpc-cover, tpc-open(-input), tpc-undo.
+- NOT yet tested: Electron IPC paths (Kurt's Windows build). Inbox flow untested end-to-end.
+- Kurt to do: Save to GitHub → pull+build one-liner (pack-app.bat && pack-tpc.bat) → GitHub
+  Release v1.5.0 with BOTH installers + latest.yml/blockmap → update Gumroad file → add TPC
+  (free) to Gumroad/landing later.

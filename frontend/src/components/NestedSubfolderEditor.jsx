@@ -190,6 +190,7 @@ export default function NestedSubfolderEditor({
     if ((kidCount || tagCount) && !window.confirm(
       `Delete "${child.name}"?\n${tagCount} filename tag(s) and ${kidCount} nested sub-folder(s) will be removed.`
     )) return;
+    try { window.dispatchEvent(new CustomEvent("pps:before-destructive", { detail: { note: child.name } })); } catch { /* jsdom */ }
     onChange({ ...node, subfolders: children.filter((c) => c.id !== childId) });
   };
   const renameChild = (childId, name) => {

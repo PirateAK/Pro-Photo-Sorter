@@ -13,6 +13,32 @@
 <link rel="icon" type="image/png" href="assets/icon.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<link rel="canonical" href="https://muskegman.com/" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Pro Photo Sorter",
+  "operatingSystem": "Windows 10, Windows 11",
+  "applicationCategory": "MultimediaApplication",
+  "applicationSubCategory": "Photo organizer",
+  "softwareVersion": "1.4.7",
+  "description": "Offline photo organizer for Windows. Nested tag folders, side-by-side compare, built-in editor and Lightroom-compatible XMP sidecars. One-time purchase, no subscription.",
+  "url": "https://muskegman.com/",
+  "image": "https://muskegman.com/assets/app-hero.png",
+  "screenshot": ["https://muskegman.com/assets/app-hero.png", "https://muskegman.com/assets/app-compare.png"],
+  "downloadUrl": "https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest",
+  "featureList": "Unlimited nested categories, Compare x2/x3, Star ratings, Cull mode, Built-in editor, Print-ready resize, Watermark, Contact-sheet PDF, XMP sidecars, 100% offline",
+  "offers": {
+    "@type": "Offer",
+    "price": "29",
+    "priceCurrency": "USD",
+    "url": "https://muskegman.gumroad.com/l/gvmaas",
+    "availability": "https://schema.org/InStock"
+  },
+  "author": { "@type": "Person", "name": "Kurt Morin", "url": "https://muskegman.com/" }
+}
+</script>
 <style>
   :root{
     --bg:#1A1715; --bg-deep:#110F0E; --surface:#26221F; --surface-2:#332D29; --border:#423A35;
@@ -106,6 +132,17 @@
   .card .path{margin-top:.9rem;font-family:var(--m);font-size:.74rem;color:var(--primary);background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:.35rem .6rem;display:inline-block}
   .card.wide{grid-column:span 2}
   @media(max-width:600px){.card.wide{grid-column:span 1}}
+
+  /* gallery */
+  .gallery{background:var(--bg-deep);border-top:1px solid var(--border)}
+  .gal{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+  @media(max-width:900px){.gal{grid-template-columns:1fr}}
+  .gal figure{margin:0}
+  .shot.still{transform:none;width:100%}
+  .shot.still:hover{transform:translateY(-4px)}
+  .gal figcaption{margin-top:1rem;color:var(--dim);font-size:.93rem;line-height:1.55}
+  .gal figcaption b{color:var(--text);font-weight:600}
+  .gal kbd{font-family:var(--m);font-size:.72rem;background:var(--surface);border:1px solid var(--border);border-bottom-width:2px;border-radius:5px;padding:.1rem .45rem;color:var(--text)}
 
   /* how */
   .how{background:var(--bg-deep);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
@@ -264,6 +301,26 @@
   </div>
 </section>
 
+<section class="gallery" id="gallery">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">See it work</div>
+      <h2>Real sessions, not mock-ups.</h2>
+      <p>Straight from the deck — Kurt's own eagle and wildflower shoots being sorted in Pro Photo Sorter.</p>
+    </div>
+    <div class="gal" data-testid="screenshot-gallery">
+      <figure>
+        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-hero.png" loading="lazy" alt="Sorting a bald eagle photo with Wildlife › Birds › Bald Eagle tags, 4-star rating and destination path preview" width="1918" height="1012" /></div>
+        <figcaption><b>One photo, one key.</b> Tags on the image build the path <span class="mono">Wildlife/Birds/Bald_Eagle.jpg</span>. Press <kbd>S</kbd> and it's stored with an XMP sidecar.</figcaption>
+      </figure>
+      <figure>
+        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-compare.png" loading="lazy" alt="Compare ×3 mode showing three wildflower photos side by side with the filmstrip below" width="1922" height="1017" /></div>
+        <figcaption><b>Compare ×3.</b> Near-identical frames side by side, each pane zooms independently. Rate and store the keeper without leaving the view.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
 <section class="how" id="how">
   <div class="wrap">
     <div class="sec-head">
@@ -397,6 +454,7 @@
     <div style="display:flex;gap:1.4rem">
       <a href="https://github.com/PirateAK/Pro-Photo-Sorter" target="_blank" rel="noopener">GitHub</a>
       <a href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener">Gumroad</a>
+      <a href="https://alternativeto.net/software/pro-photo-sorter/" target="_blank" rel="noopener" data-testid="footer-alternativeto-link">AlternativeTo</a>
       <a href="mailto:leaderteamk@gmail.com">Contact</a>
     </div>
   </div>
