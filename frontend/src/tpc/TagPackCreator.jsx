@@ -69,7 +69,7 @@ function Chip({ item, active, onClick, onRemove, onContext, draggable, onDragSta
     >
       {depth > 0 && <span className="text-dim font-mono text-[10px]">{"›".repeat(depth)}</span>}
       <Icon item={item} />
-      <span className="max-w-[180px] truncate font-mono">{item.label || item.name}</span>
+      <span className="max-w-[min(180px,40vw)] truncate font-mono">{item.label || item.name}</span>
       {onRemove && (
         <button onClick={(e) => { e.stopPropagation(); onRemove(); }} className="w-4 h-4 rounded flex items-center justify-center text-dim opacity-0 group-hover:opacity-100 hover:text-[color:var(--danger)]" title="Remove"><Lucide.X size={11} /></button>
       )}
@@ -121,6 +121,75 @@ function IconPicker({ target, onPick, onRename, onClose }) {
   );
 }
 
+
+const LINKS = {
+  gumroad: "https://muskegman.gumroad.com/l/gvmaas",
+  site: "https://muskegman.com",
+  releases: "https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest",
+};
+// Opens in the system browser inside Electron, new tab in the browser.
+const openLink = (url) => { if (window.electronAPI?.openExternal) window.electronAPI.openExternal(url); else window.open(url, "_blank", "noopener"); };
+
+function AboutDialog({ onClose }) {
+  const Link = ({ href, children, primary, testId }) => (
+    <button onClick={() => openLink(href)} data-testid={testId}
+      className={`h-9 px-3 rounded text-xs font-medium flex items-center gap-1.5 transition-colors ${primary ? "bg-primary-earth text-[color:var(--text-inverse)] hover:opacity-90" : "border border-app hover:bg-surface-hover"}`}>
+      {children} <Lucide.ExternalLink size={11} />
+    </button>
+  );
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" data-testid="tpc-about-dialog">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative pane rounded-lg shadow-2xl border border-app w-full max-w-xl p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-lg bg-primary-earth flex items-center justify-center text-[color:var(--text-inverse)]"><Lucide.Package size={20} /></div>
+            <div>
+              <h2 className="font-heading font-bold text-base leading-tight">Tag Pack Creator</h2>
+              <div className="text-[11px] text-dim font-mono">v{buildInfo.version} · free companion to Pro Photo Sorter</div>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover" data-testid="tpc-about-close"><Lucide.X size={16} /></button>
+        </div>
+
+        <div className="text-sm space-y-3 leading-relaxed">
+          <p>
+            This tool builds <span className="font-mono text-xs">.pps-tagpack.json</span> files — the tag libraries that
+            <b> Pro Photo Sorter</b> uses to file thousands of photos with a click, a drag and one key. Make a pack for your
+            niche, share it with friends, sell it, or install it straight into your own copy of PPS.
+          </p>
+          <div className="rounded-lg border border-app bg-app p-3 space-y-2">
+            <div className="text-[10px] uppercase tracking-wider text-dim">About Pro Photo Sorter</div>
+            <p className="text-dim text-[13px]">
+              An offline Windows photo organizer for photographers who shoot more than they type. Unlimited nested tag
+              folders, side-by-side compare, a built-in editor, print-ready resize and Lightroom-compatible XMP sidecars —
+              so the culling you do on a memory card in the field shows up in Lightroom already rated and tagged.
+              No cloud, no subscription, no telemetry. <b>$29 once.</b> Free full-featured trial.
+            </p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Link href={LINKS.gumroad} primary testId="tpc-about-gumroad"><Lucide.ShoppingBag size={12} /> Get Pro Photo Sorter on Gumroad</Link>
+              <Link href={LINKS.releases} testId="tpc-about-trial"><Lucide.Download size={12} /> Free trial</Link>
+              <Link href={LINKS.site} testId="tpc-about-site"><Lucide.Globe size={12} /> muskegman.com</Link>
+            </div>
+          </div>
+          <div className="rounded-lg border border-app bg-app p-3 space-y-1.5">
+            <div className="text-[10px] uppercase tracking-wider text-dim">Who made this</div>
+            <p className="text-dim text-[13px]">
+              I'm <b>Captain Kurt</b> — wildlife and sports photographer, working weeks at a time off a ship in Alaska
+              where the internet isn't worth the name. I built Pro Photo Sorter because Lightroom's cloud features were
+              useless out there and every other tool made me type folder names by hand — thousands of times. Then I broke
+              my back and both elbows, and typing went from tedious to painful. So sorting became a click, a drag and one
+              key. This Creator exists so <em>you</em> can build the tag libraries you wish someone had already made.
+            </p>
+            <p className="text-dim text-[13px]">Questions, bugs, pack ideas: <button onClick={() => openLink("mailto:leaderteamk@gmail.com")} className="text-primary-earth underline-offset-2 hover:underline">leaderteamk@gmail.com</button></p>
+            <p className="text-[12px] text-dim italic">Fair winds — Kurt</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── main app ─────────────────────────────────────────────────────────────
 export default function TagPackCreator() {
   const [pack, setPack] = useState(() => ({ id: uid("cat"), name: "", author: "", description: "", subfolders: [], filenameItems: [] }));
@@ -133,6 +202,7 @@ export default function TagPackCreator() {
   const [picker, setPicker] = useState(null);       // { kind: "node"|"tag"|"pack", id, ownerId }
   const [undo, setUndo] = useState([]);              // stack of previous packs
   const [title, setTitle] = useState("");
+  const [aboutOpen, setAboutOpen] = useState(false);
   const [theme, setTheme] = useState(() => { try { return window.localStorage.getItem("tpc.theme") || "dark"; } catch { return "dark"; } });
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); try { window.localStorage.setItem("tpc.theme", theme); } catch { /* private mode */ } }, [theme]);
   const dragRef = useRef(null);
@@ -255,7 +325,7 @@ export default function TagPackCreator() {
   return (
     <div className="min-h-screen bg-app text-[color:var(--text)] font-body" data-testid="tpc-app">
       <Toaster position="bottom-right" theme={theme} richColors />
-      <header className="px-6 py-4 border-b border-app flex items-center justify-between">
+      <header className="px-[3vw] py-3 border-b border-app flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary-earth flex items-center justify-center text-[color:var(--text-inverse)]"><Lucide.Package size={18} /></div>
           <div>
@@ -264,6 +334,7 @@ export default function TagPackCreator() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setAboutOpen(true)} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" data-testid="tpc-about"><Lucide.Info size={12} /> About</button>
           <button onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} className="h-8 w-8 rounded border border-app flex items-center justify-center hover:bg-surface-hover" title={`Switch to ${theme === "light" ? "Earth Dark" : "Earth Light"}`} data-testid="tpc-toggle-theme">
             {theme === "light" ? <Lucide.Moon size={13} /> : <Lucide.Sun size={13} />}
           </button>
@@ -273,7 +344,7 @@ export default function TagPackCreator() {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-6 py-6 space-y-5">
+      <main className="w-full px-[3vw] py-5 space-y-4" style={{ maxWidth: "min(100%, 1600px)", margin: "0 auto" }}>
         {/* Role buttons */}
         <section className="flex flex-wrap items-center gap-2" data-testid="tpc-role-row">
           <RoleBtn r="category">Category</RoleBtn>
@@ -300,7 +371,7 @@ export default function TagPackCreator() {
           </div>
           <div className="px-3 py-2 flex items-start gap-3">
             <span className="w-24 pt-1.5 text-[10px] uppercase tracking-wider text-dim shrink-0">Sub-folders</span>
-            <div className="flex flex-wrap gap-1.5 min-h-[28px]" data-testid="tpc-folder-row">
+            <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid="tpc-folder-row">
               {flat.length === 0 && <span className="text-xs text-dim italic pt-1">Folder = top level · Sub-Folder (n) = nested under the last one you made</span>}
               {flat.map(({ node, depth: d }) => (
                 <Chip key={node.id} item={node} depth={d} active={selectedId === node.id} draggable
@@ -313,7 +384,7 @@ export default function TagPackCreator() {
           </div>
           <div className="px-3 py-2 flex items-start gap-3">
             <span className="w-24 pt-1.5 text-[10px] uppercase tracking-wider text-dim shrink-0">Filename · {owner === pack ? "category" : owner.name}</span>
-            <div className="flex flex-wrap gap-1.5 min-h-[28px]" data-testid="tpc-filename-row">
+            <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid="tpc-filename-row">
               {(owner.filenameItems || []).length === 0 && <span className="text-xs text-dim italic pt-1">No filename tags here yet</span>}
               {(owner.filenameItems || []).map((t) => (
                 <Chip key={t.id} item={t} draggable onRemove={() => removeTag(selectedId, t.id)} onContext={() => setPicker({ kind: "tag", id: t.id, ownerId: selectedId })}
@@ -329,7 +400,7 @@ export default function TagPackCreator() {
         <section className="space-y-2">
           <div className="flex items-center gap-2">
             <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && role) apply(); }}
-              placeholder="Type a tag name — or paste a comma-separated list (20 at a time)" className="flex-1 h-10 px-3 rounded bg-surface border border-app text-sm font-mono" data-testid="tpc-text" />
+              placeholder="Type a tag name — or paste a comma-separated list (20 at a time)" className="flex-1 min-w-0 h-10 px-3 rounded bg-surface border border-app text-sm font-mono" data-testid="tpc-text" />
             <button onClick={() => apply()} disabled={!canAct || !role} className="h-10 px-4 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium disabled:opacity-35" data-testid="tpc-add">Add</button>
           </div>
           {held.length > 0 && (
@@ -376,6 +447,7 @@ export default function TagPackCreator() {
         </section>
       </main>
 
+      {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
       {picker && pickerTarget && (
         <IconPicker target={pickerTarget} onClose={() => setPicker(null)}
           onPick={(patch) => { patchTarget(patch); setPicker(null); }}

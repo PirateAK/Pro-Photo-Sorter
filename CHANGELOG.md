@@ -21,6 +21,7 @@ All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 - **Install into PPS**: one click drops the pack in `Documents\Pro Photo Sorter\Inbox\`; PPS offers to import it (with the Replace / Merge / Create-new dialog) the next time Tag Manager opens. In the browser it falls back to a download.
 - **Cover**: generates a 1280×720 Gumroad-ready PNG — pack name, author, icon mosaic, counts, sample path.
 - **Earth Light / Earth Dark** toggle in the header (remembered between sessions), same palette as PPS.
+- Fluid layout — fills any window size. **About** dialog with the PPS pitch, Kurt's story and Gumroad / trial / site links (open in the system browser).
 - **Earth Light / Earth Dark** toggle in the header (remembered between sessions), same palette as PPS.
 
 ### Fixed
