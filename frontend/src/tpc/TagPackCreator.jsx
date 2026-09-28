@@ -133,6 +133,8 @@ export default function TagPackCreator() {
   const [picker, setPicker] = useState(null);       // { kind: "node"|"tag"|"pack", id, ownerId }
   const [undo, setUndo] = useState([]);              // stack of previous packs
   const [title, setTitle] = useState("");
+  const [theme, setTheme] = useState(() => { try { return window.localStorage.getItem("tpc.theme") || "dark"; } catch { return "dark"; } });
+  useEffect(() => { document.documentElement.setAttribute("data-theme", theme); try { window.localStorage.setItem("tpc.theme", theme); } catch { /* private mode */ } }, [theme]);
   const dragRef = useRef(null);
   const fileRef = useRef(null);
 
@@ -252,7 +254,7 @@ export default function TagPackCreator() {
 
   return (
     <div className="min-h-screen bg-app text-[color:var(--text)] font-body" data-testid="tpc-app">
-      <Toaster position="bottom-right" theme="dark" richColors />
+      <Toaster position="bottom-right" theme={theme} richColors />
       <header className="px-6 py-4 border-b border-app flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary-earth flex items-center justify-center text-[color:var(--text-inverse)]"><Lucide.Package size={18} /></div>
@@ -262,6 +264,9 @@ export default function TagPackCreator() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} className="h-8 w-8 rounded border border-app flex items-center justify-center hover:bg-surface-hover" title={`Switch to ${theme === "light" ? "Earth Dark" : "Earth Light"}`} data-testid="tpc-toggle-theme">
+            {theme === "light" ? <Lucide.Moon size={13} /> : <Lucide.Sun size={13} />}
+          </button>
           <button onClick={() => fileRef.current?.click()} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" data-testid="tpc-open"><Lucide.FolderOpen size={12} /> Open pack…</button>
           <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { openFile(e.target.files?.[0]); e.target.value = ""; }} data-testid="tpc-open-input" />
           <button onClick={doUndo} disabled={!undo.length} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover disabled:opacity-35" data-testid="tpc-undo"><Lucide.Undo2 size={12} /> Undo{undo.length ? ` · ${undo.length}` : ""}</button>
