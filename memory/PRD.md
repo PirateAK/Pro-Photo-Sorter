@@ -1713,7 +1713,8 @@ Kurt asked to shelve these; "has other thoughts". Do not propose again until v2 
 - data-testids: tpc-role-*, tpc-depth, tpc-text, tpc-add, tpc-held(-add), tpc-path-preview,
   tpc-folder-*, tpc-tag-*, tpc-lib-*, tpc-category-chip, tpc-icon-picker, tpc-icon-<Name>,
   tpc-title, tpc-author, tpc-save, tpc-install, tpc-cover, tpc-open(-input), tpc-undo.
-- NOT yet tested: Electron IPC paths (Kurt's Windows build). Inbox flow untested end-to-end.
+- ✅ Kurt field-tested TPC on Windows incl. Install into PPS inbox flow: "works brilliantly" (2026-06).
+- ✅ Added: theme toggle (tpc.theme), fluid layout, About dialog (tpc-about, tpc-about-gumroad/trial/site).
 - Kurt to do: Save to GitHub → pull+build one-liner (pack-app.bat && pack-tpc.bat) → GitHub
   Release v1.5.0 with BOTH installers + latest.yml/blockmap → update Gumroad file → add TPC
   (free) to Gumroad/landing later.
