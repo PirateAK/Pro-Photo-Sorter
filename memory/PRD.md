@@ -1650,3 +1650,14 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
   Kurt learning Reddit first (lurk/comment a week before posting).
 - ⏳ Kurt: Save to GitHub; confirm AlternativeTo URL; Cloudflare token for
   analytics; Search Console verification; Softpedia/MajorGeeks submissions.
+
+## Parked for v2 (Kurt, 2026-06) — marketing follow-ups deferred
+Kurt asked to shelve these; "has other thoughts". Do not propose again until v2 kickoff.
+- Cloudflare visitor counter on landing page (MARKETING_KIT §13)
+- Google Search Console verification + sitemap submit
+- Softpedia / MajorGeeks / Softonic submissions (blurbs ready, §11)
+- Demo GIF / Playwright capture scripts for site, Reddit, Gumroad
+- Reddit posts (drafts in §10) — Kurt learning Reddit at his own pace
+- Product Hunt launch; Facebook groups
+- Portable (no-install) build target via electron-builder
+- Payhip / dual-verifier license (after ~50 sales)
