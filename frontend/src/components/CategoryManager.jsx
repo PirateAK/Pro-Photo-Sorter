@@ -19,6 +19,121 @@ import {
   removeManyFromTrash,
   emptyTrash,
 } from "../lib/chipTrash";
+import { serializeCategory, deserializePack, findByName, applyImport, countPack, numberedName } from "../lib/packFormat";
+import { getHistory, getHistoryCount, recordHistory, removeHistory, emptyHistory, applyEntry, ACTION_LABELS } from "../lib/tagHistory";
+import { History as HistoryIcon } from "lucide-react";
+
+// v1.5.0 — Tag History panel. Whole-category snapshots taken before every
+// import Replace/Merge, category delete, sub-folder delete or pasted list.
+// "Restore" puts the category back as it was; "Keep both" also keeps the
+// current version as a numbered copy so nothing is lost either way.
+function HistoryPanel({ categories, onChange, onClose }) {
+  const [items, setItems] = useState(() => getHistory());
+  useEffect(() => {
+    const refresh = () => setItems(getHistory());
+    window.addEventListener("pps:history-updated", refresh);
+    return () => window.removeEventListener("pps:history-updated", refresh);
+  }, []);
+
+  const apply = (entry, mode) => {
+    const stillThere = categories.some((c) => c.id === entry.catId);
+    if (mode === "restore" && stillThere) {
+      const when = new Date(entry.ts).toLocaleString();
+      if (!window.confirm(`Reset "${entry.catName}" to how it was on ${when}?\n\nEdits made to it since then will be lost. (Use "Keep both" to keep the current version too.)`)) return;
+    }
+    const { categories: next, restoredName, keptName } = applyEntry(categories, entry, mode);
+    onChange(next);
+    removeHistory(entry.id);
+    toast.success(`Restored "${restoredName}"`, keptName ? { description: `Current version kept as "${keptName}".` } : undefined);
+  };
+
+  const doEmpty = () => {
+    if (items.length === 0) return;
+    if (!window.confirm(`Empty Tag History?\n\n${items.length} snapshot${items.length === 1 ? "" : "s"} will be gone for good.`)) return;
+    emptyHistory();
+    toast.success("Tag History emptied");
+  };
+
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center p-6" data-testid="history-panel">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative pane rounded-lg shadow-2xl flex flex-col" style={{ width: "min(720px, 100%)", maxHeight: "min(78vh, 720px)" }}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-app">
+          <div className="flex items-center gap-2">
+            <HistoryIcon size={16} className="text-primary-earth" />
+            <h3 className="font-heading font-semibold text-base">Tag History</h3>
+            <span className="text-xs text-dim font-mono">{items.length} snapshot{items.length === 1 ? "" : "s"}</span>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded flex items-center justify-center hover:bg-surface-hover" data-testid="history-close"><X size={16} /></button>
+        </div>
+        <div className="px-4 py-2 text-xs text-dim border-b border-app">
+          Snapshots are taken before imports that Replace or Merge, deletes, and pasted lists. They stay here until you empty them (newest 50 · 90 days).
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-2">
+          {items.length === 0 ? (
+            <div className="text-sm text-dim italic text-center py-10">Nothing here yet — your tag library hasn't had any big changes.</div>
+          ) : items.map((e) => {
+            const c = countPack(e.before);
+            const stillThere = categories.some((x) => x.id === e.catId);
+            return (
+              <div key={e.id} className="rounded-lg border border-app bg-app p-3 flex items-center gap-3" data-testid={`history-entry-${e.id}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-medium truncate">
+                    <span className="text-primary-earth">{ACTION_LABELS[e.action] || e.action}</span> · {e.catName}
+                  </div>
+                  <div className="text-[11px] text-dim font-mono">
+                    {new Date(e.ts).toLocaleString()} · snapshot: {c.subfolders} sub-folder{c.subfolders === 1 ? "" : "s"}, {c.tags} tag{c.tags === 1 ? "" : "s"}{e.note ? ` · ${e.note}` : ""}
+                  </div>
+                </div>
+                <button onClick={() => apply(e, "restore")} className="px-2.5 py-1.5 rounded bg-primary-earth text-[color:var(--text-inverse)] text-xs font-medium shrink-0" data-testid={`history-restore-${e.id}`} title={stillThere ? "Put this category back exactly as it was" : "Bring this deleted category back"}>
+                  Restore
+                </button>
+                {stillThere && (
+                  <button onClick={() => apply(e, "keepBoth")} className="px-2.5 py-1.5 rounded bg-surface border border-app hover:bg-surface-hover text-xs shrink-0" data-testid={`history-keepboth-${e.id}`} title="Restore the snapshot AND keep the current version as a numbered copy">
+                    Keep both
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <div className="px-4 py-3 border-t border-app flex items-center justify-between">
+          <button onClick={doEmpty} disabled={items.length === 0} className="px-2.5 py-1.5 rounded border border-app text-xs text-dim hover:text-[color:var(--danger)] hover:border-[color:var(--danger)] disabled:opacity-40" data-testid="history-empty">
+            Empty History
+          </button>
+          <button onClick={onClose} className="px-4 py-1.5 rounded bg-surface border border-app hover:bg-surface-hover text-sm" data-testid="history-done">Done</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// v1.5.0 — Import decision overlay: the incoming pack's name already exists.
+function ImportDecision({ pending, onPick, onCancel }) {
+  const inc = countPack(pending.incoming);
+  const ex = countPack(pending.existing);
+  const Btn = ({ mode, title, body, primary, testId }) => (
+    <button onClick={() => onPick(mode)} className={`w-full text-left rounded-lg border p-3 transition-colors ${primary ? "border-primary-earth bg-primary-earth/10 hover:bg-primary-earth/20" : "border-app bg-app hover:bg-surface-hover"}`} data-testid={testId}>
+      <div className="text-sm font-semibold">{title}</div>
+      <div className="text-xs text-dim mt-0.5">{body}</div>
+    </button>
+  );
+  return (
+    <div className="absolute inset-0 z-40 flex items-center justify-center p-6" data-testid="import-decision">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
+      <div className="relative pane rounded-lg shadow-2xl border border-app w-full max-w-md p-5 space-y-3">
+        <div className="flex items-center gap-2"><Upload size={16} className="text-primary-earth" /><h3 className="font-heading font-semibold text-base">"{pending.existing.name}" already exists</h3></div>
+        <p className="text-xs text-dim">
+          Incoming pack: {inc.subfolders} sub-folder{inc.subfolders === 1 ? "" : "s"}, {inc.tags} tag{inc.tags === 1 ? "" : "s"} · Yours: {ex.subfolders} sub-folder{ex.subfolders === 1 ? "" : "s"}, {ex.tags} tag{ex.tags === 1 ? "" : "s"}. A snapshot goes to Tag History either way, so you can undo.
+        </p>
+        <Btn mode="merge" primary testId="import-merge" title="Merge into existing" body="Add the incoming sub-folders and tags to yours. Same names are combined, duplicates skipped, your icons kept." />
+        <Btn mode="replace" testId="import-replace" title="Replace existing" body={`Swap your "${pending.existing.name}" for the incoming one. Yours is saved to Tag History first.`} />
+        <Btn mode="new" testId="import-new" title="Create new category" body="Keep both, side by side. The incoming pack gets the next free number, e.g. “Wildlife 2”." />
+        <div className="flex justify-end"><button onClick={onCancel} className="px-3 py-1.5 rounded text-xs text-dim hover:bg-surface-hover" data-testid="import-cancel">Cancel import</button></div>
+      </div>
+    </div>
+  );
+}
 
 // Curated built-in icons
 const BUILTIN_ICONS = [
@@ -268,6 +383,29 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   // the panel where Kurt can select which chips to restore or empty.
   const [trashOpen, setTrashOpen] = useState(false);
   const [trashCount, setTrashCount] = useState(() => getTrashCount());
+  // v1.5.0 — Tag History + pending import decision
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyCount, setHistoryCount] = useState(() => getHistoryCount());
+  const [importPending, setImportPending] = useState(null); // { incoming, existing }
+  useEffect(() => {
+    const refresh = () => setHistoryCount(getHistoryCount());
+    window.addEventListener("pps:history-updated", refresh);
+    if (open) refresh();
+    return () => window.removeEventListener("pps:history-updated", refresh);
+  }, [open]);
+  const snapshot = (action, cat, note) => {
+    if (!cat) return;
+    recordHistory({ action, category: cat, index: categories.findIndex((c) => c.id === cat.id), note });
+  };
+  // v1.5.0 — nested sub-folder deletes (inside NestedSubfolderEditor) announce
+  // themselves so we can snapshot the owning category first.
+  const currentRef = useRef(null);
+  useEffect(() => {
+    const onDestructive = (e) => snapshot("delete-subfolder", currentRef.current, e.detail?.note);
+    window.addEventListener("pps:before-destructive", onDestructive);
+    return () => window.removeEventListener("pps:before-destructive", onDestructive);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categories]);
   useEffect(() => {
     const refresh = () => setTrashCount(getTrashCount());
     window.addEventListener("pps:trash-updated", refresh);
@@ -370,6 +508,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   if (!open) return null;
 
   const current = categories.find((c) => c.id === activeCat) || categories[0];
+  currentRef.current = current;
   // Auto-clear selection when switching category or when the selected sub-folder disappears.
   const currentSubs = current?.subfolders || [];
   const selectedSub = currentSubs.find((s) => s.id === selectedSubId) || null;
@@ -384,6 +523,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   };
 
   const removeCategory = (id) => {
+    snapshot("delete-category", categories.find((c) => c.id === id));
     const next = categories.filter((c) => c.id !== id);
     onChange(next);
     if (activeCat === id) setActiveCat(next[0]?.id || null);
@@ -444,6 +584,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
       .map((n) => (n || "").trim())
       .filter(Boolean);
     if (clean.length === 0) return 0;
+    if (clean.length > 1) snapshot("paste-roster", current, `${clean.length} sub-folders`);
     let addedCount = 0;
     updateCurrentPack((c) => {
       const existing = new Set((c.subfolders || []).map((s) => (s.name || "").toLowerCase()));
@@ -471,6 +612,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
     if (!sf) return;
     const n = (sf.filenameItems || []).length;
     if (n > 0 && !window.confirm(`Delete sub-folder "${sf.name}" and its ${n} filename tag${n > 1 ? "s" : ""}?`)) return;
+    snapshot("delete-subfolder", current, sf.name);
     updateCurrentPack((c) => ({ ...c, subfolders: (c.subfolders || []).filter((s) => s.id !== sfId) }));
   };
   const renameSubfolder = (sfId, newName) => {
@@ -937,13 +1079,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   };
 
   // ── Auto-suffix a pack name so import is always non-destructive ────────
-  const uniqueName = (base) => {
-    const existing = new Set(categories.map((c) => c.name));
-    if (!existing.has(base)) return base;
-    let n = 2;
-    while (existing.has(`${base} (${n})`)) n++;
-    return `${base} (${n})`;
-  };
+  const uniqueName = (base) => numberedName(base, categories.map((c) => c.name));
 
   // ── Open the bundle picker with everything pre-selected ─────────────
   const openBundlePicker = () => {
@@ -952,31 +1088,8 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
     setBundlePickerOpen(true);
   };
 
-  // Serialize a pack to the v1.2 export format — includes subfolders now.
-  const serializePack = (cat) => {
-    const mapTag = (it) => ({
-      label: it.label,
-      iconType: it.iconType || "lucide",
-      iconName: it.iconName || null,
-      iconData: it.iconData || null,
-    });
-    return {
-      formatVersion: 3, // v1.2.2: bumped so importers can tell subfolders are inside
-      kind: "pps-tagpack",
-      name: cat.name,
-      description: "",
-      exportedAt: new Date().toISOString(),
-      folderTags: (cat.folderItems || []).map(mapTag),
-      filenameTags: (cat.filenameItems || []).map(mapTag),
-      subfolders: (cat.subfolders || []).map((s) => ({
-        name: s.name,
-        iconType: s.iconType || "lucide",
-        iconName: s.iconName || "Folder",
-        iconData: s.iconData || null,
-        filenameTags: (s.filenameItems || []).map(mapTag),
-      })),
-    };
-  };
+  // v1.5.0 — v4 export format (nested sub-folders survive the round trip).
+  const serializePack = (cat) => serializeCategory(cat);
 
   // v1.2.3 — One-click "Backup Everything Now" — bundles every pack as
   // both v3 JSON files AND a single plain-text `.pps-taglist.txt` snapshot
@@ -1162,58 +1275,32 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
     return newItems.length;
   };
 
-  // ── Import a pack — always adds, auto-suffixes on name collision.
-  // Supports v3 (folderTags + filenameTags + subfolders), v2 (folderTags +
-  // filenameTags), and legacy v1 (single `tags` list).
+  // ── Import a pack (v1.5.0). Reads v1–v4 files. If a category with the
+  // same name exists, ask Replace / Merge / Create-new; otherwise just add.
+  const finishImport = (incoming, mode, existing) => {
+    if (existing && mode !== "new") snapshot(mode === "replace" ? "import-replace" : "import-merge", existing, `from "${incoming.name}" pack file`);
+    const res = applyImport(categories, incoming, mode, existing);
+    onChange(res.categories);
+    setActiveCat(res.category.id);
+    setImportPending(null);
+    const c = countPack(res.mode === "merge" ? incoming : res.category);
+    const counts = `${c.subfolders} sub-folder${c.subfolders !== 1 ? "s" : ""} · ${c.tags} tag${c.tags !== 1 ? "s" : ""}`;
+    if (res.mode === "merge") {
+      toast.success(`Merged into "${res.category.name}"`, { description: `Added ${res.stats.subfoldersAdded} sub-folder${res.stats.subfoldersAdded !== 1 ? "s" : ""} and ${res.stats.tagsAdded} tag${res.stats.tagsAdded !== 1 ? "s" : ""}. Previous version saved to Tag History.` });
+    } else if (res.mode === "replace") {
+      toast.success(`Replaced "${res.category.name}"`, { description: `${counts}. Previous version saved to Tag History.` });
+    } else {
+      toast.success(`Imported "${res.category.name}"`, { description: counts });
+    }
+  };
   const importFromFile = async (file) => {
     if (!file) return;
     try {
-      const text = await file.text();
-      const data = JSON.parse(text);
-      if (data.kind !== "pps-tagpack") {
-        throw new Error("Not a valid Pro Photo Sorter tag pack file.");
-      }
-      const mapIn = (t) => ({
-        id: uid("it"),
-        label: String(t.label || "").slice(0, 60),
-        iconType: t.iconType === "image" && t.iconData ? "image" : "lucide",
-        iconName: t.iconName || "Tag",
-        iconData: t.iconType === "image" ? t.iconData : undefined,
-      });
-      const filterValid = (arr) => arr.filter((it) => it.label);
-      let folderItems = [];
-      let filenameItems = [];
-      let subfolders = [];
-      if (Array.isArray(data.folderTags) || Array.isArray(data.filenameTags) || Array.isArray(data.subfolders)) {
-        folderItems = filterValid((data.folderTags || []).map(mapIn));
-        filenameItems = filterValid((data.filenameTags || []).map(mapIn));
-        // v1.2.2: pull in subfolders (v3 files) with their own filename tags
-        subfolders = (data.subfolders || []).map((s) => ({
-          id: uid("sf"),
-          name: String(s.name || "Untitled sub-folder").slice(0, 60),
-          iconType: s.iconType === "image" && s.iconData ? "image" : "lucide",
-          iconName: s.iconName || "Folder",
-          iconData: s.iconType === "image" ? s.iconData : undefined,
-          filenameItems: filterValid((s.filenameTags || []).map(mapIn)),
-        }));
-      } else if (Array.isArray(data.tags)) {
-        // Legacy v1 format — all tags become folder tags (user can move any to filename later)
-        folderItems = filterValid(data.tags.map(mapIn));
-      } else {
-        throw new Error("Tag pack file has no tags to import.");
-      }
-      const finalName = uniqueName(String(data.name || "Imported pack").trim() || "Imported pack");
-      const newCat = { id: uid("cat"), name: finalName, folderItems, filenameItems, subfolders };
-      onChange([...categories, newCat]);
-      setActiveCat(newCat.id);
-      const subTagTotal = subfolders.reduce((n, s) => n + s.filenameItems.length, 0);
-      toast.success(`Imported "${finalName}"`, {
-        description:
-          `${folderItems.length} folder + ${filenameItems.length} filename tags` +
-          (subfolders.length > 0
-            ? ` · ${subfolders.length} sub-folder${subfolders.length !== 1 ? "s" : ""} (${subTagTotal} tag${subTagTotal !== 1 ? "s" : ""})`
-            : ""),
-      });
+      const data = JSON.parse(await file.text());
+      const incoming = deserializePack(data, uid);
+      const existing = findByName(categories, incoming.name);
+      if (existing) setImportPending({ incoming, existing });
+      else finishImport(incoming, "new", null);
     } catch (e) {
       toast.error("Import failed", { description: e.message });
     }
@@ -1275,6 +1362,21 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
             >
               <Trash2 size={12} />
               <span>Trash{trashCount > 0 ? ` · ${trashCount}` : ""}</span>
+            </button>
+            <button
+              onClick={() => setHistoryOpen(true)}
+              className={`h-8 px-2.5 rounded flex items-center gap-1.5 text-xs border transition-colors ${
+                historyCount > 0
+                  ? "border-primary-earth bg-primary-earth/10 text-primary-earth hover:bg-primary-earth/20"
+                  : "border-app text-dim hover:bg-surface-hover"
+              }`}
+              data-testid="tagmgr-history-open"
+              title={historyCount > 0
+                ? `${historyCount} snapshot${historyCount === 1 ? "" : "s"} — restore a category to how it was before an import, delete or paste`
+                : "Tag History is empty. Big changes (import Replace/Merge, deletes, pasted lists) are snapshotted here so you can undo them."}
+            >
+              <HistoryIcon size={12} />
+              <span>History{historyCount > 0 ? ` · ${historyCount}` : ""}</span>
             </button>
             <button
               onClick={onClose}
@@ -1645,6 +1747,16 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
             categories={categories}
             onChange={onChange}
             onClose={() => setTrashOpen(false)}
+          />
+        )}
+        {historyOpen && (
+          <HistoryPanel categories={categories} onChange={onChange} onClose={() => setHistoryOpen(false)} />
+        )}
+        {importPending && (
+          <ImportDecision
+            pending={importPending}
+            onPick={(mode) => finishImport(importPending.incoming, mode, importPending.existing)}
+            onCancel={() => setImportPending(null)}
           />
         )}
 
