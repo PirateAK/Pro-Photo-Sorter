@@ -1718,3 +1718,7 @@ Kurt asked to shelve these; "has other thoughts". Do not propose again until v2 
 - Kurt to do: Save to GitHub → pull+build one-liner (pack-app.bat && pack-tpc.bat) → GitHub
   Release v1.5.0 with BOTH installers + latest.yml/blockmap → update Gumroad file → add TPC
   (free) to Gumroad/landing later.
+
+## BUILD ONE-LINER (corrected 2026-06 — pack-app.bat leaves cwd in electron-shell, so use FULL paths)
+cd /d C:\Pro-Photo-Sorter && git fetch origin && git reset --hard origin/main && git clean -fd -e "electron-shell/dist/" -e "electron-shell-tpc/dist/" && call C:\Pro-Photo-Sorter\pack-app.bat && call C:\Pro-Photo-Sorter\pack-tpc.bat && start "" "C:\Pro-Photo-Sorter\electron-shell\dist" && start "" "C:\Pro-Photo-Sorter\electron-shell-tpc\dist"
+TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:\Pro-Photo-Sorter\electron-shell-tpc\dist"
