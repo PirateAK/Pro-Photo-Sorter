@@ -167,6 +167,24 @@
   .checks li b{color:var(--text);font-weight:600}
   .checks svg{width:18px;height:18px;color:var(--sage);flex-shrink:0;margin-top:.2rem}
 
+  /* creator */
+  .creator{background:var(--bg-deep);border-top:1px solid var(--border)}
+  .creator-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:3.5rem;align-items:center}
+  @media(max-width:900px){.creator-grid{grid-template-columns:1fr}}
+  .creator-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.2rem;display:grid;gap:.8rem;box-shadow:0 30px 60px -30px rgba(0,0,0,.8);font-family:var(--m);font-size:.75rem}
+  .crow{display:flex;gap:.45rem;flex-wrap:wrap;align-items:center}
+  .pill{padding:.4rem .8rem;border-radius:999px;border:1px solid var(--border);color:var(--dim)}
+  .pill.on{background:var(--primary);color:var(--inverse);border-color:var(--primary)}
+  .digit{width:28px;height:28px;border-radius:50%;border:1px solid var(--primary);color:var(--primary);display:grid;place-items:center;font-size:.7rem}
+  .cpath{background:var(--bg-deep);border:1px solid var(--border);border-radius:6px;padding:.5rem .7rem;color:var(--dim)}
+  .cpath span{color:var(--primary)}
+  .chip{padding:.3rem .55rem;border-radius:6px;border:1px solid var(--border);background:var(--bg);color:var(--text)}
+  .chip.cat{border-color:var(--primary);color:var(--primary)}
+  .chip.d1{margin-left:4px}.chip.d2{margin-left:8px}
+  .chip.t{color:var(--dim)}
+  .cinput{border:1px solid var(--border);border-radius:6px;padding:.6rem .7rem;color:var(--dim);background:var(--bg)}
+  .cactions{display:flex;gap:.45rem;justify-content:flex-end}
+
   /* story */
   .story{background:var(--surface);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
   .story .wrap{display:grid;grid-template-columns:.9fr 1.1fr;gap:4rem;align-items:start}
@@ -220,6 +238,7 @@
       <a href="#features">Features</a>
       <a href="#how">How it works</a>
       <a href="#lightroom">Lightroom</a>
+      <a href="#creator">Free Creator</a>
       <a href="#story">Story</a>
       <a href="#faq">FAQ</a>
     </div>
@@ -363,6 +382,34 @@
   </div>
 </section>
 
+<section class="creator" id="creator">
+  <div class="wrap creator-grid">
+    <div>
+      <div class="eyebrow">Free companion app</div>
+      <h2 style="margin:.7rem 0 1rem">Tag Pack Creator. Build the tag library you wish someone had already made.</h2>
+      <p class="dim" style="font-size:1.05rem">Type a name, pick what it becomes — <b style="color:var(--text)">Category · Folder · Sub-Folder · Filename</b> — and watch the destination path write itself. Drag to reorder, paste whole lists 20 at a time, right-click any tag for an icon. One click installs the finished pack into Pro Photo Sorter, or generate a cover image and sell your pack to other photographers.</p>
+      <ul class="checks">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Free.</b> No account, no PPS license needed — anyone can make and share packs.</div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Opens any existing pack</b> — rework the six starter packs or someone else's.</div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg><div><b>Install into PPS</b> hands the pack straight to Pro Photo Sorter on the same PC.</div></li>
+      </ul>
+      <div class="cta-row" style="margin-top:1.8rem">
+        <a class="btn btn-primary" href="https://muskegman.gumroad.com/l/PPS-TPC" target="_blank" rel="noopener" data-testid="creator-download-button">Get Tag Pack Creator — free</a>
+        <a class="btn btn-ghost" href="https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest" target="_blank" rel="noopener" data-testid="creator-github-button">Direct download (GitHub)</a>
+      </div>
+    </div>
+    <div class="creator-card" data-testid="creator-card">
+      <div class="crow"><span class="pill on">Category</span><span class="pill">Folder</span><span class="pill">Sub-Folder</span><span class="digit">2</span><span class="pill">Filename</span></div>
+      <div class="cpath">Will store to: <span>Wildlife/Birds/Owls/Barn_Owl/flying.jpg</span></div>
+      <div class="crow tags"><span class="chip cat">Wildlife</span></div>
+      <div class="crow tags"><span class="chip">Birds</span><span class="chip d1">› Eagles</span><span class="chip d1">› Owls</span><span class="chip d2">›› Barn Owl</span><span class="chip">Mammals</span></div>
+      <div class="crow tags"><span class="chip t">flying</span><span class="chip t">perched</span><span class="chip t">hunting</span><span class="chip t">pair</span></div>
+      <div class="cinput">Type a tag name — or paste a comma-separated list (20 at a time)</div>
+      <div class="cactions"><span class="pill">Cover</span><span class="pill">Install into PPS</span><span class="pill on">Save</span></div>
+    </div>
+  </div>
+</section>
+
 <section class="story" id="story">
   <div class="wrap">
     <blockquote>"I built the sorter I needed on a boat in Alaska with satellite internet <span>that isn't worth the name.</span>"</blockquote>
@@ -454,6 +501,7 @@
     <div style="display:flex;gap:1.4rem">
       <a href="https://github.com/PirateAK/Pro-Photo-Sorter" target="_blank" rel="noopener">GitHub</a>
       <a href="https://muskegman.gumroad.com/l/gvmaas" target="_blank" rel="noopener">Gumroad</a>
+      <a href="https://muskegman.gumroad.com/l/PPS-TPC" target="_blank" rel="noopener" data-testid="footer-creator-link">Tag Pack Creator</a>
       <a href="https://alternativeto.net/software/pro-photo-sorter/" target="_blank" rel="noopener" data-testid="footer-alternativeto-link">AlternativeTo</a>
       <a href="mailto:leaderteamk@gmail.com">Contact</a>
     </div>

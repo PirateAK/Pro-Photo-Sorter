@@ -126,6 +126,7 @@ const LINKS = {
   gumroad: "https://muskegman.gumroad.com/l/gvmaas",
   site: "https://muskegman.com",
   releases: "https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest",
+  creator: "https://muskegman.gumroad.com/l/PPS-TPC",
 };
 // Opens in the system browser inside Electron, new tab in the browser.
 const openLink = (url) => { if (window.electronAPI?.openExternal) window.electronAPI.openExternal(url); else window.open(url, "_blank", "noopener"); };
@@ -183,6 +184,9 @@ function AboutDialog({ onClose }) {
             </p>
             <p className="text-dim text-[13px]">Questions, bugs, pack ideas: <button onClick={() => openLink("mailto:leaderteamk@gmail.com")} className="text-primary-earth underline-offset-2 hover:underline">leaderteamk@gmail.com</button></p>
             <p className="text-[12px] text-dim italic">Fair winds — Kurt</p>
+            <div className="flex flex-wrap gap-2 pt-1">
+              <Link href={LINKS.creator} testId="tpc-about-creator"><Lucide.Gift size={12} /> Tag Pack Creator on Gumroad (free — share this link)</Link>
+            </div>
           </div>
         </div>
       </div>
