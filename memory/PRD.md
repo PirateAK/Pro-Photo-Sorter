@@ -1642,3 +1642,11 @@ Kurt asked to "put v1 to bed" — docs refresh across every user-facing surface 
   r/wildlifephotography post draft, visitor counter on landing page, Google
   Search Console walkthrough. Kurt has NOT hit Save to GitHub for the eagle
   hero yet — remind him (site updates itself once pushed).
+- ✅ 2026-06 (session 2): site gallery section (#gallery, eagle + ×3 compare),
+  JSON-LD SoftwareApplication schema ($29, Windows, v1.4.7), canonical tag,
+  robots.txt + sitemap.xml, footer AlternativeTo link (URL unconfirmed).
+  MARKETING_KIT §11 download-site blurbs, §13 Cloudflare analytics steps.
+  AlternativeTo listing approved. Payhip rejected. Reddit post drafted (§10);
+  Kurt learning Reddit first (lurk/comment a week before posting).
+- ⏳ Kurt: Save to GitHub; confirm AlternativeTo URL; Cloudflare token for
+  analytics; Search Console verification; Softpedia/MajorGeeks submissions.
