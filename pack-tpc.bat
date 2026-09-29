@@ -1,20 +1,19 @@
 @echo off
 REM ============================================================
 REM  Tag Pack Creator — PACKAGE a shippable Windows installer
-REM  Reuses the React bundle built by pack-app.bat (or builds it
-REM  fresh if missing), then wraps it in the TPC Electron shell.
+REM  Always rebuilds the React bundle, then wraps it in the TPC
+REM  Electron shell. (Reusing an existing build once shipped stale code.)
 REM ============================================================
 cd /d C:\Pro-Photo-Sorter
-if not exist frontend\build\index.html (
-  echo === No React build found — building it first ===
-  cd frontend
-  call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
-  if errorlevel 1 goto :err
-  call node -e "const p=require('./package.json'),fs=require('fs');fs.writeFileSync('src/buildInfo.json',JSON.stringify({version:p.version,buildDate:new Date().toISOString().slice(0,10)},null,2)+'\n')"
-  call npm run build
-  if errorlevel 1 goto :err
-  cd ..
-)
+echo === Building the React bundle (always fresh) ===
+rmdir /s /q frontend\build 2>nul
+cd frontend
+call npm install --legacy-peer-deps --no-audit --no-fund --loglevel=error
+if errorlevel 1 goto :err
+call node -e "const p=require('./package.json'),fs=require('fs');fs.writeFileSync('src/buildInfo.json',JSON.stringify({version:p.version,buildDate:new Date().toISOString().slice(0,10)},null,2)+'\n')"
+call npm run build
+if errorlevel 1 goto :err
+cd ..
 echo === Syncing build into electron-shell-tpc ===
 rmdir /s /q electron-shell-tpc\build 2>nul
 xcopy /E /I /Y /Q frontend\build electron-shell-tpc\build
