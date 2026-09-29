@@ -239,6 +239,29 @@ export default function TagPackCreator() {
     setTimeout(() => textRef.current?.focus(), 0);
   };
 
+  // Keyboard navigation from the text box while it's empty:
+  // ← → move between sibling folders, ↓ steps into the first child, ↑ back to the parent.
+  const navKey = (e) => {
+    if (text.length > 0 || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return false;
+    e.preventDefault();
+    const path = selectedPath || [];
+    const siblings = path.length > 1 ? (path[path.length - 2].subfolders || []) : pack.subfolders;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (siblings.length === 0) return true;
+      const idx = siblings.findIndex((n) => n.id === selectedId);
+      const step = e.key === "ArrowRight" ? 1 : -1;
+      const next = idx < 0 ? (step > 0 ? 0 : siblings.length - 1) : (idx + step + siblings.length) % siblings.length;
+      setSelectedId(siblings[next].id); if (role !== "subfolder") setRole("filename");
+    } else if (e.key === "ArrowDown") {
+      const kids = selectedId ? (path.at(-1)?.subfolders || []) : pack.subfolders;
+      if (kids.length) { setSelectedId(kids[0].id); if (role !== "subfolder") setRole("filename"); }
+    } else if (e.key === "ArrowUp") {
+      setSelectedId(path.length > 1 ? path[path.length - 2].id : null);
+      if (path.length <= 1 && role === "subfolder") setRole("folder");
+    }
+    return true;
+  };
+
   // Apply the typed text with the active role.
   const apply = (entriesIn) => {
     const all = entriesIn ?? splitEntries(text);
@@ -305,15 +328,25 @@ export default function TagPackCreator() {
   const save = async () => {
     if (!pack.name && !title) { toast.error("Give the pack a title first"); return; }
     const res = await tpcSavePack(`${safeTitle()}.pps-tagpack.json`, packJson());
-    if (res.ok) toast.success("Pack saved", { description: res.path }); else if (res.error === "not-electron") { download(); toast.success("Pack downloaded"); } else if (res.error !== "cancelled") toast.error("Save failed", { description: res.error });
+    if (res.ok) toast.success("Pack saved", { description: res.path, action: { label: "New pack", onClick: () => newPack(true) } }); else if (res.error === "not-electron") { download(); toast.success("Pack downloaded"); } else if (res.error !== "cancelled") toast.error("Save failed", { description: res.error });
     if (held.length && window.confirm(`Do you want to paste the rest of the list? (+${held.length} items)`)) addHeld();
   };
   const install = async () => {
     if (!pack.name && !title) { toast.error("Give the pack a title first"); return; }
     const res = await tpcInstallPack(`${safeTitle()}.pps-tagpack.json`, packJson());
-    if (res.ok) toast.success("Handed to Pro Photo Sorter", { description: "Open PPS → Tag Manager. It will offer to import this pack." });
+    if (res.ok) toast.success("Handed to Pro Photo Sorter", { description: "Open PPS → Tag Manager. It will offer to import this pack.", action: { label: "New pack", onClick: () => newPack(true) } });
     else if (res.error === "not-electron") { download(); toast("Downloaded instead", { description: "One-click install works in the desktop app. In PPS use Tag Manager → Import pack…" }); }
     else toast.error("Install failed", { description: res.error });
+  };
+  // New pack: wipe the workspace (undo-able) and put the cursor back on Category.
+  const newPack = (silent) => {
+    const empty = { id: uid("cat"), name: "", author: pack.author || "", description: "", subfolders: [], filenameItems: [] };
+    const hasWork = pack.name || pack.subfolders.length || (pack.filenameItems || []).length;
+    if (hasWork && !silent && !window.confirm("Start a new pack?\n\nThe current one is cleared (Undo brings it back). Make sure you've saved or installed it first.")) return;
+    commit(() => empty);
+    setTitle(""); setSelectedId(null); setHeld([]); setRole("category");
+    setTimeout(() => textRef.current?.focus(), 0);
+    if (!silent) toast("Ready for a new pack", { description: "Author kept. Undo restores the previous pack." });
   };
   const openFile = async (f) => {
     if (!f) return;
@@ -341,7 +374,7 @@ export default function TagPackCreator() {
 
   return (
     <div className="min-h-screen bg-app text-[color:var(--text)] font-body flex flex-col" data-testid="tpc-app">
-      <Toaster position="top-right" theme={theme} richColors />
+      <Toaster position="top-center" theme={theme} richColors />
       <header className="px-[3vw] py-3 border-b border-app flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary-earth flex items-center justify-center text-[color:var(--text-inverse)]"><Lucide.Package size={18} /></div>
@@ -355,6 +388,7 @@ export default function TagPackCreator() {
           <button onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} className="h-8 w-8 rounded border border-app flex items-center justify-center hover:bg-surface-hover" title={`Switch to ${theme === "light" ? "Earth Dark" : "Earth Light"}`} data-testid="tpc-toggle-theme">
             {theme === "light" ? <Lucide.Moon size={13} /> : <Lucide.Sun size={13} />}
           </button>
+          <button onClick={() => newPack(false)} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="Clear the workspace and start another pack" data-testid="tpc-new"><Lucide.FilePlus2 size={12} /> New pack</button>
           <button onClick={() => fileRef.current?.click()} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" data-testid="tpc-open"><Lucide.FolderOpen size={12} /> Open pack…</button>
           <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { openFile(e.target.files?.[0]); e.target.value = ""; }} data-testid="tpc-open-input" />
           <button onClick={doUndo} disabled={!undo.length} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover disabled:opacity-35" data-testid="tpc-undo"><Lucide.Undo2 size={12} /> Undo{undo.length ? ` · ${undo.length}` : ""}</button>
@@ -373,14 +407,14 @@ export default function TagPackCreator() {
           </div>
           <RoleBtn r="filename">Filename</RoleBtn>
           <span className="text-xs text-dim ml-2" data-testid="tpc-hint">
-            {!role ? "Pick where the text goes, then type" : role === "category" ? "Type the category (pack) name" : role === "folder" ? "Type folder names — commas add several" : role === "subfolder" ? `Type sub-folder names → inside “${owner.name}”` : `Type filename tags → ${owner === pack ? "category level" : `inside “${owner.name}”`}`}
+            {!role ? "Pick where the text goes, then type" : (pack.subfolders.length > 0 && text.length === 0 && role !== "category") ? "← → pick a folder · ↓ into it · ↑ back out · then type" : role === "category" ? "Type the category (pack) name" : role === "folder" ? "Type folder names — commas add several" : role === "subfolder" ? `Type sub-folder names → inside “${owner.name}”` : `Type filename tags → ${owner === pack ? "category level" : `inside “${owner.name}”`}`}
           </span>
         </section>
 
         {/* 2. Text entry */}
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <input ref={textRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && role) apply(); }}
+            <input ref={textRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (navKey(e)) return; if (e.key === "Enter" && role) apply(); }}
               placeholder={role ? `${ROLE_LABEL[role]} name — or paste a comma-separated list (20 at a time)` : "Choose Category, Folder, Sub-Folder or Filename above first"} className="flex-1 min-w-0 h-10 px-3 rounded bg-surface border border-app text-sm font-mono" data-testid="tpc-text" />
             <button onClick={() => apply()} disabled={!canAct || !role} className="h-10 px-4 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium disabled:opacity-35" data-testid="tpc-add">Add</button>
           </div>
