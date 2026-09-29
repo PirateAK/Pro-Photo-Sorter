@@ -1749,3 +1749,4 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
 - ✅ 2026-06-17 Kurt confirmed v1.5.1: PPS shows 1.5.1, Inbox prompt "Tag pack waiting: Dogs" fired,
   install works. ROOT CAUSE of earlier "bugs": Kurt's PPS was still 1.4.7 (never installed 1.5.0;
   auto-updater did not update — WATCH: does updater offer 1.5.1 → 1.5.2 later?).
+- ✅ TPC arrow-key nav in text box when empty (navKey): ←→ siblings (wrap), ↓ first child, ↑ parent. Hint line updated. In 1.5.1 codebase (Creator rebuild needed).

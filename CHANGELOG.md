@@ -12,6 +12,7 @@ All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 - **Category is pre-armed on startup** with the cursor already in the text box — type the pack name and press Enter. Adding the category hands off to **Folder** automatically.
 - **Clicking a folder now arms Filename** (the common case) and puts the cursor back in the text box. **Sub-Folder** is a deliberate click when you want nesting.
 - Every button click returns focus to the text box; clicking the category chip clears the highlight.
+- **Arrow-key navigation** (Creator): with the text box empty, **← →** move the highlight between sibling folders, **↓** steps into the first sub-folder, **↑** goes back to the parent — hands never leave the keyboard. Arrows behave normally once you've typed something.
 
 ## v1.5.0 — 2026-06-16 · Un-losable tag library (Tag Pack Creator groundwork)
 

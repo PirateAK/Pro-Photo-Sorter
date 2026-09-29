@@ -239,6 +239,29 @@ export default function TagPackCreator() {
     setTimeout(() => textRef.current?.focus(), 0);
   };
 
+  // Keyboard navigation from the text box while it's empty:
+  // ← → move between sibling folders, ↓ steps into the first child, ↑ back to the parent.
+  const navKey = (e) => {
+    if (text.length > 0 || !["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) return false;
+    e.preventDefault();
+    const path = selectedPath || [];
+    const siblings = path.length > 1 ? (path[path.length - 2].subfolders || []) : pack.subfolders;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (siblings.length === 0) return true;
+      const idx = siblings.findIndex((n) => n.id === selectedId);
+      const step = e.key === "ArrowRight" ? 1 : -1;
+      const next = idx < 0 ? (step > 0 ? 0 : siblings.length - 1) : (idx + step + siblings.length) % siblings.length;
+      setSelectedId(siblings[next].id); if (role !== "subfolder") setRole("filename");
+    } else if (e.key === "ArrowDown") {
+      const kids = selectedId ? (path.at(-1)?.subfolders || []) : pack.subfolders;
+      if (kids.length) { setSelectedId(kids[0].id); if (role !== "subfolder") setRole("filename"); }
+    } else if (e.key === "ArrowUp") {
+      setSelectedId(path.length > 1 ? path[path.length - 2].id : null);
+      if (path.length <= 1 && role === "subfolder") setRole("folder");
+    }
+    return true;
+  };
+
   // Apply the typed text with the active role.
   const apply = (entriesIn) => {
     const all = entriesIn ?? splitEntries(text);
@@ -373,14 +396,14 @@ export default function TagPackCreator() {
           </div>
           <RoleBtn r="filename">Filename</RoleBtn>
           <span className="text-xs text-dim ml-2" data-testid="tpc-hint">
-            {!role ? "Pick where the text goes, then type" : role === "category" ? "Type the category (pack) name" : role === "folder" ? "Type folder names — commas add several" : role === "subfolder" ? `Type sub-folder names → inside “${owner.name}”` : `Type filename tags → ${owner === pack ? "category level" : `inside “${owner.name}”`}`}
+            {!role ? "Pick where the text goes, then type" : (pack.subfolders.length > 0 && text.length === 0 && role !== "category") ? "← → pick a folder · ↓ into it · ↑ back out · then type" : role === "category" ? "Type the category (pack) name" : role === "folder" ? "Type folder names — commas add several" : role === "subfolder" ? `Type sub-folder names → inside “${owner.name}”` : `Type filename tags → ${owner === pack ? "category level" : `inside “${owner.name}”`}`}
           </span>
         </section>
 
         {/* 2. Text entry */}
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <input ref={textRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && role) apply(); }}
+            <input ref={textRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (navKey(e)) return; if (e.key === "Enter" && role) apply(); }}
               placeholder={role ? `${ROLE_LABEL[role]} name — or paste a comma-separated list (20 at a time)` : "Choose Category, Folder, Sub-Folder or Filename above first"} className="flex-1 min-w-0 h-10 px-3 rounded bg-surface border border-app text-sm font-mono" data-testid="tpc-text" />
             <button onClick={() => apply()} disabled={!canAct || !role} className="h-10 px-4 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium disabled:opacity-35" data-testid="tpc-add">Add</button>
           </div>
