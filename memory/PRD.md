@@ -1727,3 +1727,5 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
   TPC About box: "Tag Pack Creator on Gumroad" share link (tpc-about-creator).
 - Parked: shop.muskegman.com → domains.gumroad.com CNAME (Gumroad verify failed; DNS not propagated yet).
 - ✅ 2026-06 TPC workflow v2: role-first (Add disabled until role), role persists after Add, Sub-Folder gated on selectedId (toast "Pick a folder first"), clicking folder chip → select + auto role subfolder (unless role=filename), clicking highlighted chip → select parent. Waterfall `levels[]` (tpc-level-N, tpc-folder-row, tpc-subfolder-row-N), depth badge read-only. Sticky footer save bar (tpc-save-row). Toaster top-right. depth/lastCreated state removed.
+- 2026-06 BUG FIXED: pack-tpc.bat reused stale frontend/build → shipped old Creator. Now always
+  rebuilds React. One-off workaround given to Kurt: rmdir /s /q frontend\build before pack-tpc.bat.
