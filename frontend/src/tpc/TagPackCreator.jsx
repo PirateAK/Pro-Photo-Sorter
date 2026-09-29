@@ -12,7 +12,6 @@ import buildInfo from "../buildInfo.json";
 import { renderPreviewCard } from "./previewCard";
 
 const PASTE_CAP = 20;
-const ROLES = ["category", "folder", "subfolder", "filename"];
 const ROLE_LABEL = { category: "Category", folder: "Folder", subfolder: "Sub-Folder", filename: "Filename" };
 
 const newNode = (name, extra = {}) => ({ id: uid("sf"), name: name.slice(0, 60), iconType: "lucide", iconName: "Folder", filenameItems: [], subfolders: [], ...extra });
@@ -198,11 +197,9 @@ function AboutDialog({ onClose }) {
 export default function TagPackCreator() {
   const [pack, setPack] = useState(() => ({ id: uid("cat"), name: "", author: "", description: "", subfolders: [], filenameItems: [] }));
   const [role, setRole] = useState(null);
-  const [depth, setDepth] = useState(0);            // Sub-Folder nesting digit (0 = off)
   const [text, setText] = useState("");
   const [held, setHeld] = useState([]);             // overflow from a >20 paste
   const [selectedId, setSelectedId] = useState(null); // highlighted folder node
-  const [lastCreated, setLastCreated] = useState([]); // chain of most recently created folders by depth
   const [picker, setPicker] = useState(null);       // { kind: "node"|"tag"|"pack", id, ownerId }
   const [undo, setUndo] = useState([]);              // stack of previous packs
   const [title, setTitle] = useState("");
@@ -211,6 +208,7 @@ export default function TagPackCreator() {
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); try { window.localStorage.setItem("tpc.theme", theme); } catch { /* private mode */ } }, [theme]);
   const dragRef = useRef(null);
   const fileRef = useRef(null);
+  const textRef = useRef(null);
 
   const commit = (fn, label) => { setUndo((u) => [...u.slice(-29), pack]); setPack((p) => fn(p)); if (label) toast.success(label); };
   const doUndo = () => { if (!undo.length) return; const prev = undo[undo.length - 1]; setUndo((u) => u.slice(0, -1)); setPack(prev); toast("Undone"); };
@@ -224,10 +222,21 @@ export default function TagPackCreator() {
   }, [pack, selectedPath]);
 
   const canAct = text.trim().length > 0;
-  const toggleRole = (r) => { if (!canAct && role !== r) return; if (role === r) { setRole(null); if (r === "subfolder") setDepth(0); } else { setRole(r); if (r === "subfolder" && depth === 0) setDepth(1); } };
-  const bumpDepth = () => { if (role !== "subfolder") { if (!canAct) return; setRole("subfolder"); setDepth(1); return; } setDepth((d) => Math.min(d + 1, Math.max(1, lastCreated.length + 1))); };
+  const depth = selectedPath ? selectedPath.length : 0; // how deep the highlighted folder sits
+  // Destination first: pick a role, then type. Role sticks after Add so you can
+  // rattle off many entries. Sub-Folder needs a highlighted folder to nest under;
+  // clicking any folder chip auto-arms Sub-Folder.
+  const toggleRole = (r) => {
+    if (r === "subfolder" && !selectedId) { toast("Pick a folder first", { description: "Click the folder the new sub-folder should live in." }); return; }
+    setRole((cur) => (cur === r ? null : r));
+    textRef.current?.focus();
+  };
+  const selectNode = (id) => {
+    if (selectedId === id) { const path = findPath(pack.subfolders, id); setSelectedId(path && path.length > 1 ? path[path.length - 2].id : null); }
+    else { setSelectedId(id); if (role !== "filename") setRole("subfolder"); }
+  };
 
-  // Apply the typed text with the active role. Returns how many were added.
+  // Apply the typed text with the active role.
   const apply = (entriesIn) => {
     const all = entriesIn ?? splitEntries(text);
     if (!all.length || !role) return;
@@ -237,13 +246,11 @@ export default function TagPackCreator() {
     else if (role === "folder") {
       const nodes = now.map((n) => newNode(n));
       commit((p) => ({ ...p, subfolders: [...p.subfolders, ...nodes] }));
-      setLastCreated([nodes[nodes.length - 1]?.id]); setSelectedId(nodes[nodes.length - 1]?.id);
     } else if (role === "subfolder") {
-      const parentId = lastCreated[depth - 1];
+      const parentId = selectedId;
       const nodes = now.map((n) => newNode(n));
-      if (!parentId) { commit((p) => ({ ...p, subfolders: [...p.subfolders, ...nodes] })); setLastCreated([nodes.at(-1).id]); }
-      else { commit((p) => ({ ...p, subfolders: updateNode(p.subfolders, parentId, (n) => ({ ...n, subfolders: [...(n.subfolders || []), ...nodes] })) })); setLastCreated((c) => [...c.slice(0, depth), nodes.at(-1).id]); }
-      setSelectedId(nodes.at(-1).id);
+      if (!parentId) commit((p) => ({ ...p, subfolders: [...p.subfolders, ...nodes] }));
+      else commit((p) => ({ ...p, subfolders: updateNode(p.subfolders, parentId, (n) => ({ ...n, subfolders: [...(n.subfolders || []), ...nodes] })) }));
     } else if (role === "filename") {
       const tags = now.map((l) => newTag(l));
       commit((p) => selectedId
@@ -251,6 +258,7 @@ export default function TagPackCreator() {
         : { ...p, filenameItems: [...(p.filenameItems || []), ...tags] });
     }
     setText("");
+    textRef.current?.focus();
     if (rest.length) toast(`Added ${now.length} — ${rest.length} more held`, { description: "Click “Add the rest” when you're ready." });
   };
   const addHeld = () => { const next = held.slice(0, PASTE_CAP); setHeld(held.slice(PASTE_CAP)); apply(next); };
@@ -306,7 +314,7 @@ export default function TagPackCreator() {
   };
   const openFile = async (f) => {
     if (!f) return;
-    try { const cat = deserializePack(JSON.parse(await f.text()), uid); commit(() => ({ ...cat, filenameItems: [] })); setTitle(cat.name); setSelectedId(null); setLastCreated([]); toast.success(`Opened “${cat.name}”`); }
+    try { const cat = deserializePack(JSON.parse(await f.text()), uid); commit(() => ({ ...cat, filenameItems: [] })); setTitle(cat.name); setSelectedId(null); toast.success(`Opened “${cat.name}”`); }
     catch (e) { toast.error("Couldn't open", { description: e.message }); }
   };
   const previewCard = async () => {
@@ -314,21 +322,23 @@ export default function TagPackCreator() {
     catch (e) { toast.error("Preview failed", { description: e.message }); }
   };
 
-  const flat = flatten(pack.subfolders);
+  // Waterfall: top-level folders, then one row per highlighted level showing its children.
+  const levels = [{ parent: null, label: "Folders", nodes: pack.subfolders, activeId: selectedPath?.[0]?.id || null }];
+  (selectedPath || []).forEach((n, i) => levels.push({ parent: n, label: `Sub-folders · ${n.name}`, nodes: n.subfolders || [], activeId: selectedPath[i + 1]?.id || null }));
   const owner = selectedPath ? selectedPath.at(-1) : pack;
   const library = allTags(pack);
   const counts = countPack(pack);
   useEffect(() => { document.title = "Tag Pack Creator"; }, []);
 
   const RoleBtn = ({ r, children }) => (
-    <button onClick={() => toggleRole(r)} disabled={!canAct && role !== r}
-      className={`h-9 px-4 rounded-full border text-sm font-medium transition-colors disabled:opacity-35 ${role === r ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth" : "border-app bg-surface hover:bg-surface-hover"}`}
+    <button onClick={() => toggleRole(r)} aria-disabled={r === "subfolder" && !selectedId}
+      className={`h-9 px-4 rounded-full border text-sm font-medium transition-colors ${role === r ? "bg-primary-earth text-[color:var(--text-inverse)] border-primary-earth" : r === "subfolder" && !selectedId ? "border-app bg-surface text-dim opacity-50" : "border-app bg-surface hover:bg-surface-hover"}`}
       data-testid={`tpc-role-${r}`}>{children}</button>
   );
 
   return (
-    <div className="min-h-screen bg-app text-[color:var(--text)] font-body" data-testid="tpc-app">
-      <Toaster position="bottom-right" theme={theme} richColors />
+    <div className="min-h-screen bg-app text-[color:var(--text)] font-body flex flex-col" data-testid="tpc-app">
+      <Toaster position="top-right" theme={theme} richColors />
       <header className="px-[3vw] py-3 border-b border-app flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-lg bg-primary-earth flex items-center justify-center text-[color:var(--text-inverse)]"><Lucide.Package size={18} /></div>
@@ -348,63 +358,27 @@ export default function TagPackCreator() {
         </div>
       </header>
 
-      <main className="w-full px-[3vw] py-5 space-y-4" style={{ maxWidth: "min(100%, 1600px)", margin: "0 auto" }}>
-        {/* Role buttons */}
+      <main className="w-full flex-1 px-[3vw] py-5 space-y-4" style={{ maxWidth: "min(100%, 1600px)", margin: "0 auto" }}>
+        {/* 1. Destination buttons */}
         <section className="flex flex-wrap items-center gap-2" data-testid="tpc-role-row">
           <RoleBtn r="category">Category</RoleBtn>
           <RoleBtn r="folder">Folder</RoleBtn>
           <div className="flex items-center">
             <RoleBtn r="subfolder">Sub-Folder</RoleBtn>
-            <button onClick={bumpDepth} disabled={!canAct && role !== "subfolder"} title="Nesting depth — click again to nest one level deeper under the most recently created sub-folder"
-              className={`ml-1 h-9 w-9 rounded-full border font-mono text-sm disabled:opacity-35 ${depth > 0 ? "bg-primary-earth/20 border-primary-earth text-primary-earth" : "border-app text-dim"}`} data-testid="tpc-depth">{depth > 0 ? depth : "·"}</button>
+            <span title={selectedId ? `New sub-folders go inside “${owner.name}” (level ${depth})` : "Highlight a folder to nest inside it"}
+              className={`ml-1 h-9 w-9 rounded-full border font-mono text-sm flex items-center justify-center ${selectedId ? "bg-primary-earth/20 border-primary-earth text-primary-earth" : "border-app text-dim"}`} data-testid="tpc-depth">{selectedId ? depth : "·"}</span>
           </div>
           <RoleBtn r="filename">Filename</RoleBtn>
-          <span className="text-xs text-dim ml-2">{canAct ? (role ? `Press Enter to add as ${ROLE_LABEL[role]}${role === "subfolder" ? ` (depth ${depth})` : ""}` : "Pick what the text becomes") : "Type below to enable"}</span>
+          <span className="text-xs text-dim ml-2" data-testid="tpc-hint">
+            {!role ? "Pick where the text goes, then type" : role === "category" ? "Type the category (pack) name" : role === "folder" ? "Type folder names — commas add several" : role === "subfolder" ? `Type sub-folder names → inside “${owner.name}”` : `Type filename tags → ${owner === pack ? "category level" : `inside “${owner.name}”`}`}
+          </span>
         </section>
 
-        {/* Path preview */}
-        <div className="font-mono text-xs px-3 py-2 rounded border border-app bg-surface flex items-center gap-2" data-testid="tpc-path-preview">
-          <Lucide.FolderTree size={12} className="text-primary-earth" /> <span className="text-dim">Will store to:</span> <span className="text-primary-earth">{pathPreview}</span>
-        </div>
-
-        {/* Tag display */}
-        <section className="rounded-lg border border-app bg-surface divide-y divide-[color:var(--border)]" data-testid="tpc-display">
-          <div className="px-3 py-2 flex items-center gap-3">
-            <span className="w-24 text-[10px] uppercase tracking-wider text-dim">Category</span>
-            {pack.name ? <Chip item={{ label: pack.name, iconName: pack.iconName || "FolderTree", iconType: pack.iconType, iconData: pack.iconData }} active={!selectedId} onClick={() => setSelectedId(null)} onContext={() => setPicker({ kind: "pack" })} testId="tpc-category-chip" /> : <span className="text-xs text-dim italic">Type a name, press Category</span>}
-          </div>
-          <div className="px-3 py-2 flex items-start gap-3">
-            <span className="w-24 pt-1.5 text-[10px] uppercase tracking-wider text-dim shrink-0">Sub-folders</span>
-            <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid="tpc-folder-row">
-              {flat.length === 0 && <span className="text-xs text-dim italic pt-1">Folder = top level · Sub-Folder (n) = nested under the last one you made</span>}
-              {flat.map(({ node, depth: d }) => (
-                <Chip key={node.id} item={node} depth={d} active={selectedId === node.id} draggable
-                  onClick={() => setSelectedId(node.id)} onRemove={() => removeFolder(node.id)} onContext={() => setPicker({ kind: "node", id: node.id })}
-                  onDragStart={(e) => { dragRef.current = { kind: "node", id: node.id }; e.dataTransfer.effectAllowed = "move"; }}
-                  onDrop={() => { const d0 = dragRef.current; dragRef.current = null; if (!d0) return; if (d0.kind === "node") reorderSiblings(d0.id, node.id); if (d0.kind === "tag") copyTagToFolder(d0.tag, node.id); }}
-                  testId={`tpc-folder-${node.id}`} />
-              ))}
-            </div>
-          </div>
-          <div className="px-3 py-2 flex items-start gap-3">
-            <span className="w-24 pt-1.5 text-[10px] uppercase tracking-wider text-dim shrink-0">Filename · {owner === pack ? "category" : owner.name}</span>
-            <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid="tpc-filename-row">
-              {(owner.filenameItems || []).length === 0 && <span className="text-xs text-dim italic pt-1">No filename tags here yet</span>}
-              {(owner.filenameItems || []).map((t) => (
-                <Chip key={t.id} item={t} draggable onRemove={() => removeTag(selectedId, t.id)} onContext={() => setPicker({ kind: "tag", id: t.id, ownerId: selectedId })}
-                  onDragStart={(e) => { dragRef.current = { kind: "tag", id: t.id, ownerId: selectedId, tag: t }; e.dataTransfer.effectAllowed = "copyMove"; }}
-                  onDrop={() => { const d0 = dragRef.current; dragRef.current = null; if (d0?.kind === "tag" && d0.ownerId === selectedId) reorderTags(selectedId, d0.id, t.id); }}
-                  testId={`tpc-tag-${t.id}`} />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* Text entry */}
+        {/* 2. Text entry */}
         <section className="space-y-2">
           <div className="flex items-center gap-2">
-            <input value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && role) apply(); }}
-              placeholder="Type a tag name — or paste a comma-separated list (20 at a time)" className="flex-1 min-w-0 h-10 px-3 rounded bg-surface border border-app text-sm font-mono" data-testid="tpc-text" />
+            <input ref={textRef} value={text} onChange={(e) => setText(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" && role) apply(); }}
+              placeholder={role ? `${ROLE_LABEL[role]} name — or paste a comma-separated list (20 at a time)` : "Choose Category, Folder, Sub-Folder or Filename above first"} className="flex-1 min-w-0 h-10 px-3 rounded bg-surface border border-app text-sm font-mono" data-testid="tpc-text" />
             <button onClick={() => apply()} disabled={!canAct || !role} className="h-10 px-4 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium disabled:opacity-35" data-testid="tpc-add">Add</button>
           </div>
           {held.length > 0 && (
@@ -418,11 +392,51 @@ export default function TagPackCreator() {
           )}
         </section>
 
+        {/* 3. Path preview */}
+        <div className="font-mono text-xs px-3 py-2 rounded border border-app bg-surface flex items-center gap-2" data-testid="tpc-path-preview">
+          <Lucide.FolderTree size={12} className="text-primary-earth" /> <span className="text-dim">Will store to:</span> <span className="text-primary-earth">{pathPreview}</span>
+        </div>
+
+        {/* 4. Waterfall display */}
+        <section className="rounded-lg border border-app bg-surface divide-y divide-[color:var(--border)]" data-testid="tpc-display">
+          <div className="px-3 py-2 flex items-center gap-3">
+            <span className="w-44 shrink-0 text-[10px] uppercase tracking-wider text-dim">Category</span>
+            {pack.name ? <Chip item={{ label: pack.name, iconName: pack.iconName || "FolderTree", iconType: pack.iconType, iconData: pack.iconData }} active={!selectedId} onClick={() => setSelectedId(null)} onContext={() => setPicker({ kind: "pack" })} testId="tpc-category-chip" /> : <span className="text-xs text-dim italic">Press Category, type a name, Add</span>}
+          </div>
+          {levels.map((lvl, li) => (
+            <div key={lvl.parent?.id || "root"} className="px-3 py-2 flex items-start gap-3" data-testid={`tpc-level-${li}`}>
+              <span className="w-44 shrink-0 pt-1.5 text-[10px] uppercase tracking-wider text-dim truncate" title={lvl.label}>{lvl.label}</span>
+              <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid={li === 0 ? "tpc-folder-row" : `tpc-subfolder-row-${li}`}>
+                {lvl.nodes.length === 0 && <span className="text-xs text-dim italic pt-1">{li === 0 ? "Press Folder, type names, Add" : `No sub-folders in “${lvl.parent.name}” yet — Sub-Folder is armed, just type`}</span>}
+                {lvl.nodes.map((node) => (
+                  <Chip key={node.id} item={node} active={lvl.activeId === node.id} draggable
+                    onClick={() => selectNode(node.id)} onRemove={() => removeFolder(node.id)} onContext={() => setPicker({ kind: "node", id: node.id })}
+                    onDragStart={(e) => { dragRef.current = { kind: "node", id: node.id }; e.dataTransfer.effectAllowed = "move"; }}
+                    onDrop={() => { const d0 = dragRef.current; dragRef.current = null; if (!d0) return; if (d0.kind === "node") reorderSiblings(d0.id, node.id); if (d0.kind === "tag") copyTagToFolder(d0.tag, node.id); }}
+                    testId={`tpc-folder-${node.id}`} />
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="px-3 py-2 flex items-start gap-3">
+            <span className="w-44 shrink-0 pt-1.5 text-[10px] uppercase tracking-wider text-dim truncate" title={owner === pack ? "Filenames · category" : `Filenames · ${owner.name}`}>Filenames · {owner === pack ? "category" : owner.name}</span>
+            <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid="tpc-filename-row">
+              {(owner.filenameItems || []).length === 0 && <span className="text-xs text-dim italic pt-1">No filename tags here yet</span>}
+              {(owner.filenameItems || []).map((t) => (
+                <Chip key={t.id} item={t} draggable onRemove={() => removeTag(selectedId, t.id)} onContext={() => setPicker({ kind: "tag", id: t.id, ownerId: selectedId })}
+                  onDragStart={(e) => { dragRef.current = { kind: "tag", id: t.id, ownerId: selectedId, tag: t }; e.dataTransfer.effectAllowed = "copyMove"; }}
+                  onDrop={() => { const d0 = dragRef.current; dragRef.current = null; if (d0?.kind === "tag" && d0.ownerId === selectedId) reorderTags(selectedId, d0.id, t.id); }}
+                  testId={`tpc-tag-${t.id}`} />
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* Tag box library */}
         <section className="rounded-lg border border-app bg-surface p-3" data-testid="tpc-library">
           <div className="flex items-center justify-between mb-2">
             <div className="text-[10px] uppercase tracking-wider text-dim">Tag box · every filename tag in this pack ({library.length})</div>
-            <div className="text-[11px] text-dim">Drag a tag onto a sub-folder to add it there · right-click to rename / set icon</div>
+            <div className="text-[11px] text-dim">Drag a tag onto a folder to add it there · click a tag to jump to its folder · right-click to rename / set icon</div>
           </div>
           <div className="flex flex-wrap gap-1.5 min-h-[32px]">
             {library.length === 0 && <span className="text-xs text-dim italic">Filename tags you add show up here</span>}
@@ -434,8 +448,11 @@ export default function TagPackCreator() {
           </div>
         </section>
 
-        {/* Save row */}
-        <section className="rounded-lg border border-app bg-surface p-3 grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end" data-testid="tpc-save-row">
+      </main>
+
+      {/* Save bar — pinned to the bottom so it never scrolls away */}
+      <footer className="sticky bottom-0 z-30 border-t border-app bg-app/95 backdrop-blur px-[3vw] py-3" data-testid="tpc-save-row">
+        <section className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end" style={{ maxWidth: "min(100%, 1600px)", margin: "0 auto" }}>
           <label className="text-xs text-dim">Pack title <span className="font-mono">(= file name)</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={pack.name || "My Wildlife Pack"} className="mt-1 w-full h-9 px-3 rounded bg-app border border-app text-sm font-mono" data-testid="tpc-title" />
           </label>
@@ -447,9 +464,9 @@ export default function TagPackCreator() {
             <button onClick={install} className="h-9 px-3 rounded border border-primary-earth text-primary-earth text-xs flex items-center gap-1 hover:bg-primary-earth/10" title={isElectron() ? "Hand this pack to Pro Photo Sorter on this PC" : "In the desktop app this installs straight into PPS"} data-testid="tpc-install"><Lucide.Send size={12} /> Install into PPS</button>
             <button onClick={save} className="h-9 px-4 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium flex items-center gap-1" data-testid="tpc-save"><Lucide.Save size={13} /> Save</button>
           </div>
-          <div className="md:col-span-3 text-[11px] text-dim font-mono">{counts.subfolders} sub-folder{counts.subfolders === 1 ? "" : "s"} · {library.length} filename tag{library.length === 1 ? "" : "s"} · format v4</div>
+          <div className="md:col-span-3 text-[11px] text-dim font-mono">{counts.subfolders} folder{counts.subfolders === 1 ? "" : "s"} · {library.length} filename tag{library.length === 1 ? "" : "s"} · format v4</div>
         </section>
-      </main>
+      </footer>
 
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
       {picker && pickerTarget && (
