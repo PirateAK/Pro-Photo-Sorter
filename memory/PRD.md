@@ -1751,3 +1751,17 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
   auto-updater CONFIRMED WORKING 2026-06-17: PPS 1.4.7 offered the 1.5.1 update on launch once the release was published.).
 - ✅ TPC arrow-key nav in text box when empty (navKey): ←→ siblings (wrap), ↓ first child, ↑ parent. Hint line updated. In 1.5.1 codebase (Creator rebuild needed).
 - ✅ TPC 'New pack' (tpc-new): confirm if work exists, commit(empty) so Undo restores, keeps author, role=category, focus text. Toasts top-center. Save/Install success toasts carry a 'New pack' action.
+- ✅ 2026-06-17 site: v1.5.1 refs, hero what's-new line, pricing bullet (Merge/Replace + Tag History), Creator copy role-first + arrow keys, sitemap date.
+
+## 📌 NEXT SESSION (Kurt, 2026-06-17): Move the Creator editor into PPS Tag Manager NOW (not v2)
+- Kurt: "it's just that much better that it deserves to be in both."
+- Plan: extract TagPackCreator's editor (role-first buttons, text entry, path preview, waterfall
+  levels, filename row, tag box, arrow-key nav, icon picker) into a shared component
+  `components/PackEditor.jsx` (props: category, onChange, customImages…). TPC keeps its own
+  header/save bar; PPS CategoryManager swaps its right-hand editor for PackEditor while keeping
+  left rail (categories, Import pack/text), header (Trash, History), Custom Images right rail
+  and icon-arming, Backup All / Bundle, starter packs, Export pack / Export as text, Delete empty.
+- Keep PPS-only behaviors: chip Trash on tag delete (use chipTrash lib), paste-roster snapshot,
+  bulk select/convert? (check what's still needed), NestedSubfolderEditor becomes redundant.
+- Ship as PPS v1.6.0. Rebuild BOTH apps (shared code). Update docs/USER_GUIDE + PDFs + site.
+- Build one-liner: see "BUILD ONE-LINER (corrected)" above.
