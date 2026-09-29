@@ -42,7 +42,7 @@ export async function renderPreviewCard(pack) {
   let px = 72; const py = H - 150;
   ctx.font = "500 18px 'IBM Plex Sans', sans-serif";
   for (const p of pills) { const w = ctx.measureText(p).width + 36; ctx.fillStyle = C.surface; rr(ctx, px, py, w, 40, 20); ctx.fill(); ctx.strokeStyle = C.border; ctx.stroke(); ctx.fillStyle = C.text; ctx.fillText(p, px + 18, py + 26); px += w + 12; }
-  ctx.fillStyle = C.dim; ctx.font = "400 16px 'JetBrains Mono', monospace"; ctx.fillText("muskegman.com  ·  .pps-tagpack.json", 72, H - 60);
+  ctx.fillStyle = C.dim; ctx.font = "400 15px 'JetBrains Mono', monospace"; ctx.fillText("Made with Tag Pack Creator  ·  for Pro Photo Sorter  ·  muskegman.com", 72, H - 60);
 
   // path sample
   const first = (pack.subfolders || [])[0];
