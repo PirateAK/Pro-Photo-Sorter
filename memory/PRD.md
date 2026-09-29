@@ -1746,3 +1746,6 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
   filename (unless subfolder) + refocus, toggleRole no longer un-toggles.
 - Kurt to build BOTH (pack-app + pack-tpc), new GitHub release v1.5.1 (exe+blockmap+latest.yml +
   TPC exe + PDFs), update Gumroad PPS + PPS-TPC files.
+- ✅ 2026-06-17 Kurt confirmed v1.5.1: PPS shows 1.5.1, Inbox prompt "Tag pack waiting: Dogs" fired,
+  install works. ROOT CAUSE of earlier "bugs": Kurt's PPS was still 1.4.7 (never installed 1.5.0;
+  auto-updater did not update — WATCH: does updater offer 1.5.1 → 1.5.2 later?).
