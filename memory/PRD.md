@@ -1750,3 +1750,4 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
   install works. ROOT CAUSE of earlier "bugs": Kurt's PPS was still 1.4.7 (never installed 1.5.0;
   auto-updater CONFIRMED WORKING 2026-06-17: PPS 1.4.7 offered the 1.5.1 update on launch once the release was published.).
 - ✅ TPC arrow-key nav in text box when empty (navKey): ←→ siblings (wrap), ↓ first child, ↑ parent. Hint line updated. In 1.5.1 codebase (Creator rebuild needed).
+- ✅ TPC 'New pack' (tpc-new): confirm if work exists, commit(empty) so Undo restores, keeps author, role=category, focus text. Toasts top-center. Save/Install success toasts carry a 'New pack' action.
