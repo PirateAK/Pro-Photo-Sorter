@@ -22,6 +22,7 @@ All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 - **Cover**: generates a 1280×720 Gumroad-ready PNG — pack name, author, icon mosaic, counts, sample path.
 - **Earth Light / Earth Dark** toggle in the header (remembered between sessions), same palette as PPS.
 - Fluid layout — fills any window size. **About** dialog with the PPS pitch, Kurt's story and Gumroad / trial / site links (open in the system browser).
+- **Workflow v2 (Kurt's redesign):** destination first — pick Category / Folder / Sub-Folder / Filename, *then* type. The choice sticks after Add so you can rattle off entries; text box sits directly under the buttons. **Waterfall display:** Category → Folders (top level) → one "Sub-folders · X" row per highlighted level → Filenames of the highlighted folder. Clicking a folder highlights it and auto-arms Sub-Folder; the badge shows the current depth. Save / title / author / Cover / Install live in a **bar pinned to the bottom** so they never scroll away.
 - **Earth Light / Earth Dark** toggle in the header (remembered between sessions), same palette as PPS.
 
 ### Fixed
