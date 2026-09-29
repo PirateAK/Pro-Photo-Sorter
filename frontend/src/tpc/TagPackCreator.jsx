@@ -196,7 +196,7 @@ function AboutDialog({ onClose }) {
 // ── main app ─────────────────────────────────────────────────────────────
 export default function TagPackCreator() {
   const [pack, setPack] = useState(() => ({ id: uid("cat"), name: "", author: "", description: "", subfolders: [], filenameItems: [] }));
-  const [role, setRole] = useState(null);
+  const [role, setRole] = useState("category"); // Category pre-armed on startup
   const [text, setText] = useState("");
   const [held, setHeld] = useState([]);             // overflow from a >20 paste
   const [selectedId, setSelectedId] = useState(null); // highlighted folder node
@@ -228,12 +228,15 @@ export default function TagPackCreator() {
   // clicking any folder chip auto-arms Sub-Folder.
   const toggleRole = (r) => {
     if (r === "subfolder" && !selectedId) { toast("Pick a folder first", { description: "Click the folder the new sub-folder should live in." }); return; }
-    setRole((cur) => (cur === r ? null : r));
-    textRef.current?.focus();
+    setRole(r);
+    setTimeout(() => textRef.current?.focus(), 0);
   };
+  // Clicking a folder highlights it and arms Filename (the common case);
+  // Sub-Folder is a deliberate click. Focus goes back to the text box.
   const selectNode = (id) => {
     if (selectedId === id) { const path = findPath(pack.subfolders, id); setSelectedId(path && path.length > 1 ? path[path.length - 2].id : null); }
-    else { setSelectedId(id); if (role !== "filename") setRole("subfolder"); }
+    else { setSelectedId(id); if (role !== "subfolder") setRole("filename"); }
+    setTimeout(() => textRef.current?.focus(), 0);
   };
 
   // Apply the typed text with the active role.
@@ -242,7 +245,7 @@ export default function TagPackCreator() {
     if (!all.length || !role) return;
     const now = all.slice(0, PASTE_CAP), rest = all.slice(PASTE_CAP);
     if (rest.length) setHeld((h) => [...h, ...rest]);
-    if (role === "category") { commit((p) => ({ ...p, name: now[0].slice(0, 60) })); if (!title) setTitle(now[0]); }
+    if (role === "category") { commit((p) => ({ ...p, name: now[0].slice(0, 60) })); if (!title) setTitle(now[0]); setRole("folder"); }
     else if (role === "folder") {
       const nodes = now.map((n) => newNode(n));
       commit((p) => ({ ...p, subfolders: [...p.subfolders, ...nodes] }));
@@ -328,7 +331,7 @@ export default function TagPackCreator() {
   const owner = selectedPath ? selectedPath.at(-1) : pack;
   const library = allTags(pack);
   const counts = countPack(pack);
-  useEffect(() => { document.title = "Tag Pack Creator"; }, []);
+  useEffect(() => { document.title = "Tag Pack Creator"; textRef.current?.focus(); }, []);
 
   const RoleBtn = ({ r, children }) => (
     <button onClick={() => toggleRole(r)} aria-disabled={r === "subfolder" && !selectedId}
@@ -401,13 +404,13 @@ export default function TagPackCreator() {
         <section className="rounded-lg border border-app bg-surface divide-y divide-[color:var(--border)]" data-testid="tpc-display">
           <div className="px-3 py-2 flex items-center gap-3">
             <span className="w-44 shrink-0 text-[10px] uppercase tracking-wider text-dim">Category</span>
-            {pack.name ? <Chip item={{ label: pack.name, iconName: pack.iconName || "FolderTree", iconType: pack.iconType, iconData: pack.iconData }} active={!selectedId} onClick={() => setSelectedId(null)} onContext={() => setPicker({ kind: "pack" })} testId="tpc-category-chip" /> : <span className="text-xs text-dim italic">Press Category, type a name, Add</span>}
+            {pack.name ? <Chip item={{ label: pack.name, iconName: pack.iconName || "FolderTree", iconType: pack.iconType, iconData: pack.iconData }} active={!selectedId} onClick={() => { setSelectedId(null); if (role === "subfolder") setRole("folder"); setTimeout(() => textRef.current?.focus(), 0); }} onContext={() => setPicker({ kind: "pack" })} testId="tpc-category-chip" /> : <span className="text-xs text-dim italic">Press Category, type a name, Add</span>}
           </div>
           {levels.map((lvl, li) => (
             <div key={lvl.parent?.id || "root"} className="px-3 py-2 flex items-start gap-3" data-testid={`tpc-level-${li}`}>
               <span className="w-44 shrink-0 pt-1.5 text-[10px] uppercase tracking-wider text-dim truncate" title={lvl.label}>{lvl.label}</span>
               <div className="flex flex-wrap gap-1.5 min-h-[28px] min-w-0 flex-1" data-testid={li === 0 ? "tpc-folder-row" : `tpc-subfolder-row-${li}`}>
-                {lvl.nodes.length === 0 && <span className="text-xs text-dim italic pt-1">{li === 0 ? "Press Folder, type names, Add" : `No sub-folders in “${lvl.parent.name}” yet — Sub-Folder is armed, just type`}</span>}
+                {lvl.nodes.length === 0 && <span className="text-xs text-dim italic pt-1">{li === 0 ? "Press Folder, type names, Add" : `No sub-folders in “${lvl.parent.name}” — press Sub-Folder to nest some`}</span>}
                 {lvl.nodes.map((node) => (
                   <Chip key={node.id} item={node} active={lvl.activeId === node.id} draggable
                     onClick={() => selectNode(node.id)} onRemove={() => removeFolder(node.id)} onContext={() => setPicker({ kind: "node", id: node.id })}

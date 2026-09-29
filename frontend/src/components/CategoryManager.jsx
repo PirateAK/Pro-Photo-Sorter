@@ -397,13 +397,17 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   const inboxImportRef = useRef(() => {});
   // v1.5.0 — packs handed over by the Tag Pack Creator (Documents\Pro Photo
   // Sorter\Inbox). Offer each one when the Tag Manager opens.
+  const inboxSeen = useRef(new Set());
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
-    (async () => {
+    const check = async () => {
       const items = await inboxList();
       if (cancelled || items.length === 0) return;
       for (const it of items) {
+        if (inboxSeen.current.has(it.name)) continue;
+        inboxSeen.current.add(it.name);
+        setTimeout(() => inboxSeen.current.delete(it.name), 20000);
         toast(`Tag pack waiting: ${it.name.replace(/\.pps-tagpack\.json$/i, "")}`, {
           description: "Sent from Tag Pack Creator.",
           duration: 15000,
@@ -411,8 +415,10 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
           cancel: { label: "Discard", onClick: () => inboxRemove(it.name) },
         });
       }
-    })();
-    return () => { cancelled = true; };
+    };
+    check();
+    window.addEventListener("focus", check);
+    return () => { cancelled = true; window.removeEventListener("focus", check); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
   const snapshot = (action, cat, note) => {
@@ -1579,10 +1585,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                   <div className="min-w-0">
                     <h3 className="font-heading font-semibold truncate">{current.name}</h3>
                     <p className="text-xs text-dim mt-0.5" data-testid="category-header-counts">
-                      {(current.subfolders?.length || 0)} sub-folder{(current.subfolders?.length || 0) === 1 ? "" : "s"}
-                      {" · "}
-                      {(current.subfolders || []).reduce((n, s) => n + (s.filenameItems?.length || 0), 0)} filename tag
-                      {((current.subfolders || []).reduce((n, s) => n + (s.filenameItems?.length || 0), 0)) === 1 ? "" : "s"}
+                      {(() => { const c = countPack(current); return `${c.subfolders} sub-folder${c.subfolders === 1 ? "" : "s"} (all levels) · ${c.tags} filename tag${c.tags === 1 ? "" : "s"}`; })()}
                     </p>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
@@ -2525,7 +2528,10 @@ function SubfolderSection({
                       {sf.name}
                     </button>
                   )}
-                  <span className="text-[10px] text-dim shrink-0 mx-1">{items.length} tag{items.length !== 1 ? "s" : ""}</span>
+                  <span className="text-[10px] text-dim shrink-0 mx-1" title="Direct tags · nested sub-folders / tags inside them">
+                    {items.length} tag{items.length !== 1 ? "s" : ""}
+                    {(() => { const n = countPack({ subfolders: sf.subfolders || [] }); return n.subfolders > 0 ? <span className="text-primary-earth"> · {n.subfolders} nested{n.tags > 0 ? ` / ${n.tags} tag${n.tags !== 1 ? "s" : ""}` : ""}</span> : null; })()}
+                  </span>
                   <button
                     onClick={() => startRename(sf)}
                     className="w-6 h-6 rounded flex items-center justify-center hover:bg-surface-hover text-dim hover:text-primary-earth"

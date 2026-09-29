@@ -2,6 +2,17 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.5.1 — 2026-06-17 · Creator flow polish + nested-pack visibility
+
+### Pro Photo Sorter
+- **Fixed: imported packs looked empty.** Tag Manager counted only a sub-folder's *direct* tags, so a Creator pack like `Labrador › Yellow [sitting, running]` showed `Labrador · 0 tags` with everything hidden behind the chevron. Rows now read `0 tags · 2 nested / 2 tags`, and the category header counts all levels.
+- **Fixed: Install-into-PPS hand-off could be missed.** PPS only looked in the Inbox at the moment Tag Manager opened; if Tag Manager was already open while you clicked Install in the Creator, nothing fired. It now re-checks every time the PPS window regains focus.
+
+### Tag Pack Creator
+- **Category is pre-armed on startup** with the cursor already in the text box — type the pack name and press Enter. Adding the category hands off to **Folder** automatically.
+- **Clicking a folder now arms Filename** (the common case) and puts the cursor back in the text box. **Sub-Folder** is a deliberate click when you want nesting.
+- Every button click returns focus to the text box; clicking the category chip clears the highlight.
+
 ## v1.5.0 — 2026-06-16 · Un-losable tag library (Tag Pack Creator groundwork)
 
 ### Added — Import decisions

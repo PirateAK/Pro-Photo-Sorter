@@ -1737,3 +1737,12 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
   bundle, starter-pack installer, paste-roster, export/import. Bonus: Cover + Save-as-pack in PPS.
 - Approach: lift TagPackCreator's editor into a shared component (props: category, onChange,
   selection) used by both apps; keep TPC standalone shell.
+
+## v1.5.1 — 2026-06-17 (both apps)
+- PPS: CategoryManager row + header counts recursive via countPack; Inbox check also on window "focus"
+  while Tag Manager open (dedupe via inboxSeen ref, 20s). Root cause of Kurt's "install doesn't work"
+  likely Tag Manager already open (only checked on open). Data loss bug was display-only.
+- TPC: role defaults "category", autofocus text, category Add → role folder, folder click → role
+  filename (unless subfolder) + refocus, toggleRole no longer un-toggles.
+- Kurt to build BOTH (pack-app + pack-tpc), new GitHub release v1.5.1 (exe+blockmap+latest.yml +
+  TPC exe + PDFs), update Gumroad PPS + PPS-TPC files.
