@@ -1765,3 +1765,22 @@ TPC-only rebuild: cd /d C:\Pro-Photo-Sorter && call pack-tpc.bat && start "" "C:
   bulk select/convert? (check what's still needed), NestedSubfolderEditor becomes redundant.
 - Ship as PPS v1.6.0. Rebuild BOTH apps (shared code). Update docs/USER_GUIDE + PDFs + site.
 - Build one-liner: see "BUILD ONE-LINER (corrected)" above.
+
+## PHASE A (paused 2026-06-20 — Kurt waiting for pay-day; resume here) · PPS v1.6.0
+Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shared component.
+- Extract from `tpc/TagPackCreator.jsx` → `components/PackEditor.jsx`: tree helpers, Chip,
+  IconPicker, role buttons, text entry (+held/20-cap), path preview, waterfall levels, filename
+  row, tag box, navKey arrows. Props: `pack`, `onCommit(fn,label)`, `onTagRemoved?(tag, owner)`
+  (PPS → chipTrash), `armedIcon?/onConsumeArmed?` (PPS icon-arming), `customImages?`.
+  Use `key={pack.id}` to reset selection on pack switch/new.
+- TPC: render <PackEditor> ; keep header (About/theme/New pack/Open/Undo) + sticky save bar.
+  Drop post-save "paste the rest" confirm (held banner covers it).
+- PPS CategoryManager: replace lines ~1653–1695 (`<div className="flex-1 overflow-auto"><SubfolderSection …/>`)
+  with <PackEditor key={current.id} pack={current} onCommit={(fn)=>onChange(categories.map(c=>c.id===current.id?fn(c):c))} …/>.
+  Keep: category header (name/counts/Export pack/Export as text/Delete empty, ~line 1578),
+  left rail, right rail IconPickerBar (armedIcon), footer (Backup All/Bundle/Done), Trash, History,
+  Inbox toast, ImportDecision. SubfolderSection + NestedSubfolderEditor become unused (leave file).
+- Then: bump 1.6.0 both apps, CHANGELOG, USER_GUIDE/QUICK_START Tag Manager section + PDFs
+  (scripts/build-docs-pdf.js), site line. Rebuild BOTH apps.
+- Phase B/C definitions: see Kurt's paste in chat 2026-06-20 (shipper bundles + images + link,
+  picker dialog w/ pending dropdown, TPC reads PPS Safety-Backup mirror, cross-app detect).
