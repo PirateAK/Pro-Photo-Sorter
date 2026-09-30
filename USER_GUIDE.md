@@ -153,6 +153,11 @@ Click the **Tags** button in the toolbar to open the Tag Manager:
   packs per file
 - **Export as text** — turns any pack into a shareable `.pps-taglist.txt`
 - **Export bundle** (`.zip`) to package every pack in one archive
+- **Ship…** (v1.7.0) — from the Bundle picker: one `.pps-shipper.json` with the
+  ticked packs, up to 3 preview images (auto-shrunk), a title, description,
+  your **author** name and **link**. Buyers pick it with **Import pack…**, see a
+  preview, click **Import N packs**, and each pack runs through Merge / Replace /
+  Create new. Author, link and description are remembered for next time.
 
 ### Text-list format (`.pps-taglist.txt`)
 

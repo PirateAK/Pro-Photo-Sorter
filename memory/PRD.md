@@ -1803,3 +1803,14 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
 - Fixed: docs/CNAME (muskegman.com) was missing from workspace though present on GitHub — added.
 - Verdict: public gallery/software/about/contact = static on Pages (free). Admin dashboard/login/uploads/secrets = NOT possible on Pages → separate Emergent full-stack project publishing to /docs via GitHub API (paid, after payday).
 - Phases: W0 prep → W1 free static gallery → W2 paid admin → W3 enable sales (Gumroad digital, print provider TBD).
+
+## v1.7.0 — 2026-06-21 · Phase B: Tag Pack Shipper + link field (DONE, 46/46 tests)
+- `lib/packFormat.js`: `link` on pack files (normalizeLink/linkDomain), `serializeShipper`/`deserializeShipper`/`isShipper`, SHIPPER_LIMITS (3 images, 1200px, ≤350KB, 50 packs). Packs inherit shipper author/link when blank (both directions).
+- `components/ShipperDialog.jsx` (shared): ShipperDialog (title/author/link/description, image add w/ canvas shrink, add pack files incl. other shippers, Save + optional extra action) + ShipperPreview (PPS import preview with clash badges).
+- `lib/authorPrefs.js`: author/link/description persisted in localStorage (both apps) — Kurt's request "DNS should persist".
+- PPS CategoryManager: Bundle… → **Ship…**; Import pack… accepts .pps-shipper.json → preview → queued one-by-one through Merge/Replace/New (importQueue + importPackObjRef effect placed before early return); ImportDecision shows author/link; Inbox regex accepts shipper files.
+- TPC: Link field (save bar), **Shipper…** header button (Save / Install into PPS), Open pack… opens shippers, cover PNG prints domain.
+- electron-shell/main.js inbox filter: /\.pps-(tagpack|shipper)\.json$/i.
+- Version 1.7.0 everywhere (3 package.json, buildInfo, docs/index.html, CHANGELOG, USER_GUIDE). User must Save to GitHub + run the reset/dual-build one-liner.
+- Verified: node tests + Playwright smoke (TPC shipper dialog, prefs persist after reload; PPS shipper import → preview → decision).
+- NEXT: Phase C (two-way library + cross-app detection). Website plan parked in WEBSITE_UPGRADE_PLAN.md.

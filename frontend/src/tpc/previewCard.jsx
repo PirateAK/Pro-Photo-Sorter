@@ -5,7 +5,7 @@
 import React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import * as Lucide from "lucide-react";
-import { countPack } from "../lib/packFormat";
+import { countPack, linkDomain } from "../lib/packFormat";
 
 const W = 1280, H = 720;
 const C = { bg: "#1A1715", surface: "#26221F", border: "#423A35", primary: "#C68A53", text: "#F2EBE5", dim: "#A69C95", deep: "#110F0E" };
@@ -34,6 +34,8 @@ export async function renderPreviewCard(pack) {
   for (const w of words) { const t = line ? `${line} ${w}` : w; if (ctx.measureText(t).width > 560 && line) { ctx.fillText(line, 72, y); y += 72; line = w; } else line = t; }
   ctx.fillText(line, 72, y); y += 48;
   if (pack.author) { ctx.fillStyle = C.dim; ctx.font = "500 24px 'IBM Plex Sans', sans-serif"; ctx.fillText(`by ${pack.author}`, 72, y + 12); y += 44; }
+  const domain = linkDomain(pack.link);
+  if (domain) { ctx.fillStyle = C.primary; ctx.font = "500 20px 'JetBrains Mono', monospace"; ctx.fillText(domain, 72, y + 8); y += 36; }
 
   // counts pills
   const counts = countPack(pack);

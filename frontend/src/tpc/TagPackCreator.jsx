@@ -5,8 +5,10 @@ import React, { useRef, useState, useEffect } from "react";
 import * as Lucide from "lucide-react";
 import { Toaster, toast } from "sonner";
 import { uid } from "../lib/storage";
-import { serializeCategory, deserializePack, countPack } from "../lib/packFormat";
+import { serializeCategory, deserializePack, deserializeShipper, isShipper, countPack, linkDomain } from "../lib/packFormat";
 import PackEditor from "../components/PackEditor";
+import ShipperDialog from "../components/ShipperDialog";
+import { loadAuthorPrefs, saveAuthorPrefs } from "../lib/authorPrefs";
 import { isElectron, tpcInstallPack, tpcSavePack } from "../lib/electronBridge";
 import buildInfo from "../buildInfo.json";
 import { renderPreviewCard } from "./previewCard";
@@ -85,10 +87,11 @@ function AboutDialog({ onClose }) {
 
 // ── main app ─────────────────────────────────────────────────────────────
 export default function TagPackCreator() {
-  const [pack, setPack] = useState(() => ({ id: uid("cat"), name: "", author: "", description: "", subfolders: [], filenameItems: [] }));
+  const [pack, setPack] = useState(() => { const p = loadAuthorPrefs(); return { id: uid("cat"), name: "", author: p.author, link: p.link, description: "", subfolders: [], filenameItems: [] }; });
   const [undo, setUndo] = useState([]);
   const [title, setTitle] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [shipper, setShipper] = useState(null); // v1.7.0 — { packs, title, author, link, description, images }
   const [theme, setTheme] = useState(() => { try { return window.localStorage.getItem("tpc.theme") || "dark"; } catch { return "dark"; } });
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); try { window.localStorage.setItem("tpc.theme", theme); } catch { /* private mode */ } }, [theme]);
   const fileRef = useRef(null);
@@ -97,7 +100,7 @@ export default function TagPackCreator() {
 
   // ── file I/O ──
   const safeTitle = () => (title || pack.name || "tag-pack").replace(/[^\w\-]+/g, "_").slice(0, 60);
-  const packJson = () => JSON.stringify(serializeCategory({ ...pack, name: pack.name || title || "Untitled pack" }, { author: pack.author, description: pack.description }), null, 2);
+  const packJson = () => JSON.stringify(serializeCategory({ ...pack, name: pack.name || title || "Untitled pack" }, { author: pack.author, link: pack.link, description: pack.description }), null, 2);
   const download = () => { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([packJson()], { type: "application/json" })); a.download = `${safeTitle()}.pps-tagpack.json`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); };
   const save = async () => {
     if (!pack.name && !title) { toast.error("Give the pack a title first"); return; }
@@ -113,17 +116,38 @@ export default function TagPackCreator() {
   };
   // New pack: wipe the workspace (undo-able) and put the cursor back on Category.
   const newPack = (silent) => {
-    const empty = { id: uid("cat"), name: "", author: pack.author || "", description: "", subfolders: [], filenameItems: [] };
+    const empty = { id: uid("cat"), name: "", author: pack.author || "", link: pack.link || "", description: "", subfolders: [], filenameItems: [] };
     const hasWork = pack.name || pack.subfolders.length || (pack.filenameItems || []).length;
     if (hasWork && !silent && !window.confirm("Start a new pack?\n\nThe current one is cleared (Undo brings it back). Make sure you've saved or installed it first.")) return;
     commit(() => empty);
     setTitle("");
-    if (!silent) toast("Ready for a new pack", { description: "Author kept. Undo restores the previous pack." });
+    if (!silent) toast("Ready for a new pack", { description: "Author and link kept. Undo restores the previous pack." });
   };
   const openFile = async (f) => {
     if (!f) return;
-    try { const cat = deserializePack(JSON.parse(await f.text()), uid); commit(() => ({ ...cat, filenameItems: [] })); setTitle(cat.name); toast.success(`Opened “${cat.name}”`); }
+    try {
+      const data = JSON.parse(await f.text());
+      if (isShipper(data)) { setShipper(deserializeShipper(data, uid)); toast.success("Shipper opened", { description: "Edit it in the Shipper window, then Save." }); return; }
+      const cat = deserializePack(data, uid); commit(() => ({ ...cat, filenameItems: [] })); setTitle(cat.name); toast.success(`Opened “${cat.name}”`);
+    }
     catch (e) { toast.error("Couldn't open", { description: e.message }); }
+  };
+  // Shipper: start from the current pack (if it has a name) and the author/link already typed.
+  const openShipper = () => {
+    const hasPack = pack.name || pack.subfolders.length;
+    setShipper({ packs: hasPack ? [{ ...pack, name: pack.name || title || "Untitled pack" }] : [], author: pack.author || "", link: pack.link || "" });
+  };
+  const saveShipper = async (filename, json) => {
+    const res = await tpcSavePack(filename, json);
+    if (res.ok) { toast.success("Shipper saved", { description: res.path }); setShipper(null); }
+    else if (res.error === "not-electron") { const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([json], { type: "application/json" })); a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000); toast.success("Shipper downloaded"); setShipper(null); }
+    else if (res.error !== "cancelled") toast.error("Save failed", { description: res.error });
+  };
+  const installShipper = async (filename, json) => {
+    const res = await tpcInstallPack(filename, json);
+    if (res.ok) { toast.success("Handed to Pro Photo Sorter", { description: "Open PPS → Tag Manager. It will offer to import the whole shipment." }); setShipper(null); }
+    else if (res.error === "not-electron") toast("Desktop app only", { description: "Save the shipper instead, then Tag Manager → Import pack… in PPS." });
+    else toast.error("Install failed", { description: res.error });
   };
   const previewCard = async () => {
     try { const url = await renderPreviewCard({ ...pack, name: pack.name || title || "Untitled pack" }); const a = document.createElement("a"); a.href = url; a.download = `${safeTitle()}_cover.png`; a.click(); toast.success("Cover image downloaded", { description: "1280×720 PNG — drop it straight into Gumroad." }); }
@@ -155,6 +179,7 @@ export default function TagPackCreator() {
           <button onClick={() => newPack(false)} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="Clear the workspace and start another pack" data-testid="tpc-new"><Lucide.FilePlus2 size={12} /> New pack</button>
           <button onClick={() => fileRef.current?.click()} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" data-testid="tpc-open"><Lucide.FolderOpen size={12} /> Open pack…</button>
           <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { openFile(e.target.files?.[0]); e.target.value = ""; }} data-testid="tpc-open-input" />
+          <button onClick={openShipper} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="Bundle several packs + up to 3 preview images + your link into one .pps-shipper.json" data-testid="tpc-shipper"><Lucide.Truck size={12} /> Shipper…</button>
           <button onClick={doUndo} disabled={!undo.length} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover disabled:opacity-35" data-testid="tpc-undo"><Lucide.Undo2 size={12} /> Undo{undo.length ? ` · ${undo.length}` : ""}</button>
         </div>
       </header>
@@ -165,23 +190,30 @@ export default function TagPackCreator() {
 
       {/* Save bar — pinned to the bottom so it never scrolls away */}
       <footer className="sticky bottom-0 z-30 border-t border-app bg-app/95 backdrop-blur px-[3vw] py-3" data-testid="tpc-save-row">
-        <section className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-3 items-end" style={{ maxWidth: "min(100%, 1600px)", margin: "0 auto" }}>
+        <section className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-3 items-end" style={{ maxWidth: "min(100%, 1600px)", margin: "0 auto" }}>
           <label className="text-xs text-dim">Pack title <span className="font-mono">(= file name)</span>
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={pack.name || "My Wildlife Pack"} className="mt-1 w-full h-9 px-3 rounded bg-app border border-app text-sm font-mono" data-testid="tpc-title" />
           </label>
           <label className="text-xs text-dim">Author <span className="font-mono">(optional, shows on the cover)</span>
-            <input value={pack.author || ""} onChange={(e) => setPack((p) => ({ ...p, author: e.target.value }))} placeholder="Muskegman Photography" className="mt-1 w-full h-9 px-3 rounded bg-app border border-app text-sm" data-testid="tpc-author" />
+            <input value={pack.author || ""} onChange={(e) => { setPack((p) => ({ ...p, author: e.target.value })); saveAuthorPrefs({ author: e.target.value }); }} placeholder="Muskegman Photography" className="mt-1 w-full h-9 px-3 rounded bg-app border border-app text-sm" data-testid="tpc-author" />
+          </label>
+          <label className="text-xs text-dim">Link <span className="font-mono">({linkDomain(pack.link) || "your site or shop, optional"})</span>
+            <input value={pack.link || ""} onChange={(e) => { setPack((p) => ({ ...p, link: e.target.value })); saveAuthorPrefs({ link: e.target.value }); }} placeholder="muskegman.com" className="mt-1 w-full h-9 px-3 rounded bg-app border border-app text-sm font-mono" data-testid="tpc-link" />
           </label>
           <div className="flex items-center gap-2 flex-wrap">
             <button onClick={previewCard} className="h-9 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="1280×720 cover PNG for Gumroad" data-testid="tpc-cover"><Lucide.ImageDown size={12} /> Cover</button>
             <button onClick={install} className="h-9 px-3 rounded border border-primary-earth text-primary-earth text-xs flex items-center gap-1 hover:bg-primary-earth/10" title={isElectron() ? "Hand this pack to Pro Photo Sorter on this PC" : "In the desktop app this installs straight into PPS"} data-testid="tpc-install"><Lucide.Send size={12} /> Install into PPS</button>
             <button onClick={save} className="h-9 px-4 rounded bg-primary-earth text-[color:var(--text-inverse)] text-sm font-medium flex items-center gap-1" data-testid="tpc-save"><Lucide.Save size={13} /> Save</button>
           </div>
-          <div className="md:col-span-3 text-[11px] text-dim font-mono">{counts.subfolders} folder{counts.subfolders === 1 ? "" : "s"} · {tagTotal} filename tag{tagTotal === 1 ? "" : "s"} · format v4</div>
+          <div className="md:col-span-4 text-[11px] text-dim font-mono">{counts.subfolders} folder{counts.subfolders === 1 ? "" : "s"} · {tagTotal} filename tag{tagTotal === 1 ? "" : "s"} · format v4</div>
         </section>
       </footer>
 
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
+      {shipper && (
+        <ShipperDialog initial={shipper} onClose={() => setShipper(null)} onSave={saveShipper}
+          extraAction={isElectron() ? { label: "Install into PPS", icon: <Lucide.Send size={12} />, run: installShipper } : undefined} />
+      )}
     </div>
   );
 }
