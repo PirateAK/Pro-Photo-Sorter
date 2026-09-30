@@ -1,6 +1,6 @@
 {
   "name": "tag-pack-creator",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Build and share tag packs for Pro Photo Sorter",
   "main": "main.js",
   "author": "Captain Kurt",

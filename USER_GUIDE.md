@@ -135,6 +135,12 @@ Two tag bars sit between the viewer and the filmstrip:
 
 Click the **Tags** button in the toolbar to open the Tag Manager:
 
+> **New in v1.6.0 — the editor works the way the Tag Pack Creator does.**
+> Pick the category in the left list, then in the middle pane choose **where the text goes first** — **Folder**, **Sub-Folder** or **Filename** — type a name (or paste a comma-separated list, 20 at a time) and press **Enter**. The choice stays lit, so it's type–Enter–type–Enter for a long list.
+> The display is a *waterfall*: **FOLDERS** (top level) → **SUB-FOLDERS · X** for whichever folder you highlight → its **FILENAMES**. Click a folder to highlight it (this arms **Filename**); click **Sub-Folder** to nest inside it. With the text box empty, **← →** hop between sibling folders, **↓** steps into one, **↑** steps back out.
+> Right-click any chip to rename it or pick an icon. The **Tag box** at the bottom lists every filename tag in the pack — drag one onto a folder to add it there. Deleted tags still go to **Trash**; big changes still snapshot to **History**; the **Icon Holders** rail on the right still works (arm an icon, click a chip).
+
+
 - **Add pack** / **Rename pack** / **Delete pack**
 - **Add tag** inside either list (Folder or Filename), choose icon and label
 - **Paste…** button on each list — paste one label per line and click "Add all" to

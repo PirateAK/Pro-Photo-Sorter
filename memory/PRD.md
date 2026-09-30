@@ -1784,3 +1784,15 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
   (scripts/build-docs-pdf.js), site line. Rebuild BOTH apps.
 - Phase B/C definitions: see Kurt's paste in chat 2026-06-20 (shipper bundles + images + link,
   picker dialog w/ pending dropdown, TPC reads PPS Safety-Backup mirror, cross-app detect).
+
+## v1.6.0 — 2026-06-20 · PHASE A DONE (shared editor)
+- `components/PackEditor.jsx` (helpers + IconPicker moved from TPC; props pack/onCommit/onTagRemoved/
+  armedIcon/onConsumeArmed/hideCategory). `lib/builtinIcons.js` (BUILTIN_ICONS moved out of CategoryManager).
+- TPC = shell (header/About/theme/New pack/Open/Undo + sticky save bar) around <PackEditor key={pack.id}>.
+- PPS CategoryManager: middle pane = <PackEditor hideCategory …> ; SubfolderSection/NestedSubfolderEditor
+  now unused (files kept). Modal default width 1280 (ignores stored <1100); Icon Holders rail w-48, icons 13px.
+  Trash wired via pushToTrash in onTagRemoved; icon arming via onConsumeArmed.
+- Browser-verified: PPS add tag persists to storage, delete → Trash·1, arm icon+click folder sets icon;
+  TPC autofocus, arrows, save v4, New pack, theme. Tests 42/42. Docs + PDFs regenerated; site v1.6.0.
+- Kurt: Save to GitHub → build BOTH → release v1.6.0 (both exes + latest.yml + blockmap + PDFs) → Gumroad.
+- Phase B/C still queued (see paste 2026-06-20).

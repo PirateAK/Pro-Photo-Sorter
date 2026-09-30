@@ -2,6 +2,16 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.6.0 — 2026-06-20 · The Creator's editor comes home to Tag Manager
+
+### Pro Photo Sorter
+- **Tag Manager's editor is now the Tag Pack Creator editor** — one shared component (`PackEditor`) used by both apps, so they can never drift apart. Pick **Folder · Sub-Folder · Filename**, type, Enter, repeat. Waterfall display (Folders → Sub-folders of the highlighted folder → its Filenames). **← → ↓ ↑** hop between folders from the text box. Paste lists 20 at a time. Right-click any chip to rename or set an icon. Tag box shows every filename tag in the pack; drag one onto a folder to add it there.
+- Everything PPS-specific stays: category list + Import pack / Import text list on the left, **Icon Holders** rail on the right (arm an icon, click a chip), **Trash** (deleted filename tags still land there), **History**, Export pack / Export as text / Delete empty, Backup All, Bundle…, starter packs, Creator Inbox pickup.
+- Tag Manager opens wider by default (1280px) and the Icon Holders rail is slimmer, giving the editor the room it needs.
+
+### Tag Pack Creator
+- Same editor, now shared with PPS. No behaviour change.
+
 ## v1.5.1 — 2026-06-17 · Creator flow polish + nested-pack visibility
 
 ### Pro Photo Sorter
