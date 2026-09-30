@@ -20,7 +20,7 @@ Installed to: `C:\Users\<You>\AppData\Local\Programs\Pro Photo Sorter\`
 2. **Sample photos** are pre-loaded so you can practice sorting before touching your own.
 3. Click **Load Source** (top-left) → pick a folder of photos. They appear in the filmstrip.
 4. Click any photo → arrow keys / arrow buttons move through. Press **1–5** to rate.
-5. Open **Tag Manager** (toolbar) → pick a Category → drill into its sub-folder tree → click chips to build a destination path like `Wildlife / Bears / Grizzly / Alaska_Trip`.
+5. Open **Tag Manager** (toolbar) → pick a Category → press **Folder / Sub-Folder / Filename**, type a name, **Enter** (repeat). Click a folder to work inside it; **← → ↓ ↑** hop around from the text box. The path preview shows where photos will land, e.g. `Wildlife / Bears / Grizzly / Alaska_Trip`.
 6. Store the photo with **Ctrl+S** (or the Store button). Originals never overwritten — a fresh JPG is written to your destination **with a matching `.xmp` sidecar** so Lightroom sees your stars + tags on next import.
 
 ---

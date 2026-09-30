@@ -23,6 +23,8 @@ import { serializeCategory, deserializePack, findByName, applyImport, countPack,
 import { getHistory, getHistoryCount, recordHistory, removeHistory, emptyHistory, applyEntry, ACTION_LABELS } from "../lib/tagHistory";
 import { History as HistoryIcon } from "lucide-react";
 import { inboxList, inboxRemove } from "../lib/electronBridge";
+import { BUILTIN_ICONS } from "../lib/builtinIcons";
+import PackEditor from "./PackEditor";
 
 // v1.5.0 — Tag History panel. Whole-category snapshots taken before every
 // import Replace/Merge, category delete, sub-folder delete or pasted list.
@@ -137,19 +139,7 @@ function ImportDecision({ pending, onPick, onCancel }) {
 }
 
 // Curated built-in icons
-export const BUILTIN_ICONS = [
-  "Star", "Heart", "Flag", "Bookmark", "Tag", "Award", "Trophy",
-  "Camera", "Aperture", "Sun", "Moon", "Cloud", "CloudRain", "Snowflake",
-  "Mountain", "Trees", "Tent", "Palmtree", "Flower2", "Leaf", "Sprout",
-  "User", "Users", "Baby", "Dog", "Cat", "Bird", "Fish", "Rabbit",
-  "Home", "Building", "Church", "Landmark", "Castle",
-  "Car", "Plane", "Ship", "Bike", "Rocket", "Train",
-  "Coffee", "Utensils", "CakeSlice", "Wine", "Beer",
-  "Music", "Guitar", "Piano", "Mic2",
-  "Zap", "Sparkles", "Flame", "Waves", "Wind",
-  "MapPin", "Compass", "Globe", "Sunrise", "Sunset",
-  "Circle", "Square", "Triangle", "Hexagon", "Diamond",
-];
+export { BUILTIN_ICONS };
 
 function BuiltinIcon({ name, size = 20 }) {
   const Cmp = Lucide[name] || Lucide.Circle;
@@ -458,9 +448,9 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   };
   const [size, setSize] = useState(() => {
     const stored = readStoredSize();
-    if (stored) return stored;
-    // Default: same as old max-w-4xl (~896px) x 80vh, clamped to viewport.
-    const w = typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 896) : 896;
+    // v1.6.0 — the shared editor wants room; ignore stored widths narrower than 1100.
+    if (stored && stored.w >= 1100) return stored;
+    const w = typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1280) : 1280;
     const h = typeof window !== "undefined" ? Math.round(window.innerHeight * 0.8) : 720;
     return { w, h };
   });
@@ -1584,7 +1574,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                 <div className="px-4 py-3 border-b border-app flex items-center justify-between gap-2 bg-surface sticky top-0 z-20 shadow-sm">
                   <div className="min-w-0">
                     <h3 className="font-heading font-semibold truncate">{current.name}</h3>
-                    <p className="text-xs text-dim mt-0.5" data-testid="category-header-counts">
+                    <p className="text-xs text-dim mt-0.5 whitespace-nowrap truncate" data-testid="category-header-counts">
                       {(() => { const c = countPack(current); return `${c.subfolders} sub-folder${c.subfolders === 1 ? "" : "s"} (all levels) · ${c.tags} filename tag${c.tags === 1 ? "" : "s"}`; })()}
                     </p>
                   </div>
@@ -1650,48 +1640,16 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                     child list (Sub-Folders), and each Sub-Folder owns its
                     own Filename Tags list, which is edited in the pane
                     beneath the Sub-Folders list. */}
-                <div className="flex-1 overflow-auto">
-                  <SubfolderSection
+                <div className="flex-1 overflow-auto p-4" data-testid="tagmgr-pack-editor">
+                  <PackEditor
+                    key={current.id}
                     pack={current}
-                    selectedSubId={selectedSub?.id || null}
-                    onSelectSubfolder={setSelectedSubId}
+                    hideCategory
                     armedIcon={armedIcon}
-                    onConsumeArmed={(target) => {
-                      if (!armedIcon) return false;
-                      if (target.kind === "sub") swapSubfolderIcon(target.sfId, armedIcon);
-                      else if (target.kind === "item") swapSubfolderItemIcon(target.sfId, target.itemId, armedIcon);
-                      return true;
-                    }}
-                    onAddSubfolder={(name) => {
-                      addSubfolder(name);
-                      // Auto-select the freshly added sub-folder so the
-                      // editor below is ready to accept filename tags.
-                      setTimeout(() => {
-                        const latest = (current.subfolders || [])[(current.subfolders || []).length];
-                        if (latest) setSelectedSubId(latest.id);
-                      }, 0);
-                    }}
-                    onAddSubfoldersBulk={addSubfolders}
-                    onRemoveSubfolder={(id) => {
-                      if (selectedSubId === id) setSelectedSubId(null);
-                      removeSubfolder(id);
-                    }}
-                    onRenameSubfolder={renameSubfolder}
-                    onMoveSubfolder={moveSubfolder}
-                    onAddItem={addSubfolderItem}
-                    onAddItemsBulk={addSubfolderItemsBulk}
-                    onRemoveItem={removeSubfolderItem}
-                    onSwapItemIcon={swapSubfolderItemIcon}
-                    onMoveSubfolderItem={moveSubfolderItem}
-                    onReplaceSubfolderNode={replaceSubfolderNode}
-                    onRemoveItemsBulk={removeSubfolderItemsBulk}
-                    onConvertItemsBulk={convertSubfolderItemsToNestedBulk}
+                    onConsumeArmed={() => setArmedIcon(null)}
+                    onTagRemoved={(tag, ownerName, ownerId) => { pushToTrash({ chip: tag, categoryId: current.id, sfPath: ownerId ? [ownerId] : [], pathNames: [current.name, ownerName || ""], deletedFromLabel: ownerName || current.name }); setTrashCount(getTrashCount()); }}
+                    onCommit={(fn) => onChange(categories.map((c) => (c.id === current.id ? fn(c) : c)))}
                   />
-                  {/* v1.4.5e — Bottom "FILENAME TAGS for X" pane removed.
-                      The chevron-expanded inline chip area inside each
-                      sub-folder row is now the single canonical place to
-                      work with filename tags, so there's no duplicated
-                      "which list am I editing?" confusion any more. */}
                 </div>
               </>
             ) : (
@@ -1705,7 +1663,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
               Images) stacked vertically. Each box scrolls INDEPENDENTLY
               of the center pane so Kurt's icon library can grow without
               stealing viewport from the sub-folder editor. */}
-          <div className="w-64 border-l border-app flex flex-col overflow-hidden shrink-0" data-testid="right-rail-icon-holders">
+          <div className="w-48 border-l border-app flex flex-col overflow-hidden shrink-0" data-testid="right-rail-icon-holders">
             <IconPickerBar
               customImages={customImages}
               onCustomImagesChange={onCustomImagesChange}
@@ -3389,7 +3347,7 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
             <span className="text-[10px] uppercase tracking-wider font-heading font-semibold">Basic Icons</span>
             <span className="text-[10px] text-dim font-mono ml-auto">{BUILTIN_ICONS.length}</span>
           </div>
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(32px,1fr))] gap-0.5 overflow-auto p-1.5 flex-1 min-h-0" data-testid="icon-picker-builtin">
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(26px,1fr))] gap-0.5 overflow-auto p-1.5 flex-1 min-h-0" data-testid="icon-picker-builtin">
             {BUILTIN_ICONS.map((n) => (
               <button
                 key={n}
@@ -3402,7 +3360,7 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
                   );
                   e.dataTransfer.effectAllowed = "copy";
                 }}
-                className={`w-8 h-8 rounded flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors ${
+                className={`w-6 h-6 rounded flex items-center justify-center cursor-grab active:cursor-grabbing transition-colors ${
                   isArmed("lucide", n)
                     ? "bg-primary-earth text-[color:var(--text-inverse)] ring-2 ring-primary-earth"
                     : "hover:bg-primary-earth/20 text-app"
@@ -3410,7 +3368,7 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
                 title={`${n} — click to arm, or drag onto any chip to swap`}
                 data-testid={`icon-picker-builtin-${n}`}
               >
-                <BuiltinIcon name={n} size={16} />
+                <BuiltinIcon name={n} size={13} />
               </button>
             ))}
           </div>
@@ -3503,7 +3461,7 @@ function IconPickerBar({ customImages = [], onCustomImagesChange, activeCatId, a
                 : `No images for "${activeCatName}" — click Import to add some.`}
             </p>
           ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(48px,1fr))] gap-1 overflow-auto p-1.5 flex-1 min-h-0" data-testid="icon-picker-lib-grid">
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(36px,1fr))] gap-1 overflow-auto p-1.5 flex-1 min-h-0" data-testid="icon-picker-lib-grid">
               {libraryVisible.map((img) => (
                 <div
                   key={img.id}
