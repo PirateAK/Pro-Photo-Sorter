@@ -1797,3 +1797,9 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
 - Kurt: Save to GitHub → build BOTH → release v1.6.0 (both exes + latest.yml + blockmap + PDFs) → Gumroad.
 - Phase B/C still queued (see paste 2026-06-20).
 - ✅ 2026-06-20 site: all screenshots replaced with Kurt's v1.6.0 captures (app-hero dark eagle, app-tagmanager, app-editor, app-creator); gallery 3-col; Creator mock card removed. public/index.html <title> → Pro Photo Sorter (was Emergent template). Needs Save to GitHub; title fix ships with next PPS build.
+
+## Website expansion — 2026-06 · Plan parked (see memory/WEBSITE_UPGRADE_PLAN.md)
+- Inspected: PUBLIC repo PirateAK/Pro-Photo-Sorter, main, GitHub Pages from /docs, fully static.
+- Fixed: docs/CNAME (muskegman.com) was missing from workspace though present on GitHub — added.
+- Verdict: public gallery/software/about/contact = static on Pages (free). Admin dashboard/login/uploads/secrets = NOT possible on Pages → separate Emergent full-stack project publishing to /docs via GitHub API (paid, after payday).
+- Phases: W0 prep → W1 free static gallery → W2 paid admin → W3 enable sales (Gumroad digital, print provider TBD).
