@@ -26,7 +26,7 @@
   "description": "Offline photo organizer for Windows. Nested tag folders, side-by-side compare, built-in editor and Lightroom-compatible XMP sidecars. One-time purchase, no subscription.",
   "url": "https://muskegman.com/",
   "image": "https://muskegman.com/assets/app-hero.png",
-  "screenshot": ["https://muskegman.com/assets/app-hero.png", "https://muskegman.com/assets/app-compare.png"],
+  "screenshot": ["https://muskegman.com/assets/app-hero.png", "https://muskegman.com/assets/app-tagmanager.png", "https://muskegman.com/assets/app-editor.png"],
   "downloadUrl": "https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest",
   "featureList": "Unlimited nested categories, Compare x2/x3, Star ratings, Cull mode, Built-in editor, Print-ready resize, Watermark, Contact-sheet PDF, XMP sidecars, 100% offline",
   "offers": {
@@ -135,7 +135,7 @@
 
   /* gallery */
   .gallery{background:var(--bg-deep);border-top:1px solid var(--border)}
-  .gal{display:grid;grid-template-columns:1fr 1fr;gap:2rem}
+  .gal{display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
   @media(max-width:900px){.gal{grid-template-columns:1fr}}
   .gal figure{margin:0}
   .shot.still{transform:none;width:100%}
@@ -264,7 +264,7 @@
     </div>
     <div class="shot rv d2" data-testid="hero-screenshot">
       <div class="shot-bar"><i></i><i></i><i></i></div>
-      <img src="assets/app-hero.png" alt="Pro Photo Sorter sorting a bald eagle photo: Wildlife › Birds › Bald Eagle tags on the image, 4-star rating, destination path Wildlife/Birds/Bald_Eagle.jpg, and a filmstrip of eagle shots below" width="1918" height="1012" />
+      <img src="assets/app-hero.png" alt="Pro Photo Sorter sorting a bald eagle photo: Wildlife › Birds › Bald Eagle tags on the image, 4-star rating, destination path Wildlife/Birds/Bald_Eagle.jpg, and a filmstrip of eagle shots below" width="1915" height="1011" />
     </div>
   </div>
 
@@ -326,16 +326,20 @@
     <div class="sec-head">
       <div class="eyebrow">See it work</div>
       <h2>Real sessions, not mock-ups.</h2>
-      <p>Straight from the deck — Kurt's own eagle and wildflower shoots being sorted in Pro Photo Sorter.</p>
+      <p>Straight from the deck — Kurt's own eagle shoot in Pro Photo Sorter v1.6.0: sorting, the new Tag Manager, and the editor.</p>
     </div>
     <div class="gal" data-testid="screenshot-gallery">
       <figure>
-        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-hero.png" loading="lazy" alt="Sorting a bald eagle photo with Wildlife › Birds › Bald Eagle tags, 4-star rating and destination path preview" width="1918" height="1012" /></div>
+        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-hero.png" loading="lazy" alt="Sorting a bald eagle photo with Wildlife › Birds › Bald Eagle tags, 4-star rating and destination path preview" width="1915" height="1011" /></div>
         <figcaption><b>One photo, one key.</b> Tags on the image build the path <span class="mono">Wildlife/Birds/Bald_Eagle.jpg</span>. Press <kbd>S</kbd> and it's stored with an XMP sidecar.</figcaption>
       </figure>
       <figure>
-        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-compare.png" loading="lazy" alt="Compare ×3 mode showing three wildflower photos side by side with the filmstrip below" width="1922" height="1017" /></div>
-        <figcaption><b>Compare ×3.</b> Near-identical frames side by side, each pane zooms independently. Rate and store the keeper without leaving the view.</figcaption>
+        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-tagmanager.png" loading="lazy" alt="Tag Manager in v1.6.0: Folder / Sub-Folder / Filename buttons, text entry, path preview, waterfall of folders and filename tags for a Wildlife pack" width="1748" height="976" /></div>
+        <figcaption><b>Tag Manager, v1.6.0.</b> Pick Folder · Sub-Folder · Filename, type, Enter, repeat. The waterfall shows only what's inside the folder you've highlighted — 118 tags stay out of your way.</figcaption>
+      </figure>
+      <figure>
+        <div class="shot still"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-editor.png" loading="lazy" alt="Built-in image editor: zoom, rotate and straighten, brightness, contrast, saturation, sharpen and auto-enhance on a bald eagle photo" width="1893" height="1004" /></div>
+        <figcaption><b>Built-in editor.</b> Straighten, enhance, crop, sharpen — then Save as new. Your tags and stars follow the edited copy.</figcaption>
       </figure>
     </div>
   </div>
@@ -399,14 +403,7 @@
         <a class="btn btn-ghost" href="https://github.com/PirateAK/Pro-Photo-Sorter/releases/latest" target="_blank" rel="noopener" data-testid="creator-github-button">Direct download (GitHub)</a>
       </div>
     </div>
-    <div class="creator-card" data-testid="creator-card">
-      <div class="crow"><span class="pill">Category</span><span class="pill">Folder</span><span class="pill">Sub-Folder</span><span class="digit">2</span><span class="pill on">Filename</span></div>
-      <div class="cpath">Will store to: <span>Wildlife/Birds/Owls/Barn_Owl/flying.jpg</span></div>
-      <div class="crow tags"><span class="chip cat">Wildlife</span></div>
-      <div class="crow tags"><span class="chip">Birds</span><span class="chip d1">› Eagles</span><span class="chip d1">› Owls</span><span class="chip d2">›› Barn Owl</span><span class="chip">Mammals</span></div>
-      <div class="crow tags"><span class="chip t">flying</span><span class="chip t">perched</span><span class="chip t">hunting</span><span class="chip t">pair</span></div>
-      <div class="cinput">Filename name — or paste a comma-separated list (20 at a time)</div>
-      <div class="cactions"><span class="pill">Cover</span><span class="pill">Install into PPS</span><span class="pill on">Save</span></div>
+    <div class="shot still" data-testid="creator-card"><div class="shot-bar"><i></i><i></i><i></i></div><img src="assets/app-creator.png" loading="lazy" alt="Tag Pack Creator v1.6.0: Category, Folder, Sub-Folder and Filename buttons, text entry, path preview, waterfall display, tag box and the Save / Install into PPS bar" width="1370" height="834" /></div>
     </div>
   </div>
 </section>
