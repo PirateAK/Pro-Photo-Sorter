@@ -1796,3 +1796,4 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
   TPC autofocus, arrows, save v4, New pack, theme. Tests 42/42. Docs + PDFs regenerated; site v1.6.0.
 - Kurt: Save to GitHub → build BOTH → release v1.6.0 (both exes + latest.yml + blockmap + PDFs) → Gumroad.
 - Phase B/C still queued (see paste 2026-06-20).
+- ✅ 2026-06-20 site: all screenshots replaced with Kurt's v1.6.0 captures (app-hero dark eagle, app-tagmanager, app-editor, app-creator); gallery 3-col; Creator mock card removed. public/index.html <title> → Pro Photo Sorter (was Emergent template). Needs Save to GitHub; title fix ships with next PPS build.
