@@ -2,6 +2,25 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.7.0 — 2026-06-21 · Tag Pack Shipper + link field
+
+### Both apps
+- **Tag Pack Shipper** — one `.pps-shipper.json` that carries several tag packs, up to **3 preview images** (auto-shrunk to 1200 px and ≤ 350 KB each), a title, description, **author** and **link**. Buyers import the whole shipment in one click.
+- **Link field on packs** — every `.pps-tagpack.json` now carries `link` (your site or shop) next to `author`. Bare domains get `https://` automatically. Packs inside a shipper inherit the shipper's author/link when they have none of their own.
+- **Author, link and shipper description are remembered** — type them once, they're pre-filled next time (per app, stored locally).
+
+### Pro Photo Sorter
+- **Bundle… → Ship…** — tick the packs, click **Ship…**, add images/link, Save. (The .zip bundle is still there too.)
+- **Import pack…** accepts shipper files. A preview shows title, author, link, images and the packs inside — with an "already have one" badge where names clash. Then each pack runs through the usual **Merge / Replace / Create new** decision, one at a time; Tag History snapshots as before.
+- The "already exists" dialog now shows the incoming pack's author and link.
+- Export pack keeps author + link in the file (previously dropped on re-export).
+- Creator Inbox picks up shipper files as well as single packs.
+
+### Tag Pack Creator
+- **Shipper…** button in the header — starts from the pack you're editing (plus whatever pack files you add), then **Save** or **Install into PPS**.
+- **Open pack…** opens shipper files straight into the Shipper window for editing.
+- **Link** field in the save bar; the cover PNG prints the domain under the author.
+
 ## v1.6.0 — 2026-06-20 · The Creator's editor comes home to Tag Manager
 
 ### Pro Photo Sorter

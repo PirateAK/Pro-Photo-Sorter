@@ -473,7 +473,7 @@ ipcMain.handle('pps:inbox-list', async () => {
   try {
     if (!fs.existsSync(INBOX_DIR)) return [];
     return fs.readdirSync(INBOX_DIR)
-      .filter((f) => f.toLowerCase().endsWith('.pps-tagpack.json'))
+      .filter((f) => /\.pps-(tagpack|shipper)\.json$/i.test(f))
       .map((f) => ({ name: f, json: fs.readFileSync(path.join(INBOX_DIR, f), 'utf8') }));
   } catch { return []; }
 });

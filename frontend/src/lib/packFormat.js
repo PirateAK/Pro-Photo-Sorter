@@ -32,13 +32,26 @@ const mapSubOut = (s) => ({
   subfolders: (s.subfolders || []).map(mapSubOut),
 });
 
+// v1.7.0 — link field (author's site / shop). Bare domains get https://.
+export function normalizeLink(raw) {
+  const s = String(raw || "").trim().slice(0, 200);
+  if (!s) return "";
+  return /^[a-z][a-z0-9+.-]*:\/\//i.test(s) ? s : `https://${s}`;
+}
+export function linkDomain(raw) {
+  const l = normalizeLink(raw);
+  if (!l) return "";
+  try { return new URL(l).hostname.replace(/^www\./, ""); } catch { return l; }
+}
+
 export function serializeCategory(cat, extra = {}) {
   return {
     formatVersion: PACK_FORMAT_VERSION,
     kind: PACK_KIND,
     name: cat.name,
-    description: extra.description || "",
-    author: extra.author || "",
+    description: extra.description ?? cat.description ?? "",
+    author: extra.author ?? cat.author ?? "",
+    link: normalizeLink(extra.link ?? cat.link),
     exportedAt: extra.exportedAt || new Date().toISOString(),
     folderTags: (cat.folderItems || []).map(mapTagOut),
     filenameTags: (cat.filenameItems || []).map(mapTagOut),
@@ -89,7 +102,52 @@ export function deserializePack(data, uid = defaultUid) {
     subfolders.push({ id: uid("sf"), name: "_Unsorted filenames", iconType: "lucide", iconName: "Package", filenameItems: loose, subfolders: [] });
   }
   const name = String(data.name || "Imported pack").trim() || "Imported pack";
-  return { id: uid("cat"), name, subfolders, description: data.description || "", author: data.author || "" };
+  return { id: uid("cat"), name, subfolders, description: String(data.description || "").slice(0, 500), author: String(data.author || "").slice(0, 80), link: normalizeLink(data.link) };
+}
+
+// ── v1.7.0 — Shipper: several packs + up to 3 preview images + author/link
+// in ONE file (.pps-shipper.json). PPS imports every pack inside it.
+export const SHIPPER_KIND = "pps-shipper";
+export const SHIPPER_FORMAT_VERSION = 1;
+export const SHIPPER_LIMITS = { maxImages: 3, maxSide: 1200, maxImageBytes: 350_000, maxPacks: 50 };
+
+export const dataUrlBytes = (u) => { const i = String(u || "").indexOf(","); return i < 0 ? 0 : Math.floor(((u.length - i - 1) * 3) / 4); };
+export const isShipper = (data) => !!data && data.kind === SHIPPER_KIND;
+
+const validImage = (im) => im && typeof im.dataUrl === "string" && /^data:image\/(jpeg|png|webp);base64,/.test(im.dataUrl) && dataUrlBytes(im.dataUrl) <= SHIPPER_LIMITS.maxImageBytes;
+
+export function serializeShipper({ title, author, link, description, images, packs, exportedAt }) {
+  const a = String(author || "").slice(0, 80), l = normalizeLink(link);
+  const list = (packs || []).slice(0, SHIPPER_LIMITS.maxPacks).map((p) => (p?.kind === PACK_KIND ? p : serializeCategory(p)));
+  return {
+    formatVersion: SHIPPER_FORMAT_VERSION,
+    kind: SHIPPER_KIND,
+    title: String(title || "").trim().slice(0, 80) || (list[0]?.name ? `${list[0].name} collection` : "Tag pack shipment"),
+    author: a,
+    link: l,
+    description: String(description || "").slice(0, 500),
+    exportedAt: exportedAt || new Date().toISOString(),
+    images: (images || []).filter(validImage).slice(0, SHIPPER_LIMITS.maxImages).map((im) => ({ name: String(im.name || "image").slice(0, 80), dataUrl: im.dataUrl, width: im.width | 0, height: im.height | 0 })),
+    // packs inherit the shipper's author/link when they carry none of their own
+    packs: list.map((p) => ({ ...p, author: p.author || a, link: p.link || l })),
+  };
+}
+
+export function deserializeShipper(data, uid = defaultUid) {
+  if (!isShipper(data)) throw new Error("Not a Pro Photo Sorter shipper file.");
+  const author = String(data.author || "").slice(0, 80), link = normalizeLink(data.link);
+  const packs = (Array.isArray(data.packs) ? data.packs : []).slice(0, SHIPPER_LIMITS.maxPacks)
+    .map((p) => { const c = deserializePack(p, uid); return { ...c, author: c.author || author, link: c.link || link }; });
+  if (packs.length === 0) throw new Error("Shipper file contains no tag packs.");
+  return {
+    title: String(data.title || "").slice(0, 80) || "Tag pack shipment",
+    author,
+    link,
+    description: String(data.description || "").slice(0, 500),
+    exportedAt: data.exportedAt || "",
+    images: (Array.isArray(data.images) ? data.images : []).filter(validImage).slice(0, SHIPPER_LIMITS.maxImages),
+    packs,
+  };
 }
 
 export function countPack(cat) {

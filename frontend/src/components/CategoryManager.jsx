@@ -19,10 +19,11 @@ import {
   removeManyFromTrash,
   emptyTrash,
 } from "../lib/chipTrash";
-import { serializeCategory, deserializePack, findByName, applyImport, countPack, numberedName } from "../lib/packFormat";
+import { serializeCategory, deserializePack, findByName, applyImport, countPack, numberedName, isShipper, deserializeShipper, linkDomain } from "../lib/packFormat";
+import ShipperDialog, { ShipperPreview } from "./ShipperDialog";
 import { getHistory, getHistoryCount, recordHistory, removeHistory, emptyHistory, applyEntry, ACTION_LABELS } from "../lib/tagHistory";
 import { History as HistoryIcon } from "lucide-react";
-import { inboxList, inboxRemove } from "../lib/electronBridge";
+import { inboxList, inboxRemove, openExternal } from "../lib/electronBridge";
 import { BUILTIN_ICONS } from "../lib/builtinIcons";
 import PackEditor from "./PackEditor";
 
@@ -115,6 +116,7 @@ function HistoryPanel({ categories, onChange, onClose }) {
 function ImportDecision({ pending, onPick, onCancel }) {
   const inc = countPack(pending.incoming);
   const ex = countPack(pending.existing);
+  const domain = linkDomain(pending.incoming.link);
   const Btn = ({ mode, title, body, primary, testId }) => (
     <button onClick={() => onPick(mode)} className={`w-full text-left rounded-lg border p-3 transition-colors ${primary ? "border-primary-earth bg-primary-earth/10 hover:bg-primary-earth/20" : "border-app bg-app hover:bg-surface-hover"}`} data-testid={testId}>
       <div className="text-sm font-semibold">{title}</div>
@@ -126,6 +128,12 @@ function ImportDecision({ pending, onPick, onCancel }) {
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative pane rounded-lg shadow-2xl border border-app w-full max-w-md p-5 space-y-3">
         <div className="flex items-center gap-2"><Upload size={16} className="text-primary-earth" /><h3 className="font-heading font-semibold text-base">"{pending.existing.name}" already exists</h3></div>
+        {(pending.incoming.author || domain) && (
+          <p className="text-xs text-dim flex items-center gap-2 flex-wrap" data-testid="import-decision-meta">
+            {pending.incoming.author && <span>Incoming pack by <b className="text-[color:var(--text)]">{pending.incoming.author}</b></span>}
+            {domain && <button onClick={() => openExternal(pending.incoming.link)} className="text-primary-earth hover:underline underline-offset-2 font-mono flex items-center gap-1">{domain} <Lucide.ExternalLink size={10} /></button>}
+          </p>
+        )}
         <p className="text-xs text-dim">
           Incoming pack: {inc.subfolders} sub-folder{inc.subfolders === 1 ? "" : "s"}, {inc.tags} tag{inc.tags === 1 ? "" : "s"} · Yours: {ex.subfolders} sub-folder{ex.subfolders === 1 ? "" : "s"}, {ex.tags} tag{ex.tags === 1 ? "" : "s"}. A snapshot goes to Tag History either way, so you can undo.
         </p>
@@ -378,6 +386,9 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyCount, setHistoryCount] = useState(() => getHistoryCount());
   const [importPending, setImportPending] = useState(null); // { incoming, existing }
+  const [importQueue, setImportQueue] = useState([]); // v1.7.0 — packs from a shipper, imported one by one
+  const [shipperIncoming, setShipperIncoming] = useState(null); // deserialized shipper awaiting the buyer's OK
+  const [shipperOpen, setShipperOpen] = useState(null); // { packs } → ShipperDialog
   useEffect(() => {
     const refresh = () => setHistoryCount(getHistoryCount());
     window.addEventListener("pps:history-updated", refresh);
@@ -388,6 +399,14 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
   // v1.5.0 — packs handed over by the Tag Pack Creator (Documents\Pro Photo
   // Sorter\Inbox). Offer each one when the Tag Manager opens.
   const inboxSeen = useRef(new Set());
+  // v1.7.0 — shipper packs go through the same Merge/Replace/New decision, one at a time.
+  const importPackObjRef = useRef(() => {});
+  useEffect(() => {
+    if (importPending || importQueue.length === 0) return;
+    const [next, ...rest] = importQueue;
+    setImportQueue(rest);
+    importPackObjRef.current(next);
+  }, [importQueue, importPending]);
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -398,7 +417,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
         if (inboxSeen.current.has(it.name)) continue;
         inboxSeen.current.add(it.name);
         setTimeout(() => inboxSeen.current.delete(it.name), 20000);
-        toast(`Tag pack waiting: ${it.name.replace(/\.pps-tagpack\.json$/i, "")}`, {
+        toast(`${/shipper/i.test(it.name) ? "Pack shipment" : "Tag pack"} waiting: ${it.name.replace(/\.pps-(tagpack|shipper)\.json$/i, "")}`, {
           description: "Sent from Tag Pack Creator.",
           duration: 15000,
           action: { label: "Import", onClick: () => { try { inboxImportRef.current(it.json); inboxRemove(it.name); } catch (e) { toast.error("Import failed", { description: e.message }); } } },
@@ -1308,14 +1327,33 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
     } else if (res.mode === "replace") {
       toast.success(`Replaced "${res.category.name}"`, { description: `${counts}. Previous version saved to Tag History.` });
     } else {
-      toast.success(`Imported "${res.category.name}"`, { description: counts });
+      const by = [res.category.author && `by ${res.category.author}`, linkDomain(res.category.link)].filter(Boolean).join(" · ");
+      toast.success(`Imported "${res.category.name}"`, { description: by ? `${counts} · ${by}` : counts });
     }
   };
-  const importPackJson = (text) => {
-    const incoming = deserializePack(JSON.parse(text), uid);
+  const importPackObj = (incoming) => {
     const existing = findByName(categories, incoming.name);
     if (existing) setImportPending({ incoming, existing });
     else finishImport(incoming, "new", null);
+  };
+  importPackObjRef.current = importPackObj;
+  const importPackJson = (text) => {
+    const data = JSON.parse(text);
+    if (isShipper(data)) { setShipperIncoming(deserializeShipper(data, uid)); return; }
+    importPackObj(deserializePack(data, uid));
+  };
+  const importShipper = () => {
+    const s = shipperIncoming;
+    setShipperIncoming(null);
+    setImportQueue((q) => [...q, ...s.packs]);
+    toast(`Importing ${s.packs.length} pack${s.packs.length === 1 ? "" : "s"} from “${s.title}”`, { description: s.author ? `by ${s.author}` : undefined });
+  };
+  const downloadText = (filename, text) => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+    a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   };
   inboxImportRef.current = importPackJson;
   const importFromFile = async (file) => {
@@ -1432,7 +1470,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                 <input
                   ref={importRef}
                   type="file"
-                  accept=".json,.pps-tagpack.json,application/json"
+                  accept=".json,.pps-tagpack.json,.pps-shipper.json,application/json"
                   className="hidden-file"
                   onChange={(e) => {
                     const f = e.target.files?.[0];
@@ -1445,7 +1483,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                   onClick={() => importRef.current?.click()}
                   className="w-full px-2 py-1.5 rounded bg-app hover:bg-surface-hover border border-app text-xs flex items-center justify-center gap-1"
                   data-testid="import-pack-btn"
-                  title="Import a .pps-tagpack.json file — always adds as a new pack"
+                  title="Import a .pps-tagpack.json file, or a .pps-shipper.json with several packs inside"
                 >
                   <Upload size={12} /> Import pack…
                 </button>
@@ -1742,6 +1780,16 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
             onCancel={() => setImportPending(null)}
           />
         )}
+        {shipperIncoming && !importPending && (
+          <ShipperPreview shipper={shipperIncoming} categories={categories} onImport={importShipper} onCancel={() => setShipperIncoming(null)} />
+        )}
+        {shipperOpen && (
+          <ShipperDialog
+            initial={{ packs: shipperOpen.packs, author: shipperOpen.packs.find((p) => p.author)?.author || "", link: shipperOpen.packs.find((p) => p.link)?.link || "" }}
+            onClose={() => setShipperOpen(null)}
+            onSave={(filename, json) => { downloadText(filename, json); setShipperOpen(null); toast.success("Shipper saved", { description: filename }); }}
+          />
+        )}
 
         {/* Bundle picker overlay — nested inside the Tag Manager modal */}
         {bundlePickerOpen && (
@@ -1826,6 +1874,15 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                   data-testid="bundle-picker-cancel"
                 >
                   Cancel
+                </button>
+                <button
+                  onClick={() => { const picked = categories.filter((c) => bundleSelected.has(c.id)); setBundlePickerOpen(false); setShipperOpen({ packs: picked }); }}
+                  disabled={bundleSelected.size === 0}
+                  className="px-3 py-1.5 rounded border border-primary-earth text-primary-earth text-xs font-semibold flex items-center gap-1 hover:bg-primary-earth/10 disabled:opacity-40"
+                  title="One .pps-shipper.json with these packs, up to 3 preview images, your name and link — buyers import it in one click"
+                  data-testid="bundle-picker-ship"
+                >
+                  <Lucide.Truck size={12} /> Ship…
                 </button>
                 <button
                   onClick={() => bundleExport(bundleSelected)}
