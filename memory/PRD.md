@@ -1825,3 +1825,6 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
 - Verified: node tests (electron stubbed for sharedIpc) + browser smoke (Electron-only buttons hidden in browser by design). Real Electron round trip is for Kurt to test on Windows.
 - v1 feature set CONCLUDED per Kurt. Next: v2 or other projects (website plan in WEBSITE_UPGRADE_PLAN.md; v2 backlog earlier in this file).
 - 2026-06-22 FIX: artifactName now hyphenated for both shells (`Pro-Photo-Sorter-Setup-${version}.${ext}`, `Tag-Pack-Creator-Setup-${version}.${ext}`) — GitHub turned spaces into dots while latest.yml used hyphens → auto-updater 404'd on every release so far. For v1.8.0 Kurt re-uploads renamed copies.
+
+## v2 backlog addition — 2026-06-22 (from Kurt)
+- **Theme toggle inside Tag Manager** — put the light/dark mode swap button in the Tag Manager header too, so you can swap color schemes without closing it. (Kurt: "unless we need other v1.8.0 fixes, do in v2.") Small: reuse the existing toolbar theme toggle component/handler.
