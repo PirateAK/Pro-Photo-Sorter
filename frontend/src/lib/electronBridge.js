@@ -131,3 +131,22 @@ export async function tpcSavePack(name, json) {
   if (!isElectron() || !window.electronAPI?.tpcSavePack) return { ok: false, error: "not-electron" };
   try { return await window.electronAPI.tpcSavePack({ name, json }); } catch (e) { return { ok: false, error: e.message }; }
 }
+
+// v1.8.0 — Library mirror (Documents\Pro Photo Sorter\Library) + cross-app detection.
+export async function libraryWrite(packs) {
+  if (!isElectron() || !window.electronAPI?.libraryWrite) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.libraryWrite(packs); } catch (e) { return { ok: false, error: e.message }; }
+}
+export async function libraryList() {
+  if (!isElectron() || !window.electronAPI?.libraryList) return [];
+  try { return (await window.electronAPI.libraryList()) || []; } catch { return []; }
+}
+// → { self: {id, version}, other: {id, version, exePath, installed, lastSeen} | null } | null (browser)
+export async function appsInfo() {
+  if (!isElectron() || !window.electronAPI?.appsInfo) return null;
+  try { return await window.electronAPI.appsInfo(); } catch { return null; }
+}
+export async function appsLaunch() {
+  if (!isElectron() || !window.electronAPI?.appsLaunch) return { ok: false, error: "not-electron" };
+  try { return await window.electronAPI.appsLaunch(); } catch (e) { return { ok: false, error: e.message }; }
+}

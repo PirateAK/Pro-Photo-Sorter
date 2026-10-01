@@ -1,6 +1,6 @@
 {
   "name": "tag-pack-creator",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "description": "Build and share tag packs for Pro Photo Sorter",
   "main": "main.js",
   "author": "Captain Kurt",
@@ -19,6 +19,7 @@
     "asar": true,
     "files": [
       "main.js",
+      "sharedIpc.js",
       "preload.js",
       "icon.png"
     ],
@@ -30,7 +31,12 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "icon.png",
       "artifactName": "Tag Pack Creator Setup ${version}.${ext}"

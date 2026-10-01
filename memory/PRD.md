@@ -1814,3 +1814,13 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
 - Version 1.7.0 everywhere (3 package.json, buildInfo, docs/index.html, CHANGELOG, USER_GUIDE). User must Save to GitHub + run the reset/dual-build one-liner.
 - Verified: node tests + Playwright smoke (TPC shipper dialog, prefs persist after reload; PPS shipper import → preview → decision).
 - NEXT: Phase C (two-way library + cross-app detection). Website plan parked in WEBSITE_UPGRADE_PLAN.md.
+
+## v1.8.0 — 2026-06-22 · Phase C: two-way library + cross-app detection (DONE, 49/49 tests)
+- `electron-shell/sharedIpc.js` (copied to `electron-shell-tpc/sharedIpc.js` by pack-tpc.bat; both package.json `files` include it): `registerShared('pps'|'tpc')` → IPCs `apps:info`, `apps:launch`, `library:write`, `library:list`. Writes `Documents\Pro Photo Sorter\apps\<id>.json` {version, exePath(null in dev), lastSeen}. Library = `Documents\Pro Photo Sorter\Library\<pack>.pps-tagpack.json`, pruned on write.
+- Preloads expose libraryWrite/appsInfo/appsLaunch (PPS) and libraryList/appsInfo/appsLaunch (TPC). Bridge helpers in electronBridge.js.
+- App.js: debounced (1.2s) library mirror effect on `categories` (Electron only).
+- `components/OtherAppChip.jsx` (shared): Open <app> / Get <app> / "vX → update" nudge (compareVersions in lib/version.js). PPS: under Import text list in Tag Manager. TPC: header.
+- TPC: `From PPS library…` (data-testid tpc-from-library) → LibraryPicker → openJson. Note: `tpc-library` testid belongs to the PackEditor tag box.
+- Version 1.8.0 everywhere; CHANGELOG/USER_GUIDE/site/release notes (`dist-docs/RELEASE_NOTES_v1.8.0.md`).
+- Verified: node tests (electron stubbed for sharedIpc) + browser smoke (Electron-only buttons hidden in browser by design). Real Electron round trip is for Kurt to test on Windows.
+- v1 feature set CONCLUDED per Kurt. Next: v2 or other projects (website plan in WEBSITE_UPGRADE_PLAN.md; v2 backlog earlier in this file).

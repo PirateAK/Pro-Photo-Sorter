@@ -2,6 +2,20 @@
 
 All notable changes to Pro Photo Sorter are tracked here. Dates in YYYY-MM-DD.
 
+## v1.8.0 — 2026-06-22 · Phase C: the two apps work as one
+
+### Both apps
+- **Cross-app detection.** On launch each app writes a tiny card to `Documents\Pro Photo Sorter\apps\` (version + exe path) and reads the other's. If the other app is installed you get an **Open Pro Photo Sorter / Open Tag Pack Creator** button that launches it; if not, a **Get it** link; if it's on an older version than the one you're in, a small **"v1.x → update"** nudge points at the Releases page.
+- One shared `sharedIpc.js` drives both Electron shells (copied into the Creator shell by `pack-tpc.bat`) so the folder layout can never drift between the apps.
+
+### Pro Photo Sorter
+- **Library mirror.** Every tag pack is mirrored to `Documents\Pro Photo Sorter\Library\<pack>.pps-tagpack.json` about a second after any change (renamed/deleted packs are pruned). It's also a human-readable backup you can copy anywhere.
+- **Open Tag Pack Creator** button in Tag Manager, under Import text list.
+
+### Tag Pack Creator
+- **From PPS library…** (header) lists every pack PPS has mirrored, with folder/tag counts — click one to open it, edit, then **Install into PPS** → Merge / Replace / Keep both as usual. No file dialogs; full round trip.
+- **Open Pro Photo Sorter** button in the header.
+
 ## v1.7.0 — 2026-06-21 · Tag Pack Shipper + link field
 
 ### Both apps

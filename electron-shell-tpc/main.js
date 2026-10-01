@@ -6,6 +6,7 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const { registerShared } = require('./sharedIpc');
 
 app.setPath('userData', path.join(app.getPath('appData'), 'Tag Pack Creator'));
 
@@ -30,7 +31,7 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => { registerShared('tpc'); createWindow(); });
 app.on('window-all-closed', () => app.quit());
 
 const INBOX_DIR = path.join(app.getPath('documents'), 'Pro Photo Sorter', 'Inbox');

@@ -9,9 +9,44 @@ import { serializeCategory, deserializePack, deserializeShipper, isShipper, coun
 import PackEditor from "../components/PackEditor";
 import ShipperDialog from "../components/ShipperDialog";
 import { loadAuthorPrefs, saveAuthorPrefs } from "../lib/authorPrefs";
-import { isElectron, tpcInstallPack, tpcSavePack } from "../lib/electronBridge";
+import { isElectron, tpcInstallPack, tpcSavePack, libraryList } from "../lib/electronBridge";
 import buildInfo from "../buildInfo.json";
 import { renderPreviewCard } from "./previewCard";
+import OtherAppChip from "../components/OtherAppChip";
+
+// v1.8.0 — packs PPS mirrors to Documents\Pro Photo Sorter\Library\
+function LibraryPicker({ onPick, onClose }) {
+  const [items, setItems] = useState(null);
+  useEffect(() => { libraryList().then(setItems); }, []);
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-6" data-testid="tpc-library-picker">
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div className="relative pane rounded-lg shadow-2xl border border-app w-full max-w-md flex flex-col max-h-[80vh]">
+        <div className="px-4 py-3 border-b border-app flex items-center justify-between">
+          <div>
+            <h3 className="font-heading font-semibold text-sm flex items-center gap-1.5"><Lucide.Library size={14} className="text-primary-earth" /> Pro Photo Sorter library</h3>
+            <p className="text-xs text-dim mt-0.5">Packs PPS keeps in <span className="font-mono">Documents\Pro Photo Sorter\Library</span>. Edit here, then Install into PPS.</p>
+          </div>
+          <button onClick={onClose} className="w-7 h-7 rounded hover:bg-surface-hover flex items-center justify-center" data-testid="tpc-library-close"><Lucide.X size={14} /></button>
+        </div>
+        <div className="flex-1 overflow-auto p-2 space-y-0.5 min-h-0">
+          {items === null && <div className="text-xs text-dim italic p-2">Looking…</div>}
+          {items?.length === 0 && <div className="text-xs text-dim p-3 leading-relaxed">Nothing here yet. Open Pro Photo Sorter once (v1.8.0 or newer) — it fills this folder automatically.</div>}
+          {items?.map((it) => {
+            let counts = ""; try { const c = countPack(deserializePack(JSON.parse(it.json))); counts = `${c.subfolders} folders · ${c.tags} tags`; } catch { counts = "unreadable"; }
+            return (
+              <button key={it.name} onClick={() => onPick(it)} className="w-full text-left flex items-center gap-2 px-2 py-2 rounded hover:bg-surface-hover text-sm" data-testid={`tpc-library-item-${it.name.replace(/[^\w-]+/g, "_")}`}>
+                <Lucide.Package size={13} className="text-primary-earth shrink-0" />
+                <span className="flex-1 truncate">{it.name}</span>
+                <span className="text-[10px] text-dim font-mono shrink-0">{counts}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 const LINKS = {
   gumroad: "https://muskegman.gumroad.com/l/gvmaas",
@@ -92,6 +127,7 @@ export default function TagPackCreator() {
   const [title, setTitle] = useState("");
   const [aboutOpen, setAboutOpen] = useState(false);
   const [shipper, setShipper] = useState(null); // v1.7.0 — { packs, title, author, link, description, images }
+  const [libraryOpen, setLibraryOpen] = useState(false); // v1.8.0
   const [theme, setTheme] = useState(() => { try { return window.localStorage.getItem("tpc.theme") || "dark"; } catch { return "dark"; } });
   useEffect(() => { document.documentElement.setAttribute("data-theme", theme); try { window.localStorage.setItem("tpc.theme", theme); } catch { /* private mode */ } }, [theme]);
   const fileRef = useRef(null);
@@ -125,12 +161,19 @@ export default function TagPackCreator() {
   };
   const openFile = async (f) => {
     if (!f) return;
-    try {
-      const data = JSON.parse(await f.text());
-      if (isShipper(data)) { setShipper(deserializeShipper(data, uid)); toast.success("Shipper opened", { description: "Edit it in the Shipper window, then Save." }); return; }
-      const cat = deserializePack(data, uid); commit(() => ({ ...cat, filenameItems: [] })); setTitle(cat.name); toast.success(`Opened “${cat.name}”`);
-    }
+    try { openJson(await f.text()); }
     catch (e) { toast.error("Couldn't open", { description: e.message }); }
+  };
+  const openJson = (text) => {
+    const data = JSON.parse(text);
+    if (isShipper(data)) { setShipper(deserializeShipper(data, uid)); toast.success("Shipper opened", { description: "Edit it in the Shipper window, then Save." }); return; }
+    const cat = deserializePack(data, uid); commit(() => ({ ...cat, filenameItems: [] })); setTitle(cat.name); toast.success(`Opened “${cat.name}”`);
+  };
+  const openFromLibrary = (it) => {
+    const hasWork = pack.name || pack.subfolders.length || (pack.filenameItems || []).length;
+    if (hasWork && !window.confirm(`Open “${it.name}” from the PPS library?\n\nThe current pack is replaced (Undo brings it back).`)) return;
+    setLibraryOpen(false);
+    try { openJson(it.json); } catch (e) { toast.error("Couldn't open", { description: e.message }); }
   };
   // Shipper: start from the current pack (if it has a name) and the author/link already typed.
   const openShipper = () => {
@@ -171,7 +214,8 @@ export default function TagPackCreator() {
             <div className="text-[11px] text-dim font-mono">v{buildInfo.version} · builds .pps-tagpack.json files for Pro Photo Sorter</div>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
+          <OtherAppChip other="pps" />
           <button onClick={() => setAboutOpen(true)} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" data-testid="tpc-about"><Lucide.Info size={12} /> About</button>
           <button onClick={() => setTheme((t) => (t === "light" ? "dark" : "light"))} className="h-8 w-8 rounded border border-app flex items-center justify-center hover:bg-surface-hover" title={`Switch to ${theme === "light" ? "Earth Dark" : "Earth Light"}`} data-testid="tpc-toggle-theme">
             {theme === "light" ? <Lucide.Moon size={13} /> : <Lucide.Sun size={13} />}
@@ -179,6 +223,7 @@ export default function TagPackCreator() {
           <button onClick={() => newPack(false)} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="Clear the workspace and start another pack" data-testid="tpc-new"><Lucide.FilePlus2 size={12} /> New pack</button>
           <button onClick={() => fileRef.current?.click()} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" data-testid="tpc-open"><Lucide.FolderOpen size={12} /> Open pack…</button>
           <input ref={fileRef} type="file" accept=".json,application/json" className="hidden" onChange={(e) => { openFile(e.target.files?.[0]); e.target.value = ""; }} data-testid="tpc-open-input" />
+          {isElectron() && <button onClick={() => setLibraryOpen(true)} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="Open a pack straight from Pro Photo Sorter's library on this PC" data-testid="tpc-from-library"><Lucide.Library size={12} /> From PPS library…</button>}
           <button onClick={openShipper} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover" title="Bundle several packs + up to 3 preview images + your link into one .pps-shipper.json" data-testid="tpc-shipper"><Lucide.Truck size={12} /> Shipper…</button>
           <button onClick={doUndo} disabled={!undo.length} className="h-8 px-3 rounded border border-app text-xs flex items-center gap-1 hover:bg-surface-hover disabled:opacity-35" data-testid="tpc-undo"><Lucide.Undo2 size={12} /> Undo{undo.length ? ` · ${undo.length}` : ""}</button>
         </div>
@@ -210,6 +255,7 @@ export default function TagPackCreator() {
       </footer>
 
       {aboutOpen && <AboutDialog onClose={() => setAboutOpen(false)} />}
+      {libraryOpen && <LibraryPicker onPick={openFromLibrary} onClose={() => setLibraryOpen(false)} />}
       {shipper && (
         <ShipperDialog initial={shipper} onClose={() => setShipper(null)} onSave={saveShipper}
           extraAction={isElectron() ? { label: "Install into PPS", icon: <Lucide.Send size={12} />, run: installShipper } : undefined} />

@@ -37,4 +37,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // Tag Pack Creator inbox (v1.5.0)
   inboxList: () => ipcRenderer.invoke('pps:inbox-list'),
   inboxRemove: (name) => ipcRenderer.invoke('pps:inbox-remove', name),
+
+  // v1.8.0 — Library mirror (TPC reads it) + cross-app detection
+  libraryWrite: (packs) => ipcRenderer.invoke('library:write', packs),
+  appsInfo: () => ipcRenderer.invoke('apps:info'),
+  appsLaunch: () => ipcRenderer.invoke('apps:launch'),
 });
