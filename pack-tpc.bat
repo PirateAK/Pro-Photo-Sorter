@@ -29,7 +29,7 @@ rmdir /s /q dist 2>nul
 call npx electron-builder --win --x64
 if errorlevel 1 goto :err
 echo.
-echo === DONE: electron-shell-tpc\dist\Tag Pack Creator Setup x.y.z.exe ===
+echo === DONE: electron-shell-tpc\dist\Tag-Pack-Creator-Setup-x.y.z.exe ===
 cd ..
 exit /b 0
 :err

@@ -78,7 +78,7 @@ Pro-Photo-Sorter/
 pack-app.bat
 ```
 
-Produces `electron-shell\dist\Pro Photo Sorter Setup <version>.exe` (the
+Produces `electron-shell\dist\Pro-Photo-Sorter-Setup-<version>.exe` (the
 version is taken from `frontend/package.json` — bump it there before
 packaging a public release).
 
@@ -88,7 +88,7 @@ packaging a public release).
 pack-app.bat && pack-tpc.bat
 ```
 
-Produces `electron-shell-tpc\dist\Tag Pack Creator Setup <version>.exe`. Both
+Produces `electron-shell-tpc\dist\Tag-Pack-Creator-Setup-<version>.exe`. Both
 apps share one React bundle (`frontend/build`); the Creator opens it at
 `index.html#/tpc`. In browser dev: `http://localhost:3000/#/tpc`.
 

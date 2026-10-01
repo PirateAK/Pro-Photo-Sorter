@@ -6,7 +6,7 @@
 
 ## Install (60 seconds)
 
-1. Double-click **Pro Photo Sorter Setup 1.4.7.exe**
+1. Double-click **Pro-Photo-Sorter-Setup-1.8.0.exe**
 2. If Windows shows a blue "SmartScreen" warning: **More info → Run anyway** (indie app, not Microsoft-signed)
 3. Wait for the installer to finish. The app opens automatically.
 

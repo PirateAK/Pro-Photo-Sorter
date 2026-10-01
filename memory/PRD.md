@@ -1824,3 +1824,4 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
 - Version 1.8.0 everywhere; CHANGELOG/USER_GUIDE/site/release notes (`dist-docs/RELEASE_NOTES_v1.8.0.md`).
 - Verified: node tests (electron stubbed for sharedIpc) + browser smoke (Electron-only buttons hidden in browser by design). Real Electron round trip is for Kurt to test on Windows.
 - v1 feature set CONCLUDED per Kurt. Next: v2 or other projects (website plan in WEBSITE_UPGRADE_PLAN.md; v2 backlog earlier in this file).
+- 2026-06-22 FIX: artifactName now hyphenated for both shells (`Pro-Photo-Sorter-Setup-${version}.${ext}`, `Tag-Pack-Creator-Setup-${version}.${ext}`) — GitHub turned spaces into dots while latest.yml used hyphens → auto-updater 404'd on every release so far. For v1.8.0 Kurt re-uploads renamed copies.

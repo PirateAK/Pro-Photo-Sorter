@@ -38,7 +38,12 @@
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "icon.png"
     },
@@ -48,7 +53,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Pro Photo Sorter"
+      "shortcutName": "Pro Photo Sorter",
+      "artifactName": "Pro-Photo-Sorter-Setup-${version}.${ext}"
     },
     "publish": [
       {
