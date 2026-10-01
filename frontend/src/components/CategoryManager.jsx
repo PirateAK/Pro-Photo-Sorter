@@ -21,6 +21,7 @@ import {
 } from "../lib/chipTrash";
 import { serializeCategory, deserializePack, findByName, applyImport, countPack, numberedName, isShipper, deserializeShipper, linkDomain } from "../lib/packFormat";
 import ShipperDialog, { ShipperPreview } from "./ShipperDialog";
+import OtherAppChip from "./OtherAppChip";
 import { getHistory, getHistoryCount, recordHistory, removeHistory, emptyHistory, applyEntry, ACTION_LABELS } from "../lib/tagHistory";
 import { History as HistoryIcon } from "lucide-react";
 import { inboxList, inboxRemove, openExternal } from "../lib/electronBridge";
@@ -1507,6 +1508,7 @@ export default function CategoryManager({ open, onClose, categories, onChange, c
                 >
                   <FileText size={12} /> Import text list…
                 </button>
+                <OtherAppChip other="tpc" className="[&>button]:w-full [&>button]:justify-center [&>button]:h-auto [&>button]:py-1.5 flex-col items-stretch" />
               </div>
             </div>
             {/* v1.3 — "Categories" section label above the list */}

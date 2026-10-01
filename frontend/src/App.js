@@ -75,7 +75,8 @@ import UpdateBanner from "@/components/UpdateBanner";
 import { isTrialMode, applyTrialSuffix, TRIAL_WATERMARK_TEXT } from "@/lib/license";
 import { maybeAutoBackup } from "@/lib/backups";
 import { addRecent, reacquire, getRecent } from "@/lib/recentFolders";
-import { isElectron, totalFreeBytes, formatBytes, samplesInfo, samplesOpenFolder } from "@/lib/electronBridge";
+import { isElectron, totalFreeBytes, formatBytes, samplesInfo, samplesOpenFolder, libraryWrite } from "@/lib/electronBridge";
+import { serializeCategory } from "@/lib/packFormat";
 
 function usePersistedState() {
   const [state, setState] = useState(() => loadState());
@@ -154,6 +155,15 @@ function composeDestFolderParts(activePack, folderPartsFromTemplate, subChain) {
 export default function App() {
   const { state, setCategories, setSettings, setRatings, setLooks, setExifOverrides, setCustomImages } = usePersistedState();
   const { categories, settings, ratings, looks = [], exifOverrides = {}, customImages = [] } = state;
+  // v1.8.0 — mirror every pack to Documents\Pro Photo Sorter\Library\ (1.2s after the last change)
+  // so the Tag Pack Creator can open them without a file dialog. Desktop only, best effort.
+  useEffect(() => {
+    if (!isElectron()) return undefined;
+    const t = setTimeout(() => {
+      libraryWrite(categories.map((c) => ({ name: c.name, json: JSON.stringify(serializeCategory(c), null, 2) })));
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [categories]);
   // Per-bar category memory (Iter 12) — init from settings, fallback to first category
   const [foldersCatId, setFoldersCatIdRaw] = useState(() =>
     (settings.foldersCatId && categories.find((c) => c.id === settings.foldersCatId))

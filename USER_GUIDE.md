@@ -158,6 +158,11 @@ Click the **Tags** button in the toolbar to open the Tag Manager:
   your **author** name and **link**. Buyers pick it with **Import pack…**, see a
   preview, click **Import N packs**, and each pack runs through Merge / Replace /
   Create new. Author, link and description are remembered for next time.
+- **Library mirror + Creator round trip** (v1.8.0) — PPS keeps a copy of every
+  pack in `Documents\Pro Photo Sorter\Library\`. In the Tag Pack Creator click
+  **From PPS library…**, pick a pack, edit, **Install into PPS**. Both apps show
+  an **Open <other app>** button (or a **Get it** link if it isn't installed) and
+  nudge you when the other app is on an older version.
 
 ### Text-list format (`.pps-taglist.txt`)
 

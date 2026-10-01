@@ -22,6 +22,7 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const { autoUpdater } = require('electron-updater');
+const { registerShared } = require('./sharedIpc');
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  STEP 1 — PIN userData path BEFORE anything else touches it.
@@ -461,6 +462,7 @@ ipcMain.handle('pps:samples-open-folder', async () => {
 
 app.whenReady().then(() => {
   ensureSamplesOnFirstRun();
+  registerShared('pps');
   createWindow();
 });
 app.on('window-all-closed', () => process.platform !== 'darwin' && app.quit());

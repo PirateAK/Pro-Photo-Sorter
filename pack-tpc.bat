@@ -17,6 +17,7 @@ cd ..
 echo === Syncing build into electron-shell-tpc ===
 rmdir /s /q electron-shell-tpc\build 2>nul
 xcopy /E /I /Y /Q frontend\build electron-shell-tpc\build
+copy /Y electron-shell\sharedIpc.js electron-shell-tpc\sharedIpc.js >nul
 echo === Syncing installer version from frontend/package.json ===
 call node -e "const fs=require('fs');const fv=require('./frontend/package.json').version;const p=require('./electron-shell-tpc/package.json');p.version=fv;fs.writeFileSync('./electron-shell-tpc/package.json',JSON.stringify(p,null,2)+'\n');console.log('electron-shell-tpc version -> '+fv)"
 echo === Ensuring dependencies are installed (electron-shell-tpc) ===
