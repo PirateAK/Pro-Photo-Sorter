@@ -41,7 +41,7 @@ echo.
 echo ============================================================
 echo  DONE. Installer .exe is at:
 echo  C:\Pro-Photo-Sorter\electron-shell\dist\
-echo  (Look for "Pro Photo Sorter Setup ^<version^>.exe" — the
+echo  (Look for "Pro-Photo-Sorter-Setup-^<version^>.exe" — the
 echo   version comes from frontend/package.json, shown above as
 echo   "electron-shell version ^-^> X.Y.Z")
 echo ============================================================

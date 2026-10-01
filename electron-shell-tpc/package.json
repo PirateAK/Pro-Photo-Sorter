@@ -47,7 +47,8 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Tag Pack Creator"
+      "shortcutName": "Tag Pack Creator",
+      "artifactName": "Tag-Pack-Creator-Setup-${version}.${ext}"
     }
   }
 }
