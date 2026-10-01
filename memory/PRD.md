@@ -1828,3 +1828,4 @@ Goal: replace CategoryManager's middle-pane editor with the TPC editor as a shar
 
 ## v2 backlog addition — 2026-06-22 (from Kurt)
 - **Theme toggle inside Tag Manager** — put the light/dark mode swap button in the Tag Manager header too, so you can swap color schemes without closing it. (Kurt: "unless we need other v1.8.0 fixes, do in v2.") Small: reuse the existing toolbar theme toggle component/handler.
+- 2026-06-22 Site: swapped v1.8.0 screenshots (app-hero.jpg dark, app-hero-light.jpg, app-tagmanager.jpg, app-creator.jpg — PNG→JPG, old PNGs removed, html refs updated). Added "Show light theme" swap button on first gallery card (data-testid theme-swap). Captions updated to v1.8.0. Kurt still owes a Shipper-dialog screenshot (optional).
